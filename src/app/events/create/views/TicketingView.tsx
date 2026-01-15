@@ -19,7 +19,7 @@ export function TicketingView() {
                         <h2 className="text-2xl font-black tracking-tight text-gray-900">Ticket Types</h2>
                         <p className="text-sm text-gray-400 mt-1.5 font-bold">Set your pricing strategy and availability.</p>
                     </div>
-                    <button className="flex items-center gap-2 bg-gray-900 text-white px-6 py-3 rounded-xl text-xs font-black hover:bg-black transition-all shadow-xl shadow-gray-100 active:scale-95">
+                    <button className="flex items-center gap-2 bg-gray-900 text-white px-6 py-3 rounded-2xl text-xs font-black hover:bg-black transition-all shadow-xl shadow-gray-100 active:scale-95">
                         <Plus className="w-4 h-4" /> Create Ticket
                     </button>
                 </header>
@@ -30,7 +30,7 @@ export function TicketingView() {
                             <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-5">
                                     <div className={cn(
-                                        "w-12 h-12 rounded-xl flex items-center justify-center border transition-all",
+                                        "w-12 h-12 rounded-2xl flex items-center justify-center border transition-all",
                                         ticket.status === "active" ? "bg-blue-50 border-blue-100 text-[var(--brand-blue)]" : "bg-gray-50 border-gray-100 text-gray-400"
                                     )}>
                                         <Tag className="w-5 h-5" />
@@ -72,7 +72,7 @@ export function TicketingView() {
                                             />
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2 p-1 bg-gray-50 rounded-lg border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex items-center gap-2 p-1.5 bg-gray-50 rounded-xl border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button className="p-1.5 text-gray-300 hover:text-gray-900 transition-colors"><Settings className="w-3.5 h-3.5" /></button>
                                         <div className="w-px h-3.5 bg-gray-200" />
                                         <button className="p-1.5 text-gray-300 hover:text-red-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -85,14 +85,14 @@ export function TicketingView() {
 
                 <div className="pt-10 grid grid-cols-2 gap-6">
                     <div className="p-8 bg-gray-50/50 rounded-[32px] border border-gray-100 border-dashed flex flex-col items-center justify-center text-center cursor-pointer group hover:bg-white hover:border-[var(--brand-blue)]/30 transition-all">
-                        <div className="w-12 h-12 bg-white rounded-xl shadow-sm border border-gray-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <div className="w-12 h-12 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                             <InfinityIcon className="w-5 h-5 text-gray-400" />
                         </div>
                         <h4 className="text-[11px] font-black uppercase tracking-widest text-gray-900 mb-1">Unlimited Capacity</h4>
                         <p className="text-[10px] text-gray-400 font-bold max-w-[180px]">Remove global sales limits for this event.</p>
                     </div>
                     <div className="p-8 bg-gray-50/50 rounded-[32px] border border-gray-100 border-dashed flex flex-col items-center justify-center text-center cursor-pointer group hover:bg-white hover:border-[var(--brand-blue)]/30 transition-all">
-                        <div className="w-12 h-12 bg-white rounded-xl shadow-sm border border-gray-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <div className="w-12 h-12 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                             <Clock className="w-5 h-5 text-gray-400" />
                         </div>
                         <h4 className="text-[11px] font-black uppercase tracking-widest text-gray-900 mb-1">Sale Schedule</h4>

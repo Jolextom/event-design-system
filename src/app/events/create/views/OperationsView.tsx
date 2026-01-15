@@ -26,10 +26,10 @@ export function OperationsView() {
                         <p className="text-sm text-gray-400 mt-1.5 font-bold">Manage your team and monitor real-time check-in flow.</p>
                     </div>
                     <div className="flex gap-3">
-                        <button className="flex items-center gap-2 bg-white border border-gray-100 text-gray-600 px-6 py-3 rounded-xl text-xs font-black hover:bg-gray-50 transition-all shadow-sm active:scale-95">
+                        <button className="flex items-center gap-2 bg-white border border-gray-100 text-gray-600 px-6 py-3 rounded-2xl text-xs font-black hover:bg-gray-50 transition-all shadow-sm active:scale-95">
                             <Terminal className="w-4 h-4" /> Live Logs
                         </button>
-                        <button className="flex items-center gap-2 bg-gray-900 text-white px-6 py-3 rounded-xl text-xs font-black hover:bg-black transition-all shadow-xl shadow-gray-100 active:scale-95">
+                        <button className="flex items-center gap-2 bg-gray-900 text-white px-6 py-3 rounded-2xl text-xs font-black hover:bg-black transition-all shadow-xl shadow-gray-100 active:scale-95">
                             <Plus className="w-4 h-4" /> Add Member
                         </button>
                     </div>
@@ -44,7 +44,7 @@ export function OperationsView() {
                                 <div key={member.id} className="p-5 border border-gray-100 rounded-[24px] bg-white hover:border-[var(--brand-blue)]/30 transition-all shadow-sm flex items-center justify-between group">
                                     <div className="flex items-center gap-4">
                                         <div className="relative">
-                                            <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center text-[11px] font-black text-gray-400 border border-gray-200 uppercase">
+                                            <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center text-[11px] font-black text-gray-400 border border-gray-200 uppercase">
                                                 {member.name.charAt(0)}
                                             </div>
                                             <div className={cn(
@@ -60,7 +60,7 @@ export function OperationsView() {
                                             <p className="text-[10px] font-bold text-gray-400 mt-0.5">Stationed at <span className="text-gray-600">{member.station}</span></p>
                                         </div>
                                     </div>
-                                    <button className="p-2 text-gray-300 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all">
+                                    <button className="p-2 text-gray-300 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all">
                                         <MoreHorizontal className="w-5 h-5" />
                                     </button>
                                 </div>
@@ -94,7 +94,7 @@ export function OperationsView() {
                             {stations.map((station) => (
                                 <div key={station.id} className="p-6 bg-gray-50/50 rounded-[32px] border border-gray-100 flex flex-col gap-4">
                                     <div className="flex justify-between items-start">
-                                        <div className="p-2.5 bg-white rounded-xl shadow-sm border border-gray-100">
+                                        <div className="p-2.5 bg-white rounded-2xl shadow-sm border border-gray-100">
                                             <Activity className={cn("w-4 h-4", station.status === "active" ? "text-green-500" : "text-gray-300")} />
                                         </div>
                                         <div className="text-right">
@@ -119,7 +119,7 @@ export function OperationsView() {
                             </div>
                             <h4 className="text-sm font-black tracking-tight relative z-10">Access Control</h4>
                             <p className="text-[10px] text-blue-100/80 font-bold leading-relaxed relative z-10">Generate QR scanners or secure tokens for your team members.</p>
-                            <button className="text-[9px] font-black uppercase tracking-widest bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-all relative z-10">Manage Access</button>
+                            <button className="text-[9px] font-black uppercase tracking-widest bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl transition-all relative z-10">Manage Access</button>
                         </div>
                     </div>
                 </div>

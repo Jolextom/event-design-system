@@ -15,7 +15,7 @@ export function BasicInfoView() {
                 <div className="space-y-8">
                     {/* Event Banner Placeholder */}
                     <div className="relative h-56 bg-gray-50 rounded-[32px] border-2 border-dashed border-gray-100 flex flex-col items-center justify-center group hover:border-[var(--brand-blue)]/30 transition-all overflow-hidden cursor-pointer shadow-inner">
-                        <div className="p-3.5 bg-white rounded-xl shadow-sm mb-3 group-hover:scale-110 transition-transform">
+                        <div className="p-3.5 bg-white rounded-2xl shadow-sm mb-3 group-hover:scale-110 transition-transform">
                             <Plus className="w-5 h-5 text-gray-400" />
                         </div>
                         <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Add Event Banner</span>
@@ -28,7 +28,7 @@ export function BasicInfoView() {
                             <label className="text-[9px] font-black uppercase tracking-[0.25em] text-gray-400 block ml-1">Event Title</label>
                             <input
                                 placeholder="e.g. Global Design Gala 2026"
-                                className="w-full text-3xl font-black tracking-tight text-gray-900 placeholder:text-gray-100 border-none outline-none focus:ring-0 p-0"
+                                className="w-full text-3xl font-black tracking-tight text-gray-900 placeholder:text-gray-200 border-none outline-none focus:ring-0 p-0"
                             />
                         </div>
 
@@ -38,7 +38,7 @@ export function BasicInfoView() {
                             <textarea
                                 placeholder="What's this event about?"
                                 rows={4}
-                                className="w-full text-base font-bold text-gray-600 placeholder:text-gray-100 border-none outline-none focus:ring-0 p-0 resize-none leading-relaxed"
+                                className="w-full text-base font-bold text-gray-600 placeholder:text-gray-200 border-none outline-none focus:ring-0 p-0 resize-none leading-relaxed"
                             />
                         </div>
 

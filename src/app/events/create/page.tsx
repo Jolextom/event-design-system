@@ -16,24 +16,28 @@ import { GlobalSidebar } from "./components/Sidebar";
 import { BackbonePane } from "./components/Backbone";
 
 // --- Views ---
-import { OverviewView } from "./views/OverviewView";
+import { CommandHubView } from "./views/CommandHubView";
 import { BasicInfoView } from "./views/BasicInfoView";
 import { RegistrationView } from "./views/RegistrationView";
 import { TicketingView } from "./views/TicketingView";
 import { SmartGroupsView } from "./views/SmartGroupsView";
 import { OperationsView } from "./views/OperationsView";
+import { RegistryView } from "./views/RegistryView";
+import { AutomationsView } from "./views/AutomationsView";
+import { BroadcastView } from "./views/BroadcastView";
+import { SettingsView } from "./views/SettingsView";
 
 export default function AppContainer() {
-    const [activeGlobal, setActiveGlobal] = useState<GlobalSection>("builder");
+    const [activeGlobal, setActiveGlobal] = useState<GlobalSection>("studio");
     const [activeBuilderCategory, setActiveBuilderCategory] = useState<CategoryId>("registration");
     const [isBackboneOpen, setIsBackboneOpen] = useState(true);
     const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
     const [isLive, setIsLive] = useState(false);
 
-    // Keyboard shortcut for Pane 2 toggle (Builder context only)
+    // Keyboard shortcut for Pane 2 toggle (Studio context only)
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === "b" && activeGlobal === "builder") {
+            if ((e.metaKey || e.ctrlKey) && e.key === "b" && activeGlobal === "studio") {
                 e.preventDefault();
                 setIsBackboneOpen(prev => !prev);
             }
@@ -42,8 +46,8 @@ export default function AppContainer() {
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [activeGlobal]);
 
-    // PRD Business Rule: Backbone only appears in the Builder context
-    const showBackbone = activeGlobal === "builder";
+    // PRD Business Rule: Backbone only appears in the Studio context
+    const showBackbone = activeGlobal === "studio";
 
     return (
         <div className="flex h-screen bg-white overflow-hidden text-[#111827]">
@@ -55,7 +59,7 @@ export default function AppContainer() {
                 onToggle={() => setIsSidebarExpanded(!isSidebarExpanded)}
             />
 
-            {/* Pane 2: Contextual Backbone (Builder Only) */}
+            {/* Pane 2: Contextual Backbone (Studio Only) */}
             <AnimatePresence mode="popLayout">
                 {showBackbone && isBackboneOpen && (
                     <BackbonePane
@@ -82,12 +86,12 @@ export default function AppContainer() {
                         <div className="flex flex-col">
                             <div className="flex items-center gap-2 mb-1">
                                 <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.25em] leading-none">
-                                    {activeGlobal === "builder" ? "Event Setup" : "Navigation"}
+                                    {activeGlobal === "studio" ? "Event Studio" : "Intelligence"}
                                 </h2>
                             </div>
                             <div className="flex items-center gap-2.5">
                                 <span className="text-lg font-black text-gray-900 tracking-tight">
-                                    {activeGlobal === "builder" ? BUILDER_CATEGORIES.find(c => c.id === activeBuilderCategory)?.label : GLOBAL_NAV.find(n => n.id === activeGlobal)?.label}
+                                    {activeGlobal === "studio" ? BUILDER_CATEGORIES.find(c => c.id === activeBuilderCategory)?.label : GLOBAL_NAV.find(n => n.id === activeGlobal)?.label}
                                 </span>
                                 {isLive && <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
                             </div>
@@ -139,8 +143,8 @@ export default function AppContainer() {
                             transition={{ duration: 0.2, ease: "circOut" }}
                             className="h-full"
                         >
-                            {activeGlobal === "overview" && <OverviewView />}
-                            {activeGlobal === "builder" && (
+                            {activeGlobal === "command" && <CommandHubView />}
+                            {activeGlobal === "studio" && (
                                 <>
                                     {activeBuilderCategory === "registration" && <RegistrationView />}
                                     {activeBuilderCategory === "essentials" && <BasicInfoView />}
@@ -148,12 +152,13 @@ export default function AppContainer() {
                                     {activeBuilderCategory === "variables" && <SmartGroupsView />}
                                 </>
                             )}
-                            {activeGlobal === "operations" && <OperationsView />}
+                            {activeGlobal === "live" && <OperationsView />}
 
-                            {/* Placeholders for other global sections */}
-                            {activeGlobal === "audience" && <div className="p-16 text-gray-400 font-black text-center text-xl uppercase tracking-widest opacity-20 mt-20">Guest Detail Vault</div>}
-                            {activeGlobal === "logic" && <div className="p-16 text-gray-400 font-black text-center text-xl uppercase tracking-widest opacity-20 mt-20">Flow Canvas</div>}
-                            {activeGlobal === "settings" && <div className="p-16 text-gray-400 font-black text-center text-xl uppercase tracking-widest opacity-20 mt-20">Platform Controls</div>}
+                            {/* Professional Organizer Views */}
+                            {activeGlobal === "registry" && <RegistryView />}
+                            {activeGlobal === "automations" && <AutomationsView />}
+                            {activeGlobal === "broadcast" && <BroadcastView />}
+                            {activeGlobal === "settings" && <SettingsView />}
                         </motion.div>
                     </AnimatePresence>
                 </main>

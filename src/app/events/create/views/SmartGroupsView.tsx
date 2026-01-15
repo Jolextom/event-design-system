@@ -19,7 +19,7 @@ export function SmartGroupsView() {
                         <h2 className="text-2xl font-black tracking-tight text-gray-900">Guest Groups</h2>
                         <p className="text-sm text-gray-400 mt-1.5 font-bold">Automatically segment your guests with smart rules.</p>
                     </div>
-                    <button className="flex items-center gap-2 bg-gray-900 text-white px-6 py-3 rounded-xl text-xs font-black hover:bg-black transition-all shadow-xl shadow-gray-100 active:scale-95">
+                    <button className="flex items-center gap-2 bg-gray-900 text-white px-6 py-3 rounded-2xl text-xs font-black hover:bg-black transition-all shadow-xl shadow-gray-100 active:scale-95">
                         <Plus className="w-4 h-4" /> Create Group
                     </button>
                 </header>
@@ -30,7 +30,7 @@ export function SmartGroupsView() {
                             <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-5">
                                     <div className={cn(
-                                        "w-12 h-12 rounded-xl flex items-center justify-center border transition-all",
+                                        "w-12 h-12 rounded-2xl flex items-center justify-center border transition-all",
                                         group.color
                                     )}>
                                         <Filter className="w-5 h-5" />
@@ -48,7 +48,7 @@ export function SmartGroupsView() {
                                         <div className="text-xl font-black text-gray-900 tracking-tighter">{group.count}</div>
                                         <div className="text-[9px] font-black uppercase tracking-widest text-gray-400">Guests</div>
                                     </div>
-                                    <div className="flex items-center gap-2 p-1 bg-gray-50 rounded-lg border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex items-center gap-2 p-1.5 bg-gray-50 rounded-xl border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button className="p-1.5 text-gray-300 hover:text-gray-900 transition-colors"><ChevronRight className="w-4 h-4" /></button>
                                     </div>
                                 </div>
@@ -58,7 +58,7 @@ export function SmartGroupsView() {
                 </div>
 
                 <div className="bg-blue-50/50 rounded-[32px] p-8 border border-blue-100 flex items-start gap-6 border-dashed">
-                    <div className="w-12 h-12 bg-white rounded-xl shadow-sm border border-blue-100 flex items-center justify-center shrink-0">
+                    <div className="w-12 h-12 bg-white rounded-2xl shadow-sm border border-blue-100 flex items-center justify-center shrink-0">
                         <Sparkles className="w-6 h-6 text-[var(--brand-blue)]" />
                     </div>
                     <div>

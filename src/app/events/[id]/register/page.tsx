@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Calendar,
@@ -17,7 +18,12 @@ import {
     Heart,
     ExternalLink,
     Map,
-    ArrowRight
+    ArrowRight,
+    ArrowLeft,
+    Plus,
+    Minus,
+    Mail,
+    PlusCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -78,11 +84,11 @@ export default function RegistrationPage() {
     const [step, setStep] = useState(1);
     const [selectedTicket, setSelectedTicket] = useState<string>("t2");
     const [quantity, setQuantity] = useState(1);
-    const [guests, setGuests] = useState([{ firstName: "", lastName: "", email: "" }]);
+    const [guests, setGuests] = useState([{ firstName: "", lastName: "", email: "", isInvite: false }]);
 
     const currentTicket = EVENT_DATA.tickets.find(t => t.id === selectedTicket);
     const totalGuests = currentTicket?.type === "group"
-        ? (currentTicket.groupSize || 1) * quantity
+        ? (currentTicket.groupSize || 1)
         : quantity;
 
     // Sync guests array when totalGuests changes
@@ -91,9 +97,9 @@ export default function RegistrationPage() {
             const newGuests = [...prev];
             if (newGuests.length < totalGuests) {
                 for (let i = newGuests.length; i < totalGuests; i++) {
-                    newGuests.push({ firstName: "", lastName: "", email: "" });
+                    newGuests.push({ firstName: "", lastName: "", email: "", isInvite: true });
                 }
-            } else {
+            } else if (newGuests.length > totalGuests) {
                 return newGuests.slice(0, totalGuests);
             }
             return newGuests;
@@ -108,29 +114,69 @@ export default function RegistrationPage() {
             )}>
                 Select Ticket
             </h3>
-            <div className="space-y-4">
-                {EVENT_DATA.tickets.map(ticket => (
-                    <button
-                        key={ticket.id}
-                        onClick={() => setSelectedTicket(ticket.id)}
-                        className={cn(
-                            "w-full p-6 rounded-[32px] border-2 transition-all flex items-center justify-between group text-left",
-                            selectedTicket === ticket.id
-                                ? "bg-blue-50/30 border-[var(--brand-blue)] shadow-[0_12px_32px_-12px_rgba(59,130,246,0.2)] scale-[1.02]"
-                                : "bg-white border-gray-100 hover:border-gray-200"
-                        )}
-                    >
-                        <div className="flex-1">
-                            <div className={cn("text-base font-black transition-colors leading-none mb-1.5", selectedTicket === ticket.id ? "text-[var(--brand-blue)]" : "text-gray-900")}>
-                                {ticket.name}
-                            </div>
-                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">{ticket.description}</div>
+            <div className="space-y-3">
+                {EVENT_DATA.tickets.map(ticket => {
+                    const isSelected = selectedTicket === ticket.id;
+                    return (
+                        <div key={ticket.id} className="space-y-2">
+                            <button
+                                onClick={() => {
+                                    setSelectedTicket(ticket.id);
+                                    if (ticket.type === "group") setQuantity(1);
+                                }}
+                                className={cn(
+                                    "w-full px-5 py-4 rounded-[24px] border-2 transition-all flex items-center justify-between group text-left",
+                                    isSelected
+                                        ? "bg-blue-50/30 border-[var(--brand-blue)] shadow-[0_8px_24px_-12px_rgba(59,130,246,0.2)]"
+                                        : "bg-white border-gray-100/80 hover:border-gray-200"
+                                )}
+                            >
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <div className={cn("text-sm font-black transition-colors leading-none", isSelected ? "text-[var(--brand-blue)]" : "text-gray-900")}>
+                                            {ticket.name}
+                                        </div>
+                                        {ticket.type === "group" && (
+                                            <span className="px-1 py-0.5 bg-gray-900 text-white text-[7px] font-black uppercase tracking-wider rounded-md">Group</span>
+                                        )}
+                                    </div>
+                                    <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none">{ticket.description}</div>
+                                </div>
+                                <div className="text-right ml-4">
+                                    <div className="text-lg font-black text-gray-900 tracking-tight">${ticket.price}</div>
+                                </div>
+                            </button>
+
+                            {/* Quantity Selector (Only for individual tickets) */}
+                            {isSelected && ticket.type === "individual" && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="flex items-center justify-between px-6 py-4 bg-gray-50/50 rounded-[24px] border border-gray-100"
+                                >
+                                    <div className="text-[9px] font-black uppercase tracking-widest text-gray-400">
+                                        Quantity
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <button
+                                            onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
+                                            className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-200 hover:border-blue-200 hover:text-blue-500 transition-all active:scale-90"
+                                        >
+                                            <Minus className="w-4 h-4" />
+                                        </button>
+                                        <span className="text-base font-black text-gray-900 w-4 text-center">{quantity}</span>
+                                        <button
+                                            onClick={() => setQuantity(prev => Math.min(10, prev + 1))}
+                                            className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-200 hover:border-blue-200 hover:text-blue-500 transition-all active:scale-90"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            )}
                         </div>
-                        <div className="text-right ml-4">
-                            <div className="text-xl font-black text-gray-900 tracking-tight">${ticket.price}</div>
-                        </div>
-                    </button>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );
@@ -140,9 +186,9 @@ export default function RegistrationPage() {
 
             {/* Top Navigation */}
             <header className="w-full p-6 md:px-10 md:py-8 flex items-center justify-between z-50 bg-white/80 backdrop-blur-md sticky top-0 border-b border-gray-50">
-                <div className="flex items-center gap-2.5 group cursor-pointer">
-                    <div className="w-8 h-8 flex items-center justify-center font-black text-base bg-red-50 text-[var(--brand-red)] rounded-lg border border-red-100">❤</div>
-                    <span className="font-black tracking-tighter text-gray-900 text-lg">EventFlow</span>
+                <div className="flex items-center gap-2 group cursor-pointer">
+                    <div className="w-7 h-7 flex items-center justify-center font-black text-xs bg-red-50 text-[var(--brand-red)] rounded-lg border border-red-100">❤</div>
+                    <span className="font-black tracking-tighter text-gray-900 text-base">EventFlow</span>
                 </div>
                 <div className="flex items-center gap-3">
                     <button className="p-2 rounded-full hover:bg-gray-100 transition-colors">
@@ -151,10 +197,10 @@ export default function RegistrationPage() {
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto px-6 md:px-10 pt-10 md:pt-16">
+            <main className="max-w-6xl mx-auto px-6 md:px-10 pt-10 md:pt-14">
 
                 {/* --- HEADER ARCHITECTURE (Integrated & Airy) --- */}
-                <header className="max-w-4xl mb-12 space-y-8">
+                <header className="max-w-3xl mb-10 space-y-6">
                     {/* Pre-header Badges */}
                     <div className="flex items-center gap-3">
                         <span className="px-3.5 py-1.5 bg-blue-50 text-[var(--brand-blue)] text-[9px] font-black uppercase tracking-[0.2em] rounded-full border border-blue-100">
@@ -167,7 +213,7 @@ export default function RegistrationPage() {
                     </div>
 
                     {/* Main Title */}
-                    <h1 className="text-5xl md:text-8xl font-black tracking-tight text-gray-900 leading-[0.85]">
+                    <h1 className="text-4xl md:text-6xl font-black tracking-tight text-gray-900 leading-[0.85]">
                         {EVENT_DATA.title.split(' ').slice(0, -1).join(' ')} <br />
                         <span className="text-gray-900/20">{EVENT_DATA.title.split(' ').pop()}</span>
                     </h1>
@@ -207,40 +253,40 @@ export default function RegistrationPage() {
                     </div>
                 </section>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 md:gap-24">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 md:gap-20">
 
                     {/* LEFT COL: STORY & ACTIONS */}
                     <div className="lg:col-span-7 space-y-20">
 
                         {/* Info Tiles */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-2 text-[10px] font-black text-gray-300 uppercase tracking-widest">
-                                        <Calendar className="w-3.5 h-3.5" /> Date
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <div className="flex items-center gap-2 text-[9px] font-black text-gray-300 uppercase tracking-widest">
+                                        <Calendar className="w-3 h-3" /> Date
                                     </div>
-                                    <button className="text-[9px] font-black text-[var(--brand-blue)] uppercase tracking-widest hover:text-blue-700 transition-colors flex items-center gap-1.5 px-2 py-1 bg-blue-50 rounded-lg">
-                                        <CalendarPlus className="w-3 h-3" /> Save
+                                    <button className="text-[8px] font-black text-[var(--brand-blue)] uppercase tracking-widest hover:text-blue-700 transition-colors flex items-center gap-1.5 px-2 py-1 bg-blue-50 rounded-lg">
+                                        <CalendarPlus className="w-2.5 h-2.5" /> Save
                                     </button>
                                 </div>
-                                <div className="text-xl font-black text-gray-900">{EVENT_DATA.date}</div>
+                                <div className="text-base font-black text-gray-900">{EVENT_DATA.date}</div>
                             </div>
-                            <div className="space-y-4 md:border-x px-0 md:px-10 border-gray-50">
-                                <div className="flex items-center gap-2 text-[10px] font-black text-gray-300 uppercase tracking-widest mb-2">
-                                    <Clock className="w-3.5 h-3.5" /> Time
+                            <div className="space-y-3 md:border-x px-0 md:px-8 border-gray-50">
+                                <div className="flex items-center gap-2 text-[9px] font-black text-gray-300 uppercase tracking-widest mb-1.5">
+                                    <Clock className="w-3 h-3" /> Time
                                 </div>
-                                <div className="text-xl font-black text-gray-900 leading-tight">{EVENT_DATA.time}</div>
+                                <div className="text-base font-black text-gray-900 leading-tight">{EVENT_DATA.time}</div>
                             </div>
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-2 text-[10px] font-black text-gray-300 uppercase tracking-widest">
-                                        <MapPin className="w-3.5 h-3.5" /> Location
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <div className="flex items-center gap-2 text-[9px] font-black text-gray-300 uppercase tracking-widest">
+                                        <MapPin className="w-3 h-3" /> Location
                                     </div>
-                                    <button className="text-[9px] font-black text-[var(--brand-blue)] uppercase tracking-widest hover:text-blue-700 transition-colors flex items-center gap-1.5 px-2 py-1 bg-blue-50 rounded-lg">
-                                        <Map className="w-3 h-3" /> Map
+                                    <button className="text-[8px] font-black text-[var(--brand-blue)] uppercase tracking-widest hover:text-blue-700 transition-colors flex items-center gap-1.5 px-2 py-1 bg-blue-50 rounded-lg">
+                                        <Map className="w-2.5 h-2.5" /> Map
                                     </button>
                                 </div>
-                                <div className="text-xl font-black text-gray-900">{EVENT_DATA.location}</div>
+                                <div className="text-base font-black text-gray-900">{EVENT_DATA.location}</div>
                             </div>
                         </div>
 
@@ -250,9 +296,9 @@ export default function RegistrationPage() {
                         </div>
 
                         {/* Event Story */}
-                        <div className="space-y-8">
-                            <h2 className="text-[11px] font-black uppercase tracking-[0.4em] text-gray-300">The Narrative</h2>
-                            <div className="text-2xl md:text-3xl font-bold text-gray-500 leading-[1.6] whitespace-pre-line selection:bg-blue-50">
+                        <div className="space-y-6">
+                            <h2 className="text-[9px] font-black uppercase tracking-[0.4em] text-gray-300">The Narrative</h2>
+                            <div className="text-xl md:text-2xl font-bold text-gray-500/80 leading-[1.6] whitespace-pre-line selection:bg-blue-50">
                                 {EVENT_DATA.description}
                             </div>
                         </div>
@@ -283,16 +329,16 @@ export default function RegistrationPage() {
                     {/* RIGHT COL: STICKY SELECTOR (Desktop) */}
                     <div className="hidden lg:block lg:col-span-5">
                         <div className="sticky top-32">
-                            <div className="bg-white border border-gray-100 shadow-[0_64px_128px_-32px_rgba(0,0,0,0.08)] rounded-[64px] overflow-hidden">
-                                <div className="p-10 md:p-12 space-y-10">
+                            <div className="bg-white border border-gray-100 shadow-[0_48px_96px_-32px_rgba(0,0,0,0.06)] rounded-[48px] overflow-hidden">
+                                <div className="p-8 md:p-10 space-y-8">
                                     <TicketSelector />
 
-                                    <div className="space-y-5 pt-4">
+                                    <div className="space-y-4 pt-2">
                                         <button
                                             onClick={() => setStep(2)}
-                                            className="w-full py-6 bg-gray-900 text-white rounded-[32px] font-black text-lg shadow-[0_24px_48px_-12px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
+                                            className="w-full py-5 bg-gray-900 text-white rounded-[24px] font-black text-base shadow-[0_20px_40px_-12px_rgba(0,0,0,0.15)] hover:bg-gray-800 active:scale-95 transition-all flex items-center justify-center gap-3"
                                         >
-                                            Next step <ArrowRight className="w-6 h-6" />
+                                            Next step <ArrowRight className="w-5 h-5" />
                                         </button>
                                         <div className="flex items-center justify-center gap-4">
                                             <div className="flex -space-x-2">
@@ -306,8 +352,8 @@ export default function RegistrationPage() {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="bg-gray-50/50 p-6 flex items-center justify-center border-t border-gray-50">
-                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Verified Event — EventFlow Safe</span>
+                                <div className="bg-gray-50/50 p-5 flex items-center justify-center border-t border-gray-50">
+                                    <span className="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em]">Verified Event — EventFlow Safe</span>
                                 </div>
                             </div>
                         </div>
@@ -346,44 +392,163 @@ export default function RegistrationPage() {
                             initial={{ scale: 0.95, y: 30 }}
                             animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.95, y: 30 }}
-                            className="bg-white max-w-xl w-full rounded-[48px] md:rounded-[64px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+                            className="bg-white max-w-xl w-full rounded-[40px] md:rounded-[56px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
                         >
-                            <div className="p-10 md:p-12 border-b border-gray-50 flex items-center justify-between bg-white sticky top-0 z-10">
-                                <button onClick={() => setStep(1)} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-900 transition-all">
+                            <div className="p-7 md:p-9 border-b border-gray-50 flex items-center justify-between bg-white sticky top-0 z-10">
+                                <button onClick={() => setStep(1)} className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-900 transition-all">
                                     <ChevronLeft className="w-4 h-4" /> Back
                                 </button>
-                                <h2 className="text-2xl font-black text-gray-900 tracking-tight">Guest Info</h2>
+                                <h2 className="text-xl font-black text-gray-900 tracking-tight">Guest Info</h2>
                                 <div className="w-10 h-1bg-blue-50 rounded-full" />
                             </div>
 
-                            <div className="p-10 md:p-16 overflow-y-auto space-y-12 custom-scrollbar">
-                                <div className="space-y-10">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        <div className="space-y-4">
-                                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">First Name</label>
-                                            <input placeholder="Jane" className="w-full bg-gray-50/50 border-gray-100 focus:border-[var(--brand-blue)] focus:bg-white focus:ring-8 focus:ring-blue-50 rounded-[28px] p-5 text-base font-bold outline-none transition-all border" />
-                                        </div>
-                                        <div className="space-y-4">
-                                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Last Name</label>
-                                            <input placeholder="Smith" className="w-full bg-gray-50/50 border-gray-100 focus:border-[var(--brand-blue)] focus:bg-white focus:ring-8 focus:ring-blue-50 rounded-[28px] p-5 text-base font-bold outline-none transition-all border" />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-4">
-                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Email Address</label>
-                                        <input type="email" placeholder="jane@studio.com" className="w-full bg-gray-50/50 border-gray-100 focus:border-[var(--brand-blue)] focus:bg-white focus:ring-8 focus:ring-blue-50 rounded-[28px] p-5 text-base font-bold outline-none transition-all border" />
-                                    </div>
-                                    <div className="space-y-4">
-                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Notes for Greg Studio</label>
-                                        <textarea placeholder="Dietary requirements or special requests?" rows={3} className="w-full bg-gray-50/50 border-gray-100 focus:border-[var(--brand-blue)] focus:bg-white focus:ring-8 focus:ring-blue-50 rounded-[28px] p-5 text-base font-bold outline-none transition-all border resize-none" />
+                            <div className="p-6 md:p-10 overflow-y-auto space-y-8 custom-scrollbar">
+                                <div className="space-y-12">
+                                    {guests.map((guest, index) => {
+                                        const isPrimary = index === 0;
+
+                                        return (
+                                            <div key={index} className="space-y-8">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-[10px] font-black text-gray-400 border border-gray-100 uppercase tracking-widest">
+                                                            #{index + 1}
+                                                        </div>
+                                                        <h3 className="text-xs font-black text-gray-900 uppercase tracking-[0.2em]">
+                                                            {isPrimary ? "Primary Guest" : `Guest ${index + 1}`}
+                                                        </h3>
+                                                    </div>
+
+                                                    {!isPrimary && (
+                                                        <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100">
+                                                            <button
+                                                                onClick={() => {
+                                                                    const ng = [...guests];
+                                                                    ng[index].isInvite = false;
+                                                                    setGuests(ng);
+                                                                }}
+                                                                className={cn(
+                                                                    "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
+                                                                    !guest.isInvite ? "bg-white text-gray-900 shadow-sm" : "text-gray-400"
+                                                                )}
+                                                            >
+                                                                Fill Info
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    const ng = [...guests];
+                                                                    ng[index].isInvite = true;
+                                                                    setGuests(ng);
+                                                                }}
+                                                                className={cn(
+                                                                    "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
+                                                                    guest.isInvite ? "bg-white text-gray-900 shadow-sm" : "text-gray-400"
+                                                                )}
+                                                            >
+                                                                Invite
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <AnimatePresence mode="wait">
+                                                    {!guest.isInvite || isPrimary ? (
+                                                        <motion.div
+                                                            key="form"
+                                                            initial={{ opacity: 0, height: 0 }}
+                                                            animate={{ opacity: 1, height: "auto" }}
+                                                            exit={{ opacity: 0, height: 0 }}
+                                                            className="space-y-6 overflow-hidden"
+                                                        >
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                                <div className="space-y-3">
+                                                                    <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">First Name</label>
+                                                                    <input
+                                                                        value={guest.firstName}
+                                                                        onChange={(e) => {
+                                                                            const newGuests = [...guests];
+                                                                            newGuests[index].firstName = e.target.value;
+                                                                            setGuests(newGuests);
+                                                                        }}
+                                                                        placeholder="Jane"
+                                                                        className="w-full bg-gray-50/50 border-gray-100 focus:border-[var(--brand-blue)] focus:bg-white focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border"
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-3">
+                                                                    <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Last Name</label>
+                                                                    <input
+                                                                        value={guest.lastName}
+                                                                        onChange={(e) => {
+                                                                            const newGuests = [...guests];
+                                                                            newGuests[index].lastName = e.target.value;
+                                                                            setGuests(newGuests);
+                                                                        }}
+                                                                        placeholder="Smith"
+                                                                        className="w-full bg-gray-50/50 border-gray-100 focus:border-[var(--brand-blue)] focus:bg-white focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="space-y-3">
+                                                                <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Email Address</label>
+                                                                <input
+                                                                    type="email"
+                                                                    value={guest.email}
+                                                                    onChange={(e) => {
+                                                                        const newGuests = [...guests];
+                                                                        newGuests[index].email = e.target.value;
+                                                                        setGuests(newGuests);
+                                                                    }}
+                                                                    placeholder="jane@studio.com"
+                                                                    className="w-full bg-gray-50/50 border-gray-100 focus:border-[var(--brand-blue)] focus:bg-white focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border"
+                                                                />
+                                                            </div>
+                                                        </motion.div>
+                                                    ) : (
+                                                        <motion.div
+                                                            key="invite"
+                                                            initial={{ opacity: 0, scale: 0.95 }}
+                                                            animate={{ opacity: 1, scale: 1 }}
+                                                            exit={{ opacity: 0, scale: 0.95 }}
+                                                            className="p-6 bg-blue-50/30 border border-blue-100 rounded-[24px] space-y-4"
+                                                        >
+                                                            <div className="space-y-3">
+                                                                <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Enter email to invite guest</label>
+                                                                <input
+                                                                    type="email"
+                                                                    value={guest.email}
+                                                                    onChange={(e) => {
+                                                                        const newGuests = [...guests];
+                                                                        newGuests[index].email = e.target.value;
+                                                                        setGuests(newGuests);
+                                                                    }}
+                                                                    placeholder="guest@email.com"
+                                                                    className="w-full bg-white border-blue-100 focus:border-[var(--brand-blue)] focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border"
+                                                                />
+                                                            </div>
+                                                            <p className="text-[10px] font-bold text-gray-400 leading-relaxed italic">
+                                                                We'll send them a dynamic link to complete their registration and answer custom questions.
+                                                            </p>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+
+                                                {index < guests.length - 1 && <div className="h-px bg-gray-50 w-full" />}
+                                            </div>
+                                        );
+                                    })}
+
+                                    <div className="space-y-3">
+                                        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Broadcasting Notes (Optional)</label>
+                                        <textarea placeholder="Dietary requirements or special requests for the group?" rows={2} className="w-full bg-gray-50/50 border-gray-100 focus:border-[var(--brand-blue)] focus:bg-white focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border resize-none" />
                                     </div>
                                 </div>
 
-                                <div className="pt-2">
+                                <div className="pt-4">
                                     <button
                                         onClick={() => setStep(3)}
-                                        className="w-full py-6 bg-gray-900 text-white rounded-[32px] font-black text-xl shadow-2xl shadow-gray-200 hover:scale-[1.02] active:scale-95 transition-all"
+                                        className="w-full py-5 bg-gray-900 text-white rounded-[28px] font-black text-lg shadow-xl shadow-gray-200 hover:scale-[1.02] active:scale-95 transition-all"
                                     >
-                                        Get ticket
+                                        Complete Registration
                                     </button>
                                 </div>
                             </div>
@@ -392,67 +557,124 @@ export default function RegistrationPage() {
                 )}
             </AnimatePresence>
 
-            {/* --- SUCCESS STATE --- */}
+            {/* --- SUCCESS STATE (DEDICATED RECEIPT PAGE) --- */}
             <AnimatePresence>
                 {step === 3 && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-white"
+                        className="fixed inset-0 z-[110] bg-white overflow-y-auto custom-scrollbar"
                     >
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            className="max-w-xl w-full text-center space-y-12"
-                        >
-                            <div className="relative inline-block">
-                                <div className="w-24 h-24 bg-green-500 rounded-[36px] flex items-center justify-center shadow-[0_24px_48px_-8px_rgba(34,197,94,0.3)] relative z-10 mx-auto">
-                                    <Check className="w-12 h-12 text-white stroke-[5]" />
-                                </div>
-                                <div className="absolute inset-0 bg-green-200 blur-3xl opacity-40 scale-150 animate-pulse" />
-                            </div>
+                        {/* Immersive Backdrop */}
+                        <div className="absolute top-0 left-0 w-full h-[40vh] bg-gradient-to-b from-blue-50/50 to-white -z-10" />
+                        <div className="absolute top-20 right-[10%] w-64 h-64 bg-blue-100/30 blur-[100px] rounded-full -z-10" />
+                        <div className="absolute top-40 left-[5%] w-96 h-96 bg-red-100/20 blur-[120px] rounded-full -z-10" />
 
-                            <div className="space-y-6">
-                                <h2 className="text-5xl md:text-7xl font-black tracking-tight text-gray-900 leading-[0.9]">
-                                    See you at <br />
-                                    <span className="text-gray-900/20">The Gala.</span>
-                                </h2>
-                                <p className="text-xl text-gray-400 font-bold max-w-sm mx-auto leading-relaxed">
-                                    Your spot is confirmed for <span className="text-gray-900">{EVENT_DATA.date}</span>. Check your inbox for the digital link.
-                                </p>
-                            </div>
+                        <div className="max-w-4xl mx-auto px-6 py-16 md:py-24">
+                            <motion.div
+                                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                                animate={{ scale: 1, opacity: 1, y: 0 }}
+                                className="text-center space-y-12"
+                            >
+                                {/* Success Icon */}
+                                <div className="relative inline-block">
+                                    <div className="w-20 h-20 bg-green-500 rounded-[30px] flex items-center justify-center shadow-[0_20px_40px_-8px_rgba(34,197,94,0.3)] relative z-10 mx-auto">
+                                        <Check className="w-10 h-10 text-white stroke-[4]" />
+                                    </div>
+                                    <div className="absolute inset-0 bg-green-200 blur-2xl opacity-40 scale-150 animate-pulse" />
+                                </div>
 
-                            <div className="bg-gray-50 rounded-[48px] p-10 md:p-14 text-left border border-gray-100 relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:scale-110 transition-transform">
-                                    <Ticket className="w-40 h-40 transform rotate-12" />
+                                {/* Headline */}
+                                <div className="space-y-4">
+                                    <h2 className="text-5xl md:text-8xl font-black tracking-tight text-gray-900 leading-[0.85]">
+                                        See you at <br />
+                                        <span className="text-gray-900/10 italic">The Gala.</span>
+                                    </h2>
+                                    <p className="text-lg md:text-xl text-gray-400 font-bold max-w-lg mx-auto leading-relaxed">
+                                        You're all set for <span className="text-gray-900">{EVENT_DATA.date}</span>. We've sent a confirmation email to <span className="text-[var(--brand-blue)]">{guests[0].email}</span>.
+                                    </p>
                                 </div>
-                                <div className="flex justify-between items-start mb-12 relative z-10">
-                                    <div>
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Guest</div>
-                                        <div className="text-3xl font-black text-gray-900">Jane Smith</div>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Pass</div>
-                                        <div className="text-3xl font-black text-[var(--brand-blue)]">General</div>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-8 relative z-10">
-                                    <div>
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Reference</div>
-                                        <div className="text-xl font-black text-gray-900 tracking-tighter">EF-GALA-26-88Z</div>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Actions</div>
-                                        <div className="flex justify-end gap-3">
-                                            <div className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center cursor-pointer hover:bg-gray-100">
-                                                <ExternalLink className="w-4 h-4 text-gray-400" />
+
+                                {/* The Receipt Card (Fixed Overlap) */}
+                                <div className="relative max-w-2xl mx-auto">
+                                    <div className="absolute -inset-4 bg-gray-900/[0.02] rounded-[72px] -z-10" />
+
+                                    <div className="bg-white rounded-[64px] border border-gray-100 shadow-[0_48px_96px_-32px_rgba(0,0,0,0.08)] overflow-hidden text-left relative">
+                                        {/* Decorative Ticket Notch */}
+                                        <div className="absolute top-1/2 -left-4 w-8 h-8 bg-white border border-gray-100 rounded-full -translate-y-1/2" />
+                                        <div className="absolute top-1/2 -right-4 w-8 h-8 bg-white border border-gray-100 rounded-full -translate-y-1/2" />
+
+                                        <div className="p-10 md:p-14 space-y-12">
+                                            {/* Top: Branding & Reference */}
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-6 h-6 bg-red-50 text-[var(--brand-red)] rounded flex items-center justify-center font-black text-[10px] border border-red-100">❤</div>
+                                                    <span className="font-black text-xs tracking-tighter uppercase italic">EventFlow</span>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-300">Reference</div>
+                                                    <div className="text-xs font-bold text-gray-900">EF-{currentTicket?.id.toUpperCase()}-{Math.floor(Math.random() * 89999 + 10000)}</div>
+                                                </div>
+                                            </div>
+
+                                            {/* Middle: Guest & Pass (Stacked to avoid overlap) */}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                                <div className="space-y-2">
+                                                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Lead Attendee</div>
+                                                    <div className="text-4xl font-black text-gray-900 tracking-tight break-words">
+                                                        {guests[0].firstName} {guests[0].lastName}
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2 md:text-right">
+                                                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Pass Hierarchy</div>
+                                                    <div className="text-4xl font-black text-[var(--brand-blue)] tracking-tight">
+                                                        {currentTicket?.name}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Bottom: Status & Action */}
+                                            <div className="pt-10 border-t border-gray-50 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+                                                <div className="flex flex-wrap gap-3">
+                                                    <div className="px-3 py-1.5 bg-green-50 text-green-600 text-[10px] font-black uppercase tracking-widest rounded-xl border border-green-100 flex items-center gap-2">
+                                                        <Check className="w-3 h-3" /> Pass Active
+                                                    </div>
+                                                    {totalGuests > 1 && (
+                                                        <div className="px-3 py-1.5 bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest rounded-xl border border-blue-100 flex items-center gap-2">
+                                                            <Mail className="w-3 h-3" /> {guests.filter(g => g.isInvite).length} Invites Sent
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <Link href={`/events/${EVENT_DATA.title.toLowerCase().replace(/\s+/g, '-')}/dashboard`}>
+                                                    <button className="flex items-center gap-2.5 px-6 py-3 bg-gray-50 hover:bg-gray-100 transition-colors rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-600">
+                                                        <Ticket className="w-4 h-4" /> View Wallet
+                                                    </button>
+                                                </Link>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div className="flex flex-col sm:flex-row items-center justify-center gap-5 pt-4">
-                                <button className="w-full sm:w-auto px-12 py-6 bg-gray-50 text-gray-900 rounded-[28px] font-black text-base hover:bg-gray-100 transition-all flex items-center justify-center gap-3">
-         
+                                {/* Shared Action Suite */}
+                                <div className="pt-8 flex flex-col sm:flex-row items-center justify-center gap-6">
+                                    <button className="w-full sm:w-auto px-10 py-5 bg-white border border-gray-100 text-gray-900 rounded-[24px] font-black text-sm hover:shadow-lg transition-all flex items-center justify-center gap-3">
+                                        <Sparkles className="w-5 h-5 text-blue-500" /> Share Invitation
+                                    </button>
+                                    <Link href={`/events/${EVENT_DATA.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                                        <button
+                                            className="w-full sm:w-auto px-10 py-5 bg-gray-900 text-white rounded-[24px] font-black text-sm hover:scale-[1.05] active:scale-95 transition-all shadow-xl shadow-gray-200 flex items-center justify-center gap-3"
+                                        >
+                                            <ArrowLeft className="w-5 h-5" /> Back to Event
+                                        </button>
+                                    </Link>
+                                </div>
+                            </motion.div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+        </div>
+    );
+}

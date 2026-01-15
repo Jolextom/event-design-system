@@ -12,7 +12,7 @@ import {
     Settings
 } from "lucide-react";
 
-export type GlobalSection = "overview" | "builder" | "audience" | "logic" | "operations" | "settings";
+export type GlobalSection = "command" | "studio" | "registry" | "automations" | "broadcast" | "live" | "settings";
 export type CategoryId = "essentials" | "registration" | "ticketing" | "variables";
 
 export interface Category {
@@ -31,10 +31,11 @@ export const BUILDER_CATEGORIES: Category[] = [
 ];
 
 export const GLOBAL_NAV = [
-    { id: "overview", icon: Home, label: "Home" },
-    { id: "builder", icon: Command, label: "Setup" },
-    { id: "audience", icon: Users, label: "Guest List" },
-    { id: "logic", icon: Zap, label: "Logic Flow" },
-    { id: "operations", icon: Check, label: "Team & Check-in" },
+    { id: "command", icon: Home, label: "Command" },
+    { id: "studio", icon: Command, label: "Studio" },
+    { id: "registry", icon: Users, label: "Registry" },
+    { id: "automations", icon: Zap, label: "Automations" },
+    { id: "broadcast", icon: MessageSquare, label: "Broadcast" },
+    { id: "live", icon: Check, label: "Live Ops" },
     { id: "settings", icon: Settings, label: "Settings" },
 ];
