@@ -10,15 +10,16 @@ import {
     Tag as TagIcon,
     ShieldAlert,
     CircleDot,
-    PlayCircle
+    PlayCircle,
+    Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
 const MOCK_FLOWS = [
-    { id: "1", name: "VIP Welcome Sequence", triggers: ["Ticket: VIP"], actions: ["Tag: EarlyAccess", "Mail: Welcome_VIP"], active: true, usage: "142 hits" },
-    { id: "2", name: "Squad Pack Bonus", triggers: ["Group Size >= 4"], actions: ["Mail: Squad_Incentive", "Stat: Bonus_Applied"], active: true, usage: "48 hits" },
-    { id: "3", name: "Speaker Onboarding", triggers: ["Tag: Speaker"], actions: ["Mail: Speaker_Portal"], active: false, usage: "0 hits" },
+    { id: "1", name: "Speaker Onboarding", triggers: ["Ticket: Speaker"], actions: ["Assign Variable: {is_speaker: true}", "Mail: Speaker_Success_Kit"], active: true, usage: "12 hits" },
+    { id: "2", name: "Team Color Shuffle", triggers: ["Registration: Confirmed"], actions: ["Assign Variable: {team_color: 'Random'}", "Mail: Team_Welcome"], active: true, usage: "852 hits" },
+    { id: "3", name: "VIP Welcome Sequence", triggers: ["Ticket: VIP"], actions: ["Assign Variable: {priority: 'High'}", "Mail: Welcome_VIP"], active: true, usage: "142 hits" },
 ];
 
 export function AutomationsView() {
@@ -99,11 +100,14 @@ export function AutomationsView() {
                                 <ArrowRight className="w-5 h-5 text-gray-300 shrink-0" />
 
                                 <div className="flex flex-col gap-2 flex-1">
-                                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Take actions</span>
+                                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Execute logic</span>
                                     <div className="flex flex-wrap gap-2">
                                         {flow.actions.map((a, ai) => (
-                                            <div key={ai} className="px-3 py-1.5 bg-gray-900 text-white rounded-xl text-[10px] font-black flex items-center gap-2 shadow-md">
-                                                {a.startsWith("Mail") ? <Mail className="w-3 h-3 text-blue-400" /> : <TagIcon className="w-3 h-3 text-emerald-400" />}
+                                            <div key={ai} className={cn(
+                                                "px-3 py-1.5 rounded-xl text-[10px] font-black flex items-center gap-2 shadow-sm transition-all",
+                                                a.startsWith("Assign") ? "bg-[var(--brand-blue)] text-white" : "bg-gray-900 text-white shadow-md"
+                                            )}>
+                                                {a.startsWith("Mail") ? <Mail className="w-3.5 h-3.5 text-blue-400" /> : <Sparkles className="w-3.5 h-3.5 text-blue-200" />}
                                                 {a}
                                             </div>
                                         ))}
@@ -121,8 +125,8 @@ export function AutomationsView() {
                                 <ShieldAlert className="w-8 h-8 text-white" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-black tracking-tight">Logical Conflict Check</h3>
-                                <p className="text-white/60 text-xs mt-1 font-bold">Your "VIP Welcome" and "Squad Bonus" might double-send emails. Check overlap logic.</p>
+                                <h3 className="text-lg font-black tracking-tight">Logical Interaction Map</h3>
+                                <p className="text-white/60 text-xs mt-1 font-bold">Your "Team Shuffle" variable is currently being used by 3 separate Broadcast templates.</p>
                             </div>
                         </div>
                         <button className="relative z-10 bg-white text-gray-900 px-6 py-3 rounded-2xl font-black text-xs hover:bg-gray-100 transition-all shadow-lg active:scale-95">

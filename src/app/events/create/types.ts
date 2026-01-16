@@ -27,7 +27,7 @@ export const BUILDER_CATEGORIES: Category[] = [
     { id: "essentials", label: "Basic Info", icon: Activity, description: "Title, description, and location" },
     { id: "registration", label: "Signup Form", icon: MessageSquare, description: "Questions for your guests", badge: "Live" },
     { id: "ticketing", label: "Ticket Types", icon: Ticket, description: "Pricing and availability" },
-    { id: "variables", label: "Guest Groups", icon: Target, description: "Automated logic for team colors/groups" },
+    { id: "variables", label: "Smart Segments", icon: Target, description: "Variable definitions for automated logic" },
 ];
 
 export const GLOBAL_NAV = [

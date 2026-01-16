@@ -6,9 +6,10 @@ import { cn } from "@/lib/utils";
 
 export function SmartGroupsView() {
     const [groups, setGroups] = useState([
-        { id: "g1", name: "VIP Attendees", rule: "Ticket Type = VIP", count: 12, color: "bg-purple-100 text-purple-700" },
-        { id: "g2", name: "Early Signups", rule: "Joined before March 1st", count: 45, color: "bg-blue-100 text-blue-700" },
-        { id: "g3", name: "Dietary Requests", rule: "Has Vegan/Allergy Info", count: 8, color: "bg-amber-100 text-amber-700" },
+        { id: "g0", name: "Verified Speakers", rule: "is_speaker = true", count: 12, color: "bg-emerald-100 text-emerald-700" },
+        { id: "g1", name: "Team Red", rule: "team_color = 'Red'", count: 42, color: "bg-red-100 text-red-700" },
+        { id: "g2", name: "VIP Attendees", rule: "priority = 'High'", count: 115, color: "bg-purple-100 text-purple-700" },
+        { id: "g3", name: "Early Signups", rule: "signup_date < '2026-03-01'", count: 45, color: "bg-blue-100 text-blue-700" },
     ]);
 
     return (
@@ -16,8 +17,8 @@ export function SmartGroupsView() {
             <div className="max-w-4xl p-10 mx-auto space-y-10 pb-24">
                 <header className="flex justify-between items-end border-b border-gray-100 pb-8 mt-4">
                     <div>
-                        <h2 className="text-2xl font-black tracking-tight text-gray-900">Guest Groups</h2>
-                        <p className="text-sm text-gray-400 mt-1.5 font-bold">Automatically segment your guests with smart rules.</p>
+                        <h2 className="text-2xl font-black tracking-tight text-gray-900">Guest Segment Definitions</h2>
+                        <p className="text-sm text-gray-400 mt-1.5 font-bold">Find guests instantly based on their variables and metadata.</p>
                     </div>
                     <button className="flex items-center gap-2 bg-gray-900 text-white px-6 py-3 rounded-2xl text-xs font-black hover:bg-black transition-all shadow-xl shadow-gray-100 active:scale-95">
                         <Plus className="w-4 h-4" /> Create Group
