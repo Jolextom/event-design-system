@@ -45,6 +45,12 @@ export function SmartGroupsView({ onNavigateToRegistry }: { onNavigateToRegistry
         { name: "Sarah Chen", email: "sarah.c@tech.com", status: "Checked In", avatar: "SC" },
         { name: "Marcus Thorne", email: "m.thorne@vibe.net", status: "Invited", avatar: "MT" },
         { name: "Elena Rossi", email: "elena@studio.it", status: "Registered", avatar: "ER" },
+        { name: "Lila Vance", email: "lila@vance.co", status: "Refunded", avatar: "LV" },
+        { name: "James Miller", email: "j.miller@london.uk", status: "Cancelled", avatar: "JM" },
+        { name: "Sophie Wu", email: "wu.sophie@tech.cn", status: "Checked In", avatar: "SW" },
+        { name: "Davide Russo", email: "d.russo@milano.it", status: "Pending", avatar: "DR" },
+        { name: "Jordan Smith", email: "j.smith@corp.com", status: "Ready", avatar: "JS" },
+        { name: "Elena Rodriguez", email: "elena@art.es", status: "Invite Sent", avatar: "ER" },
     ];
 
     // Mock breakdown options for a poll segment
@@ -74,16 +80,16 @@ export function SmartGroupsView({ onNavigateToRegistry }: { onNavigateToRegistry
 
     // Mock for a custom question: 'What region are you from?'
     const REGION_OPTIONS: BreakdownOption[] = [
-        { label: "Lagos", count: 120, pct: 40, color: "bg-blue-500", guests: MOCK_GUESTS },
-        { label: "Campus", count: 80, pct: 27, color: "bg-green-500", guests: MOCK_GUESTS },
-        { label: "Ibadan", count: 50, pct: 17, color: "bg-yellow-500", guests: MOCK_GUESTS },
-        { label: "Abuja", count: 20, pct: 7, color: "bg-red-500", guests: MOCK_GUESTS },
-        { label: "Port Harcourt", count: 10, pct: 3, color: "bg-purple-500", guests: MOCK_GUESTS },
-        { label: "Enugu", count: 8, pct: 2, color: "bg-pink-500", guests: MOCK_GUESTS },
-        { label: "Kano", count: 5, pct: 1, color: "bg-indigo-500", guests: MOCK_GUESTS },
-        { label: "Kaduna", count: 4, pct: 1, color: "bg-teal-500", guests: MOCK_GUESTS },
-        { label: "Jos", count: 3, pct: 1, color: "bg-orange-500", guests: MOCK_GUESTS },
-        { label: "Benin", count: 2, pct: 1, color: "bg-gray-500", guests: MOCK_GUESTS },
+        { label: "Lagos", count: 120, pct: 40, color: "bg-blue-500", guests: [MOCK_GUESTS[0], MOCK_GUESTS[1], MOCK_GUESTS[2]] },
+        { label: "Campus", count: 80, pct: 27, color: "bg-green-500", guests: [MOCK_GUESTS[3], MOCK_GUESTS[4]] },
+        { label: "Ibadan", count: 50, pct: 17, color: "bg-yellow-500", guests: [MOCK_GUESTS[5]] },
+        { label: "Abuja", count: 20, pct: 7, color: "bg-red-500", guests: [MOCK_GUESTS[6], MOCK_GUESTS[7]] },
+        { label: "Port Harcourt", count: 10, pct: 3, color: "bg-purple-500", guests: [MOCK_GUESTS[8]] },
+        { label: "Enugu", count: 8, pct: 2, color: "bg-pink-500", guests: [MOCK_GUESTS[9]] },
+        { label: "Kano", count: 5, pct: 1, color: "bg-indigo-500", guests: [] },
+        { label: "Kaduna", count: 4, pct: 1, color: "bg-teal-500", guests: [] },
+        { label: "Jos", count: 3, pct: 1, color: "bg-orange-500", guests: [] },
+        { label: "Benin", count: 2, pct: 1, color: "bg-gray-500", guests: [] },
         // ...add more options as needed up to 20
     ];
 
@@ -265,7 +271,7 @@ export function SmartGroupsView({ onNavigateToRegistry }: { onNavigateToRegistry
                                                     {selectedGroup.options
                                                         .slice() // copy
                                                         .sort((a, b) => b.pct - a.pct)
-                                                        .slice(0, 5)
+                                                        .slice(0, 3)
                                                         .map((opt) => (
                                                             <button
                                                                 key={opt.label}
@@ -273,7 +279,7 @@ export function SmartGroupsView({ onNavigateToRegistry }: { onNavigateToRegistry
                                                                 className={cn(
                                                                     "relative flex items-center w-full px-4 py-2 rounded-md transition-all text-left gap-3 border border-transparent overflow-hidden",
                                                                     selectedBreakdown === opt.label
-                                                                        ? "bg-blue-50 font-extrabold text-blue-900"
+                                                                        ? "bg-blue-100/60 font-extrabold text-blue-900"
                                                                         : "bg-white hover:bg-blue-50 text-blue-900"
                                                                 )}
                                                                 style={{ minHeight: 40 }}
@@ -283,27 +289,20 @@ export function SmartGroupsView({ onNavigateToRegistry }: { onNavigateToRegistry
                                                                     className={cn(
                                                                         "absolute left-0 top-0 h-full transition-all z-0",
                                                                         selectedBreakdown === opt.label
-                                                                            ? "bg-gradient-to-r from-(--brand-blue) to-blue-200"
-                                                                            : "bg-blue-50"
+                                                                            ? "bg-blue-300/60"
+                                                                            : "bg-blue-100/40"
                                                                     )}
                                                                     style={{ width: `${opt.pct}%` }}
                                                                 />
                                                                 {/* Icon placeholder, can be replaced with a real icon if needed */}
-                                                                <span className={cn(
-                                                                    "inline-block w-4 h-4 rounded-full mr-1 z-10",
-                                                                    selectedBreakdown === opt.label
-                                                                        ? "bg-(--brand-blue)"
-                                                                        : "bg-blue-100"
-                                                                )} />
+                                                                <span className="inline-block w-4 h-4 rounded-full bg-blue-200 mr-1 z-10" />
                                                                 <span className="font-medium text-[15px] z-10">{opt.label}</span>
-                                                                <span className={cn("ml-auto text-[15px] font-extrabold z-10",
-                                                                    selectedBreakdown === opt.label ? "text-(--brand-blue)" : "text-gray-400"
-                                                                )}>{opt.pct}%</span>
+                                                                <span className={cn("ml-auto text-[15px] font-bold z-10", selectedBreakdown === opt.label ? "text-blue-700" : "text-gray-400")}>{opt.pct}%</span>
                                                             </button>
                                                         ))}
-                                                    {selectedGroup.options.length > 5 && (
+                                                    {selectedGroup.options.length > 3 && (
                                                         <span className="px-4 py-2 rounded-md bg-gray-50 text-gray-400 text-xs font-bold align-middle select-none">
-                                                            +{selectedGroup.options.length - 5} more options
+                                                            +{selectedGroup.options.length - 3} more options
                                                         </span>
                                                     )}
                                                 </div>
@@ -333,7 +332,7 @@ export function SmartGroupsView({ onNavigateToRegistry }: { onNavigateToRegistry
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between">
                                             <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-1">Guest List Breakdown</h4>
-                                            <div className="relative group max-w-[210px] w-full">
+                                            <div className="relative group max-w-52.5 w-full">
                                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300 group-focus-within:text-(--brand-blue) transition-colors z-10" />
                                                 <input
                                                     type="text"

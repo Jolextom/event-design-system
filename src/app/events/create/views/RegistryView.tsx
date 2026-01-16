@@ -10,8 +10,6 @@ import {
     Clock,
     UserPlus,
     ShieldCheck,
-    ArrowUpDown,
-    Tag as TagIcon,
     Mail
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -29,95 +27,142 @@ const MOCK_GUESTS = [
     { id: "9", name: "James Miller", email: "j.miller@london.uk", type: "Standard", status: "Cancelled", squad: "Solo", registered: "4h ago", avatar: "JM" },
 ];
 
-export function RegistryView() {
-    const [searchTerm, setSearchTerm] = useState("");
-    const [selectedRows, setSelectedRows] = useState<string[]>([]);
-
-    const toggleRow = (id: string) => {
-        if (selectedRows.includes(id)) {
-            setSelectedRows(selectedRows.filter(r => r !== id));
-        } else {
-            setSelectedRows([...selectedRows, id]);
-        }
+export function RegistryView({ initialSegment }: {
+    initialSegment?: {
+        name: string;
+        options?: { label: string; count: number; guests: typeof MOCK_GUESTS }[];
+        selectedOption?: string;
     };
+}) {
+    const [searchTerm, setSearchTerm] = useState("");
+    // const [selectedRows, setSelectedRows] = useState<string[]>([]);
+    const [activeSegment, setActiveSegment] = useState<typeof initialSegment | null>(initialSegment ?? null);
+
+    const handleTabClick = (label: string) => {
+        setActiveSegment((seg) => seg ? { ...seg, selectedOption: label } : seg);
+    };
+
+    const filteredGuests = activeSegment && activeSegment.options
+        ? activeSegment.selectedOption === "All/Breakdown"
+            ? activeSegment.options.flatMap(opt => opt.guests)
+            : activeSegment.options.find(opt => opt.label === activeSegment.selectedOption)?.guests || []
+        : MOCK_GUESTS;
 
     return (
         <div className="h-full flex flex-col bg-white overflow-hidden animate-in fade-in duration-500">
-            {/* Header / Stats Bar */}
-            <div className="bg-white border-b border-gray-100 py-6 px-8 flex justify-between items-end">
-                <div>
-                    <h1 className="text-2xl font-black tracking-tight text-gray-900 mb-2">Guest Registry</h1>
-                    <div className="flex gap-6">
-                        <div className="flex items-center gap-2">
-                            <span className="text-2xl font-black text-gray-900 tracking-tight">1,248</span>
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1">Total Guests</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-2xl font-black text-green-500 tracking-tight">842</span>
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1">Checked In</span>
-                        </div>
+            {/* Compact Header, Stats, and Search/Filter Row */}
+            {/* Enhanced Header Section */}
+            <div className="flex flex-col px-8 py-5 bg-white border-b border-gray-100">
+                {/* Header Title Row */}
+                <div className="flex items-center justify-between mb-4">
+                    <h1 className="text-3xl font-black tracking-tight text-gray-900">Guest Registry</h1>
+                    <div className="flex items-center gap-2">
+                        <button className="px-5 py-2.5 bg-gray-50 hover:bg-gray-100 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] text-gray-600 transition-all hover:shadow-sm flex items-center gap-2">
+                            <Download className="w-3.5 h-3.5" />
+                            EXPORT CSV
+                        </button>
+                        <button className="bg-gray-900 text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] shadow-md hover:shadow-lg hover:bg-black transition-all flex items-center gap-2">
+                            <UserPlus className="w-3.5 h-3.5" />
+                            ADD GUEST
+                        </button>
                     </div>
                 </div>
-                <div className="flex gap-3">
-                    <button className="px-4 py-2 bg-gray-50 hover:bg-gray-100 rounded-xl text-[11px] font-black uppercase tracking-widest text-gray-600 transition-colors">
-                        Export CSV
-                    </button>
+                {/* Stats Row - Improved spacing and visual hierarchy */}
+                <div className="flex gap-12 items-center mb-5">
+                    <div className="flex items-baseline gap-2.5">
+                        <span className="text-base font-black text-gray-900 tracking-tight leading-none">1,248</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400">Total Guests</span>
+                    </div>
+                    <div className="flex items-baseline gap-2.5">
+                        <span className="text-base font-black text-green-500 tracking-tight leading-none">842</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400">Checked In</span>
+                    </div>
                 </div>
-            </div>
-
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between gap-4 bg-white/50 backdrop-blur-md sticky top-0 z-20">
-                <div className="flex items-center gap-3 flex-1 max-w-md">
-                    <div className="relative flex-1 group">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-[var(--brand-blue)] transition-colors z-10" />
+                {/* Search & Filter Row - Enhanced search bar */}
+                <div className="flex items-center gap-3">
+                    <div className="relative group flex-1 max-w-md">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors z-10" />
                         <input
                             type="text"
                             placeholder="Search guests, emails, or squads..."
-                            className="w-full pl-11 pr-12 py-3 bg-gray-50/50 border border-gray-100/50 rounded-2xl text-[13px] font-bold text-gray-900 placeholder:text-gray-400/60 focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500/20 outline-none transition-all shadow-inner"
+                            className="w-full pl-11 pr-16 py-2.5 bg-gray-50 border border-gray-200 rounded-full text-[13px] font-semibold text-gray-900 placeholder:text-gray-400/70 focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500/30 outline-none transition-all"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 px-2 py-1 bg-white border border-gray-100 rounded-lg shadow-sm pointer-events-none group-focus-within:opacity-0 transition-opacity duration-200">
-                            <span className="text-[10px] font-black text-gray-300">⌘</span>
-                            <span className="text-[9px] font-black text-gray-300">K</span>
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-0.5 px-2 py-1 bg-white border border-gray-200 rounded-md shadow-sm pointer-events-none group-focus-within:opacity-0 transition-opacity duration-200">
+                            <span className="text-[10px] font-bold text-gray-400">⌘</span>
+                            <span className="text-[10px] font-bold text-gray-400">K</span>
                         </div>
                     </div>
-                    <button className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-black uppercase tracking-widest text-gray-500 hover:bg-white hover:border-gray-200 transition-all shadow-sm">
+                    <button className="flex items-center gap-2 px-5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] text-gray-600 hover:bg-white hover:border-gray-300 hover:shadow-sm transition-all">
                         <Filter className="w-3.5 h-3.5" />
                         Filter
                     </button>
                 </div>
-                <div className="flex items-center gap-3">
-                    <button className="p-2.5 text-gray-400 hover:text-gray-900 border border-transparent hover:border-gray-100 rounded-xl transition-all">
-                        <Download className="w-4.5 h-4.5" />
-                    </button>
-                    <div className="w-px h-6 bg-gray-100 mx-1" />
-                    <button className="bg-gray-900 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-gray-200 hover:bg-black transition-all flex items-center gap-2">
-                        <UserPlus className="w-3.5 h-3.5" />
-                        Add Guest
-                    </button>
-                </div>
             </div>
 
-            {/* Grid Table */}
-            <div className="flex-1 overflow-auto custom-scrollbar">
-                <table className="w-full text-left border-collapse min-w-[800px]">
+            {/* Compact Filtered by Segment & Tabs UI */}
+            {activeSegment && (
+                <div className="px-8 pt-2 pb-2 bg-white border-b border-gray-100 flex items-center gap-6">
+                    <div className="flex flex-col gap-0 min-w-45">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Filtered by Segment</span>
+                        <span className="text-base font-black text-gray-900 leading-tight">{activeSegment.name}</span>
+                    </div>
+                    <button
+                        className="ml-2 px-2 py-1 text-xs font-bold text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                        title="Clear segment filter"
+                        onClick={() => setActiveSegment(null)}
+                    >
+                        ×
+                    </button>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => handleTabClick("All/Breakdown")}
+                            className={cn(
+                                "px-5 py-2 rounded-full text-xs font-black transition-all",
+                                activeSegment.selectedOption === "All/Breakdown"
+                                    ? "bg-(--brand-blue) text-white shadow"
+                                    : "bg-gray-50 text-gray-700 hover:bg-gray-100"
+                            )}
+                        >
+                            All/Breakdown
+                        </button>
+                        {activeSegment.options && activeSegment.options.map(opt => (
+                            <button
+                                key={opt.label}
+                                onClick={() => handleTabClick(opt.label)}
+                                className={cn(
+                                    "px-5 py-2 rounded-full text-xs font-black transition-all",
+                                    activeSegment.selectedOption === opt.label
+                                        ? "bg-(--brand-blue) text-white shadow"
+                                        : "bg-gray-50 text-gray-700 hover:bg-gray-100"
+                                )}
+                            >
+                                {opt.label} <span className="ml-2 text-[10px] font-bold text-gray-200">{opt.count}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Spacious Guest List Table */}
+            <div className="flex-1 overflow-auto custom-scrollbar px-8 pt-2 pb-2 bg-white">
+                <table className="w-full text-left border-collapse min-w-200">
                     <thead className="sticky top-0 bg-white/80 backdrop-blur-md z-10">
                         <tr className="border-b border-gray-100">
-                            <th className="pl-8 py-4 w-12">
-                                <input type="checkbox" className="w-4 h-4 rounded border-gray-200 accent-[var(--brand-blue)]" />
+                            <th className="pl-8 py-6 w-12">
+                                <input type="checkbox" className="w-4 h-4 rounded border-gray-200 accent-(--brand-blue)" />
                             </th>
-                            <th className="px-4 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
-                                <span className="flex items-center gap-2">Name <ArrowUpDown className="w-3 h-3" /></span>
-                            </th>
-                            <th className="px-4 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Ticket Type</th>
-                            <th className="px-4 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Squad</th>
-                            <th className="px-4 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Registered</th>
-                            <th className="px-4 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Status</th>
-                            <th className="px-4 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 text-right pr-8">Actions</th>
+                            <th className="px-4 py-6 text-[12px] font-black uppercase tracking-[0.2em] text-gray-400">Name</th>
+                            <th className="px-4 py-6 text-[12px] font-black uppercase tracking-[0.2em] text-gray-400">Ticket Type</th>
+                            <th className="px-4 py-6 text-[12px] font-black uppercase tracking-[0.2em] text-gray-400">Squad</th>
+                            <th className="px-4 py-6 text-[12px] font-black uppercase tracking-[0.2em] text-gray-400">Registered</th>
+                            <th className="px-4 py-6 text-[12px] font-black uppercase tracking-[0.2em] text-gray-400">Status</th>
+                            <th className="px-4 py-6 text-[12px] font-black uppercase tracking-[0.2em] text-gray-400 text-right pr-8">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                        {MOCK_GUESTS.map((guest, i) => (
+                        {filteredGuests.map((guest, i) => (
                             <motion.tr
                                 key={guest.id}
                                 initial={{ opacity: 0, x: -10 }}
@@ -126,11 +171,11 @@ export function RegistryView() {
                                 className="group hover:bg-gray-50/50 transition-all cursor-default"
                             >
                                 <td className="pl-8 py-4">
-                                    <input type="checkbox" className="w-4 h-4 rounded border-gray-200 accent-[var(--brand-blue)]" />
+                                    <input type="checkbox" className="w-4 h-4 rounded border-gray-200 accent-(--brand-blue)" />
                                 </td>
                                 <td className="px-4 py-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center font-black text-[10px] text-gray-500 group-hover:bg-[var(--brand-blue)] group-hover:text-white transition-all">
+                                        <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center font-black text-[10px] text-gray-500 group-hover:bg-(--brand-blue) group-hover:text-white transition-all">
                                             {guest.avatar || guest.name.charAt(0)}
                                         </div>
                                         <div>
@@ -200,7 +245,7 @@ export function RegistryView() {
                 <div className="flex items-center gap-4">
                     <button className="px-3 py-1 hover:text-gray-900 transition-colors disabled:opacity-30" disabled>Previous</button>
                     <div className="flex items-center gap-1">
-                        <span className="w-6 h-6 flex items-center justify-center bg-[var(--brand-blue)] text-white rounded">1</span>
+                        <span className="w-6 h-6 flex items-center justify-center bg-(--brand-blue) text-white rounded">1</span>
                         <span className="w-6 h-6 flex items-center justify-center hover:bg-gray-50 rounded transition-colors cursor-pointer">2</span>
                         <span className="w-6 h-6 flex items-center justify-center hover:bg-gray-50 rounded transition-colors cursor-pointer">3</span>
                     </div>

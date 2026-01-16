@@ -33,6 +33,8 @@ export default function AppContainer() {
     const [isBackboneOpen, setIsBackboneOpen] = useState(true);
     const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
     const [isLive, setIsLive] = useState(false);
+    // Fix: define selectedSegment state before usage
+    // Removed selectedSegment state (no longer used)
 
     // Keyboard shortcut for Pane 2 toggle (Studio context only)
     useEffect(() => {
@@ -73,12 +75,12 @@ export default function AppContainer() {
 
             {/* Pane 3: Main Action Surface */}
             <div className="flex-1 flex flex-col min-w-0 h-full relative bg-white">
-                <header className="h-[80px] border-b border-gray-100 px-10 flex items-center justify-between bg-white/80 backdrop-blur-xl z-40 sticky top-0">
+                <header className="h-20 border-b border-gray-100 px-10 flex items-center justify-between bg-white/80 backdrop-blur-xl z-40 sticky top-0">
                     <div className="flex items-center gap-5">
                         {!isBackboneOpen && showBackbone && (
                             <button
                                 onClick={() => setIsBackboneOpen(true)}
-                                className="p-2.5 bg-gray-50 border border-gray-100 rounded-xl text-[var(--brand-blue)] transition-all hover:bg-[var(--brand-blue)] hover:text-white shadow-sm"
+                                className="p-2.5 bg-gray-50 border border-gray-100 rounded-xl text-(--brand-blue) transition-all hover:bg-(--brand-blue) hover:text-white shadow-sm"
                             >
                                 <PanelLeftOpen className="w-5 h-5" />
                             </button>
@@ -159,7 +161,7 @@ export default function AppContainer() {
                             {activeGlobal === "live" && <OperationsView />}
 
                             {/* Professional Organizer Views */}
-                            {activeGlobal === "registry" && <RegistryView activeFilter="segment" />}
+                            {activeGlobal === "registry" && <RegistryView />}
                             {activeGlobal === "automations" && <AutomationsView />}
                             {activeGlobal === "broadcast" && <BroadcastView />}
                             {activeGlobal === "settings" && <SettingsView />}
