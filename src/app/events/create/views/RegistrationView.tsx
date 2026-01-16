@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils";
 
 export function RegistrationView() {
     const [questions, setQuestions] = useState([
-        { id: "q1", type: "text", label: "Full Name", required: true },
-        { id: "q2", type: "select", label: "Expertise Level", options: ["Junior", "Mid", "Senior"], required: true },
+        { id: "q1", type: "text", label: "Full Name", required: true, autoSegment: false },
+        { id: "q2", type: "select", label: "Expertise Level", options: ["Junior", "Mid", "Senior"], required: true, autoSegment: true },
     ]);
 
     return (
@@ -57,6 +57,18 @@ export function RegistrationView() {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-2.5 mr-2 pr-6 border-r border-gray-100">
+                                            <div className="flex flex-col items-end">
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-blue-600">Auto-Segment</span>
+                                                <span className="text-[7px] font-bold text-gray-300 uppercase">Reporting & Logic</span>
+                                            </div>
+                                            <div
+                                                onClick={() => { }}
+                                                className={cn("w-9 h-5 rounded-full p-0.5 cursor-pointer transition-all duration-300 shadow-inner", q.autoSegment ? "bg-[var(--brand-blue)]" : "bg-gray-100")}
+                                            >
+                                                <div className={cn("w-4 h-4 bg-white rounded-full transition-all shadow-md", q.autoSegment ? "translate-x-4" : "translate-x-0")} />
+                                            </div>
+                                        </div>
                                         <div className="flex items-center gap-2.5 mr-2">
                                             <span className="text-[9px] font-black uppercase tracking-widest text-gray-300">Required</span>
                                             <div
