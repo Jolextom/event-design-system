@@ -18,20 +18,53 @@ import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
 const MOCK_GUESTS = [
-    { id: "1", name: "Alex Rivera", email: "alex@design.com", type: "VIP", status: "Checked In", squad: "Luma Core", registered: "2h ago" },
-    { id: "2", name: "Sarah Chen", email: "sarah@startup.io", type: "Standard", status: "Ready", squad: "Solo", registered: "5h ago" },
-    { id: "3", name: "Jordan Smith", email: "j.smith@corp.com", type: "Speaker", status: "Ready", squad: "Hosts", registered: "1d ago" },
-    { id: "4", name: "Elena Rodriguez", email: "elena@art.es", type: "Standard", status: "Invite Sent", squad: "Squad Alpha", registered: "2d ago" },
-    { id: "5", name: "Marcus Thorne", email: "m.thorne@web3.vc", type: "VIP", status: "Checked In", squad: "Luma Core", registered: "2h ago" },
-    { id: "6", name: "Lila Vance", email: "lila@vance.co", type: "Standard", status: "Refunded", squad: "Solo", registered: "3h ago" },
+    { id: "1", name: "Alex Rivera", email: "alex@design.com", type: "VIP", status: "Checked In", squad: "Luma Core", registered: "2h ago", avatar: "AR" },
+    { id: "2", name: "Sarah Chen", email: "sarah@startup.io", type: "Standard", status: "Ready", squad: "Solo", registered: "5h ago", avatar: "SC" },
+    { id: "3", name: "Jordan Smith", email: "j.smith@corp.com", type: "Speaker", status: "Ready", squad: "Hosts", registered: "1d ago", avatar: "JS" },
+    { id: "4", name: "Elena Rodriguez", email: "elena@art.es", type: "Standard", status: "Invite Sent", squad: "Squad Alpha", registered: "2d ago", avatar: "ER" },
+    { id: "5", name: "Marcus Thorne", email: "m.thorne@web3.vc", type: "VIP", status: "Checked In", squad: "Luma Core", registered: "2h ago", avatar: "MT" },
+    { id: "6", name: "Lila Vance", email: "lila@vance.co", type: "Standard", status: "Refunded", squad: "Solo", registered: "3h ago", avatar: "LV" },
+    { id: "7", name: "Davide Russo", email: "d.russo@milano.it", type: "Press", status: "Pending", squad: "Media Team", registered: "10m ago", avatar: "DR" },
+    { id: "8", name: "Sophie Wu", email: "wu.sophie@tech.cn", type: "VIP", status: "Checked In", squad: "Investors", registered: "1h ago", avatar: "SW" },
+    { id: "9", name: "James Miller", email: "j.miller@london.uk", type: "Standard", status: "Cancelled", squad: "Solo", registered: "4h ago", avatar: "JM" },
 ];
 
 export function RegistryView() {
     const [searchTerm, setSearchTerm] = useState("");
+    const [selectedRows, setSelectedRows] = useState<string[]>([]);
+
+    const toggleRow = (id: string) => {
+        if (selectedRows.includes(id)) {
+            setSelectedRows(selectedRows.filter(r => r !== id));
+        } else {
+            setSelectedRows([...selectedRows, id]);
+        }
+    };
 
     return (
-        <div className="h-full flex flex-col bg-white">
-            {/* Action Bar */}
+        <div className="h-full flex flex-col bg-white overflow-hidden animate-in fade-in duration-500">
+            {/* Header / Stats Bar */}
+            <div className="bg-white border-b border-gray-100 py-6 px-8 flex justify-between items-end">
+                <div>
+                    <h1 className="text-2xl font-black tracking-tight text-gray-900 mb-2">Guest Registry</h1>
+                    <div className="flex gap-6">
+                        <div className="flex items-center gap-2">
+                            <span className="text-2xl font-black text-gray-900 tracking-tight">1,248</span>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1">Total Guests</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-2xl font-black text-green-500 tracking-tight">842</span>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1">Checked In</span>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex gap-3">
+                    <button className="px-4 py-2 bg-gray-50 hover:bg-gray-100 rounded-xl text-[11px] font-black uppercase tracking-widest text-gray-600 transition-colors">
+                        Export CSV
+                    </button>
+                </div>
+            </div>
+
             <div className="p-6 border-b border-gray-100 flex items-center justify-between gap-4 bg-white/50 backdrop-blur-md sticky top-0 z-20">
                 <div className="flex items-center gap-3 flex-1 max-w-md">
                     <div className="relative flex-1 group">
@@ -78,6 +111,7 @@ export function RegistryView() {
                             </th>
                             <th className="px-4 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Ticket Type</th>
                             <th className="px-4 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Squad</th>
+                            <th className="px-4 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Registered</th>
                             <th className="px-4 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Status</th>
                             <th className="px-4 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 text-right pr-8">Actions</th>
                         </tr>
@@ -97,7 +131,7 @@ export function RegistryView() {
                                 <td className="px-4 py-4">
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center font-black text-[10px] text-gray-500 group-hover:bg-[var(--brand-blue)] group-hover:text-white transition-all">
-                                            {guest.name.charAt(0)}
+                                            {guest.avatar || guest.name.charAt(0)}
                                         </div>
                                         <div>
                                             <p className="text-sm font-black text-gray-900 tracking-tight leading-none mb-1">{guest.name}</p>
@@ -122,6 +156,12 @@ export function RegistryView() {
                                     </div>
                                 </td>
                                 <td className="px-4 py-4">
+                                    <div className="flex items-center gap-1.5 text-gray-400">
+                                        <Clock className="w-3 h-3" />
+                                        <span className="text-[10px] font-bold">{guest.registered}</span>
+                                    </div>
+                                </td>
+                                <td className="px-4 py-4">
                                     <div className="flex items-center gap-2">
                                         {guest.status === "Checked In" ? (
                                             <ShieldCheck className="w-3.5 h-3.5 text-green-500" />
@@ -139,7 +179,6 @@ export function RegistryView() {
                                             {guest.status}
                                         </span>
                                     </div>
-                                    <p className="text-[9px] font-bold text-gray-300 mt-0.5">{guest.registered}</p>
                                 </td>
                                 <td className="px-4 py-4 text-right pr-8">
                                     <button className="p-2 text-gray-300 hover:text-gray-900 hover:bg-white rounded-lg border border-transparent hover:border-gray-100 transition-all">

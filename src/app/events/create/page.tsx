@@ -149,13 +149,17 @@ export default function AppContainer() {
                                     {activeBuilderCategory === "registration" && <RegistrationView />}
                                     {activeBuilderCategory === "essentials" && <BasicInfoView />}
                                     {activeBuilderCategory === "ticketing" && <TicketingView />}
-                                    {activeBuilderCategory === "variables" && <SmartGroupsView />}
+                                    {activeBuilderCategory === "variables" && (
+                                        <SmartGroupsView
+                                            onNavigateToRegistry={() => setActiveGlobal("registry")}
+                                        />
+                                    )}
                                 </>
                             )}
                             {activeGlobal === "live" && <OperationsView />}
 
                             {/* Professional Organizer Views */}
-                            {activeGlobal === "registry" && <RegistryView />}
+                            {activeGlobal === "registry" && <RegistryView activeFilter="segment" />}
                             {activeGlobal === "automations" && <AutomationsView />}
                             {activeGlobal === "broadcast" && <BroadcastView />}
                             {activeGlobal === "settings" && <SettingsView />}
