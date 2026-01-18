@@ -66,8 +66,8 @@ export default function Home() {
               <span className="text-xl font-bold text-[var(--color-neutral-900)]">EventFlow</span>
             </div>
             <div className="flex items-center gap-4">
-              <button className="btn btn-secondary">Sign In</button>
-              <button className="btn btn-primary">Get Started</button>
+              <a href="/auth" className="btn btn-secondary">Sign In</a>
+              <a href="/auth" className="btn btn-primary">Get Started</a>
             </div>
           </nav>
 
@@ -111,10 +111,10 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
             >
-              <button className="btn btn-primary text-base px-8 py-4">
+              <a href="/auth" className="btn btn-primary text-base px-8 py-4 flex items-center gap-2">
                 Start Free Trial
                 <ArrowRight className="w-5 h-5" />
-              </button>
+              </a>
               <button className="btn btn-secondary text-base px-8 py-4">
                 Watch Demo
               </button>

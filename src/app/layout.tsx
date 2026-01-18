@@ -1,7 +1,9 @@
 
 import type { Metadata } from "next";
 import { GeistSans, GeistMono } from "geist/font";
+
 import "./globals.css";
+import { AuthProvider } from "@/app/context/AuthContext";
 
 
 export const metadata: Metadata = {
@@ -17,7 +19,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
