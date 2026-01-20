@@ -1,0 +1,833 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+    Calendar,
+    MapPin,
+    Clock,
+    ChevronRight,
+    Check,
+    Ticket,
+    ChevronLeft,
+    Sparkles,
+    Share2,
+    CalendarPlus,
+    MessageCircle,
+    Heart,
+    ExternalLink,
+    Map,
+    ArrowRight,
+    ArrowLeft,
+    Plus,
+    Minus,
+    Mail,
+    PlusCircle,
+    Loader2,
+    AlertCircle
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Event, Pass, Question } from "../events/[tag]/types";
+
+export default function RegistrationPage() {
+    const params = useParams();
+    const tag = typeof params === "object" && params?.tag ? String(params.tag) : null;
+
+    // --- State ---
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [event, setEvent] = useState<Event | null>(null);
+    const [passes, setPasses] = useState<Pass[]>([]);
+    const [questions, setQuestions] = useState<Question[]>([]);
+
+    const [step, setStep] = useState(1);
+    const [selectedTicket, setSelectedTicket] = useState<string>("");
+    const [quantity, setQuantity] = useState(1);
+    const [guests, setGuests] = useState([{ firstName: "", lastName: "", email: "", isInvite: false, answers: {} as Record<string, string> }]);
+    const [submitting, setSubmitting] = useState(false);
+
+    // --- Data Fetching ---
+    useEffect(() => {
+        if (!tag) return;
+
+        const fetchData = async () => {
+            setLoading(true);
+            setError(null);
+
+            const supabase = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            );
+
+            try {
+                const { data, error: eventErr } = await supabase
+                    .from("events")
+                    .select(`
+                        *,
+                        passes (*),
+                        questions (
+                            *,
+                            options:question_options (*)
+                        )
+                    `)
+                    .eq("tag", tag)
+                    .single();
+
+                if (eventErr) {
+                    if (eventErr.code === "PGRST116") {
+                        setError("Event not found");
+                    } else {
+                        throw eventErr;
+                    }
+                    return;
+                }
+
+                if (data) {
+                    setEvent(data);
+                    const sortedPasses = (data.passes || []).sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0));
+                    setPasses(sortedPasses);
+
+                    if (sortedPasses.length > 0) {
+                        setSelectedTicket(sortedPasses[0].id);
+                    }
+
+                    const sortedQuestions = (data.questions || [])
+                        .sort((a: any, b: any) => a.question_order - b.question_order)
+                        .map((q: any) => ({
+                            ...q,
+                            options: (q.options || []).sort((a: any, b: any) => a.display_order - b.display_order)
+                        }));
+                    setQuestions(sortedQuestions);
+                }
+            } catch (err: any) {
+                console.error("Error fetching registration data:", err);
+                setError(err.message || "Failed to load registration page");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [tag]);
+
+    // --- Helpers ---
+    const currentTicket = passes.find(t => t.id === selectedTicket);
+    const totalGuests = currentTicket?.type === "group"
+        ? (currentTicket.group_size || 1)
+        : quantity;
+
+    // Sync guests array when totalGuests changes
+    useEffect(() => {
+        setGuests(prev => {
+            const newGuests = [...prev];
+            if (newGuests.length < totalGuests) {
+                for (let i = newGuests.length; i < totalGuests; i++) {
+                    newGuests.push({ firstName: "", lastName: "", email: "", isInvite: true, answers: {} });
+                }
+            } else if (newGuests.length > totalGuests) {
+                return newGuests.slice(0, totalGuests);
+            }
+            return newGuests;
+        });
+    }, [totalGuests]);
+
+    const handleRegister = async () => {
+        if (!event || !selectedTicket) return;
+        setSubmitting(true);
+        setError(null);
+
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+
+        try {
+            for (const guest of guests) {
+                if (guest.isInvite && !guest.email) continue;
+                if (!guest.isInvite && (!guest.email || !guest.firstName)) continue;
+
+                const { data: attendeeData, error: attendeeErr } = await supabase
+                    .from("attendees")
+                    .insert({
+                        event_id: event.id,
+                        first_name: guest.firstName || "Guest",
+                        last_name: guest.lastName || "",
+                        email: guest.email,
+                        ref: `EF-${event.tag?.toUpperCase() || 'EV'}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+                        email_status: guest.isInvite ? "invited" : "registered"
+                    })
+                    .select()
+                    .single();
+
+                if (attendeeErr) throw attendeeErr;
+
+                if (attendeeData && Object.keys(guest.answers).length > 0) {
+                    const responseInserts = Object.entries(guest.answers).map(([qId, answer]) => ({
+                        attendee_id: attendeeData.id,
+                        question_id: qId,
+                        answer_text: String(answer)
+                    }));
+
+                    await supabase.from("answers").insert(responseInserts);
+                }
+            }
+
+            setStep(3);
+        } catch (err: any) {
+            console.error("Registration error:", err);
+            setError(err.message || "Failed to complete registration");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-white flex flex-col items-center justify-center">
+                <div className="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center mb-6">
+                    <Loader2 className="w-8 h-8 text-gray-900 animate-spin" />
+                </div>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Initializing Flow...</p>
+            </div>
+        );
+    }
+
+    if (error || !event) {
+        return (
+            <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center">
+                <div className="w-20 h-20 bg-red-50 rounded-[32px] flex items-center justify-center mb-8 border border-red-100">
+                    <AlertCircle className="w-10 h-10 text-red-600" />
+                </div>
+                <h1 className="text-3xl font-black text-gray-900 mb-4">{error || "Event not found"}</h1>
+                <p className="text-gray-500 font-bold max-w-sm mb-10">We couldn't find the event you're looking for. Please check the URL and try again.</p>
+                <Link href="/" className="px-8 py-4 bg-gray-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-gray-100">
+                    Go Back Home
+                </Link>
+            </div>
+        );
+    }
+
+    const TicketSelector = ({ isMobile = false }) => (
+        <div className="space-y-6">
+            <h3 className={cn(
+                "font-black uppercase tracking-[0.3em] text-gray-300",
+                isMobile ? "text-[12px] mb-4" : "text-[10px]"
+            )}>
+                Select Ticket
+            </h3>
+            <div className="space-y-3">
+                {passes.map(ticket => {
+                    const isSelected = selectedTicket === ticket.id;
+                    return (
+                        <div key={ticket.id} className="space-y-2">
+                            <button
+                                onClick={() => {
+                                    setSelectedTicket(ticket.id);
+                                    if (ticket.type === "group") setQuantity(1);
+                                }}
+                                className={cn(
+                                    "w-full px-5 py-4 rounded-[24px] border-2 transition-all flex items-center justify-between group text-left",
+                                    isSelected
+                                        ? "bg-blue-50/30 border-blue-600 shadow-[0_8px_24px_-12px_rgba(59,130,246,0.2)]"
+                                        : "bg-white border-gray-100/80 hover:border-gray-200"
+                                )}
+                            >
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <div className={cn("text-sm font-black transition-colors leading-none", isSelected ? "text-blue-600" : "text-gray-900")}>
+                                            {ticket.title}
+                                        </div>
+                                        {ticket.type === "group" && (
+                                            <span className="px-1 py-0.5 bg-gray-900 text-white text-[7px] font-black uppercase tracking-wider rounded-md">Group</span>
+                                        )}
+                                    </div>
+                                    <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none">{ticket.description}</div>
+                                </div>
+                                <div className="text-right ml-4">
+                                    <div className="text-lg font-black text-gray-900 tracking-tight">{ticket.is_free ? 'FREE' : `$${ticket.price}`}</div>
+                                </div>
+                            </button>
+
+                            {/* Quantity Selector (Only for individual tickets) */}
+                            {isSelected && ticket.type === "individual" && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="flex items-center justify-between px-6 py-4 bg-gray-50/50 rounded-[24px] border border-gray-100"
+                                >
+                                    <div className="text-[9px] font-black uppercase tracking-widest text-gray-400">
+                                        Quantity
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <button
+                                            onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
+                                            className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-200 hover:border-blue-200 hover:text-blue-500 transition-all active:scale-90"
+                                        >
+                                            <Minus className="w-4 h-4" />
+                                        </button>
+                                        <span className="text-base font-black text-gray-900 w-4 text-center">{quantity}</span>
+                                        <button
+                                            onClick={() => setQuantity(prev => Math.min(10, prev + 1))}
+                                            className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-200 hover:border-blue-200 hover:text-blue-500 transition-all active:scale-90"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+
+    const titleParts = event.event_title.split(' ');
+    const displayTitleMain = titleParts.slice(0, -1).join(' ');
+    const displayTitleLast = titleParts[titleParts.length - 1];
+
+    return (
+        <div className="min-h-screen bg-white text-[#111827] selection:bg-blue-100 pb-32">
+
+            {/* Top Navigation */}
+            <header className="w-full p-6 md:px-10 md:py-8 flex items-center justify-between z-50 bg-white/80 backdrop-blur-md sticky top-0 border-b border-gray-50">
+                <div className="flex items-center gap-2 group cursor-pointer">
+                    <div className="w-7 h-7 flex items-center justify-center font-black text-xs bg-red-50 text-red-600 rounded-lg border border-red-100">❤</div>
+                    <span className="font-black tracking-tighter text-gray-900 text-base">EventFlow</span>
+                </div>
+                <div className="flex items-center gap-3">
+                    <button className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                        <Share2 className="w-5 h-5 text-gray-400" />
+                    </button>
+                </div>
+            </header>
+
+            <main className="max-w-6xl mx-auto px-6 md:px-10 pt-10 md:pt-14">
+
+                {/* --- HEADER ARCHITECTURE (Integrated & Airy) --- */}
+                <header className="max-w-3xl mb-10 space-y-6">
+                    {/* Pre-header Badges */}
+                    <div className="flex items-center gap-3">
+                        <span className="px-3.5 py-1.5 bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-[0.2em] rounded-full border border-blue-100">
+                            {event.location ? "Live Event" : "Virtual"}
+                        </span>
+                        <div className="flex items-center gap-2 px-3.5 py-1.5 bg-green-50 text-green-600 text-[9px] font-black uppercase tracking-[0.2em] rounded-full border border-green-100">
+                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                            Live
+                        </div>
+                    </div>
+
+                    {/* Main Title */}
+                    <h1 className="text-4xl md:text-6xl font-black tracking-tight text-gray-900 leading-[0.85]">
+                        {displayTitleMain} <br />
+                        <span className="text-gray-900/20">{displayTitleLast}</span>
+                    </h1>
+
+                    {/* Host Interaction */}
+                    <div className="flex items-center gap-4">
+                        <div className="w-11 h-11 bg-gray-50 text-gray-400 rounded-2xl flex items-center justify-center font-black text-sm border border-gray-100 shadow-inner">
+                            {event.event_title.charAt(0)}
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-1.5 leading-none mb-1">
+                                <span className="text-base font-black text-gray-900">Hosted by Team {event.event_title.split(' ')[0]}</span>
+                                <Check className="w-3.5 h-3.5 text-blue-500 fill-blue-500" />
+                            </div>
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em] block">Verified Partner</span>
+                        </div>
+                    </div>
+                </header>
+
+                {/* --- CENTERED CARD HERO --- */}
+                <section className="mb-16">
+                    <div className="bg-gray-100 rounded-[48px] overflow-hidden relative group shadow-2xl shadow-gray-100 border border-gray-50">
+                        {event.image ? (
+                            <div className="aspect-[16/9] md:aspect-[21/9] md:max-h-[520px] w-full relative overflow-hidden">
+                                <img
+                                    src={event.image}
+                                    alt="Event Cover"
+                                    className="w-full h-full object-cover"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-gray-900/10 to-transparent" />
+                            </div>
+                        ) : (
+                            <div className="aspect-[16/9] md:aspect-[21/9] md:max-h-[520px] w-full bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center">
+                                <Sparkles className="w-16 h-16 text-gray-200" />
+                            </div>
+                        )}
+                    </div>
+                </section>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 md:gap-20">
+
+                    {/* LEFT COL: STORY & ACTIONS */}
+                    <div className="lg:col-span-7 space-y-20">
+
+                        {/* Info Tiles */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <div className="flex items-center gap-2 text-[9px] font-black text-gray-300 uppercase tracking-widest">
+                                        <Calendar className="w-3 h-3" /> Date
+                                    </div>
+                                    <button className="text-[8px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors flex items-center gap-1.5 px-2 py-1 bg-blue-50 rounded-lg">
+                                        <CalendarPlus className="w-2.5 h-2.5" /> Save
+                                    </button>
+                                </div>
+                                <div className="text-base font-black text-gray-900">{event.start_date}</div>
+                            </div>
+                            <div className="space-y-3 md:border-x px-0 md:px-8 border-gray-50">
+                                <div className="flex items-center gap-2 text-[9px] font-black text-gray-300 uppercase tracking-widest mb-1.5">
+                                    <Clock className="w-3 h-3" /> Time
+                                </div>
+                                <div className="text-base font-black text-gray-900 leading-tight">{event.start_time}</div>
+                            </div>
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <div className="flex items-center gap-2 text-[9px] font-black text-gray-300 uppercase tracking-widest">
+                                        <MapPin className="w-3 h-3" /> Location
+                                    </div>
+                                    <button className="text-[8px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors flex items-center gap-1.5 px-2 py-1 bg-blue-50 rounded-lg">
+                                        <Map className="w-2.5 h-2.5" /> Map
+                                    </button>
+                                </div>
+                                <div className="text-base font-black text-gray-900">{event.location}</div>
+                            </div>
+                        </div>
+
+                        {/* MOBILE TICKETS */}
+                        <div className="md:hidden py-10 border-y border-gray-50">
+                            <TicketSelector isMobile={true} />
+                        </div>
+
+                        {/* Event Story */}
+                        <div className="space-y-6">
+                            <h2 className="text-[9px] font-black uppercase tracking-[0.4em] text-gray-300">The Narrative</h2>
+                            <div className="text-xl md:text-2xl font-bold text-gray-500/80 leading-[1.6] whitespace-pre-line selection:bg-blue-50">
+                                {event.description || "Join us for this exclusive event."}
+                            </div>
+                        </div>
+
+                        {/* Footer Vibe */}
+                        <div className="flex items-center gap-10 pt-10">
+                            <div className="flex items-center gap-3 group cursor-pointer">
+                                <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center border border-gray-100 group-hover:bg-red-50 group-hover:border-red-100 transition-all">
+                                    <Heart className="w-5 h-5 text-gray-300 group-hover:text-red-500" />
+                                </div>
+                                <div>
+                                    <div className="text-sm font-black text-gray-900">{Math.floor(Math.random() * 5 + 1)}k</div>
+                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Interactions</div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3 group cursor-pointer">
+                                <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center border border-gray-100 group-hover:bg-blue-50 group-hover:border-blue-100 transition-all">
+                                    <MessageCircle className="w-5 h-5 text-gray-300 group-hover:text-blue-500" />
+                                </div>
+                                <div>
+                                    <div className="text-sm font-black text-gray-900">{Math.floor(Math.random() * 200 + 50)}</div>
+                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Public Chat</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* RIGHT COL: STICKY SELECTOR (Desktop) */}
+                    <div className="hidden lg:block lg:col-span-5">
+                        <div className="sticky top-32">
+                            <div className="bg-white border border-gray-100 shadow-[0_48px_96px_-32px_rgba(0,0,0,0.06)] rounded-[48px] overflow-hidden">
+                                <div className="p-8 md:p-10 space-y-8">
+                                    <TicketSelector />
+
+                                    <div className="space-y-4 pt-2">
+                                        <button
+                                            onClick={() => setStep(2)}
+                                            className="w-full py-5 bg-gray-900 text-white rounded-[24px] font-black text-base shadow-[0_20px_40px_-12px_rgba(0,0,0,0.15)] hover:bg-gray-800 active:scale-95 transition-all flex items-center justify-center gap-3"
+                                        >
+                                            Next step <ArrowRight className="w-5 h-5" />
+                                        </button>
+                                        <div className="flex items-center justify-center gap-4">
+                                            <div className="flex -space-x-2">
+                                                {[1, 2, 3, 4].map(i => (
+                                                    <div key={i} className="w-8 h-8 rounded-full bg-gray-100 border-2 border-white overflow-hidden">
+                                                        <img src={`https://i.pravatar.cc/100?u=${i + 10}`} alt="User" />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">+{Math.floor(Math.random() * 500 + 100)} attending</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-gray-50/50 p-5 flex items-center justify-center border-t border-gray-50">
+                                    <span className="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em]">Verified Event — EventFlow Safe</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            {/* --- MOBILE STICKY FOOTER --- */}
+            <div className="fixed bottom-0 left-0 w-full p-6 md:hidden z-[60] bg-white/95 backdrop-blur-2xl border-t border-gray-100 shadow-[0_-20px_60px_rgba(0,0,0,0.08)]">
+                <div className="max-w-md mx-auto flex items-center justify-between gap-6">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1">Your Pass</span>
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-3xl font-black text-gray-900 tracking-tight">{currentTicket?.is_free ? 'FREE' : `$${currentTicket?.price}`}</span>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => setStep(2)}
+                        className="flex-1 py-5 bg-gray-900 text-white rounded-[24px] font-black text-base shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
+                    >
+                        Register <ChevronRight className="w-5 h-5" />
+                    </button>
+                </div>
+            </div>
+
+            {/* --- REGISTRATION MODAL --- */}
+            <AnimatePresence>
+                {step === 2 && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-gray-900/40 backdrop-blur-lg"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, y: 30 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.95, y: 30 }}
+                            className="bg-white max-w-xl w-full rounded-[40px] md:rounded-[56px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+                        >
+                            <div className="p-7 md:p-9 border-b border-gray-50 flex items-center justify-between bg-white sticky top-0 z-10">
+                                <button onClick={() => setStep(1)} className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-900 transition-all">
+                                    <ChevronLeft className="w-4 h-4" /> Back
+                                </button>
+                                <h2 className="text-xl font-black text-gray-900 tracking-tight">Guest Info</h2>
+                                <div className="w-10 h-1 bg-blue-50 rounded-full" />
+                            </div>
+
+                            <div className="p-6 md:p-10 overflow-y-auto space-y-8 custom-scrollbar">
+                                <div className="space-y-12">
+                                    {guests.map((guest, index) => {
+                                        const isPrimary = index === 0;
+
+                                        return (
+                                            <div key={index} className="space-y-8">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-[10px] font-black text-gray-400 border border-gray-100 uppercase tracking-widest">
+                                                            #{index + 1}
+                                                        </div>
+                                                        <h3 className="text-xs font-black text-gray-900 uppercase tracking-[0.2em]">
+                                                            {isPrimary ? "Primary Guest" : `Guest ${index + 1}`}
+                                                        </h3>
+                                                    </div>
+
+                                                    {!isPrimary && (
+                                                        <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100">
+                                                            <button
+                                                                onClick={() => {
+                                                                    const ng = [...guests];
+                                                                    ng[index].isInvite = false;
+                                                                    setGuests(ng);
+                                                                }}
+                                                                className={cn(
+                                                                    "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
+                                                                    !guest.isInvite ? "bg-white text-gray-900 shadow-sm" : "text-gray-400"
+                                                                )}
+                                                            >
+                                                                Fill Info
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    const ng = [...guests];
+                                                                    ng[index].isInvite = true;
+                                                                    setGuests(ng);
+                                                                }}
+                                                                className={cn(
+                                                                    "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
+                                                                    guest.isInvite ? "bg-white text-gray-900 shadow-sm" : "text-gray-400"
+                                                                )}
+                                                            >
+                                                                Invite
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <AnimatePresence mode="wait">
+                                                    {!guest.isInvite || isPrimary ? (
+                                                        <motion.div
+                                                            key="form"
+                                                            initial={{ opacity: 0, height: 0 }}
+                                                            animate={{ opacity: 1, height: "auto" }}
+                                                            exit={{ opacity: 0, height: 0 }}
+                                                            className="space-y-6 overflow-hidden"
+                                                        >
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                                <div className="space-y-3">
+                                                                    <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">First Name</label>
+                                                                    <input
+                                                                        value={guest.firstName}
+                                                                        onChange={(e) => {
+                                                                            const newGuests = [...guests];
+                                                                            newGuests[index].firstName = e.target.value;
+                                                                            setGuests(newGuests);
+                                                                        }}
+                                                                        placeholder="Jane"
+                                                                        className="w-full bg-gray-50/50 border-gray-100 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border"
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-3">
+                                                                    <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Last Name</label>
+                                                                    <input
+                                                                        value={guest.lastName}
+                                                                        onChange={(e) => {
+                                                                            const newGuests = [...guests];
+                                                                            newGuests[index].lastName = e.target.value;
+                                                                            setGuests(newGuests);
+                                                                        }}
+                                                                        placeholder="Smith"
+                                                                        className="w-full bg-gray-50/50 border-gray-100 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="space-y-3">
+                                                                <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Email Address</label>
+                                                                <input
+                                                                    type="email"
+                                                                    value={guest.email}
+                                                                    onChange={(e) => {
+                                                                        const newGuests = [...guests];
+                                                                        newGuests[index].email = e.target.value;
+                                                                        setGuests(newGuests);
+                                                                    }}
+                                                                    placeholder="jane@studio.com"
+                                                                    className="w-full bg-gray-50/50 border-gray-100 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border"
+                                                                />
+                                                            </div>
+
+                                                            {/* Custom Dynamic Questions */}
+                                                            {questions.map((q) => (
+                                                                <div key={q.id} className="space-y-3">
+                                                                    <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">
+                                                                        {q.title} {q.is_required && <span className="text-red-500">*</span>}
+                                                                    </label>
+                                                                    {q.question_type === 'select' ? (
+                                                                        <div className="relative">
+                                                                            <select
+                                                                                value={guest.answers[q.id] || ""}
+                                                                                onChange={(e) => {
+                                                                                    const newGuests = [...guests];
+                                                                                    newGuests[index].answers = { ...newGuests[index].answers, [q.id]: e.target.value };
+                                                                                    setGuests(newGuests);
+                                                                                }}
+                                                                                className="w-full bg-gray-50/50 border-gray-100 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border appearance-none cursor-pointer"
+                                                                            >
+                                                                                <option value="" disabled>Select an option</option>
+                                                                                {q.options?.map(opt => (
+                                                                                    <option key={opt.id} value={opt.option_text}>{opt.option_text}</option>
+                                                                                ))}
+                                                                            </select>
+                                                                            <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                                                                <PlusCircle className="w-4 h-4 rotate-45" />
+                                                                            </div>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <input
+                                                                            value={guest.answers[q.id] || ""}
+                                                                            onChange={(e) => {
+                                                                                const newGuests = [...guests];
+                                                                                newGuests[index].answers = { ...newGuests[index].answers, [q.id]: e.target.value };
+                                                                                setGuests(newGuests);
+                                                                            }}
+                                                                            placeholder="Your answer"
+                                                                            className="w-full bg-gray-50/50 border-gray-100 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border"
+                                                                        />
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </motion.div>
+                                                    ) : (
+                                                        <motion.div
+                                                            key="invite"
+                                                            initial={{ opacity: 0, scale: 0.95 }}
+                                                            animate={{ opacity: 1, scale: 1 }}
+                                                            exit={{ opacity: 0, scale: 0.95 }}
+                                                            className="p-6 bg-blue-50/30 border border-blue-100 rounded-[24px] space-y-4"
+                                                        >
+                                                            <div className="space-y-3">
+                                                                <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Enter email to invite guest</label>
+                                                                <input
+                                                                    type="email"
+                                                                    value={guest.email}
+                                                                    onChange={(e) => {
+                                                                        const newGuests = [...guests];
+                                                                        newGuests[index].email = e.target.value;
+                                                                        setGuests(newGuests);
+                                                                    }}
+                                                                    placeholder="guest@email.com"
+                                                                    className="w-full bg-white border-blue-100 focus:border-blue-600 focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border"
+                                                                />
+                                                            </div>
+                                                            <p className="text-[10px] font-bold text-gray-400 leading-relaxed italic">
+                                                                We'll send them a dynamic link to complete their registration and answer custom questions.
+                                                            </p>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+
+                                                {index < guests.length - 1 && <div className="h-px bg-gray-50 w-full" />}
+                                            </div>
+                                        );
+                                    })}
+
+                                    <div className="space-y-3">
+                                        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Broadcasting Notes (Optional)</label>
+                                        <textarea placeholder="Dietary requirements or special requests for the group?" rows={2} className="w-full bg-gray-50/50 border-gray-100 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border resize-none" />
+                                    </div>
+                                </div>
+
+                                <div className="pt-4">
+                                    <button
+                                        onClick={handleRegister}
+                                        disabled={submitting}
+                                        className="w-full py-5 bg-gray-900 text-white rounded-[28px] font-black text-lg shadow-xl shadow-gray-200 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                                    >
+                                        {submitting ? (
+                                            <>
+                                                <Loader2 className="w-5 h-5 animate-spin" /> Processing...
+                                            </>
+                                        ) : (
+                                            "Complete Registration"
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* --- SUCCESS STATE (DEDICATED RECEIPT PAGE) --- */}
+            <AnimatePresence>
+                {step === 3 && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[110] bg-white overflow-y-auto custom-scrollbar"
+                    >
+                        {/* Immersive Backdrop */}
+                        <div className="absolute top-0 left-0 w-full h-[40vh] bg-gradient-to-b from-blue-50/50 to-white -z-10" />
+                        <div className="absolute top-20 right-[10%] w-64 h-64 bg-blue-100/30 blur-[100px] rounded-full -z-10" />
+                        <div className="absolute top-40 left-[5%] w-96 h-96 bg-red-100/20 blur-[120px] rounded-full -z-10" />
+
+                        <div className="max-w-4xl mx-auto px-6 py-16 md:py-24">
+                            <motion.div
+                                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                                animate={{ scale: 1, opacity: 1, y: 0 }}
+                                className="text-center space-y-12"
+                            >
+                                {/* Success Icon */}
+                                <div className="relative inline-block">
+                                    <div className="w-20 h-20 bg-green-500 rounded-[30px] flex items-center justify-center shadow-[0_20px_40px_-8px_rgba(34,197,94,0.3)] relative z-10 mx-auto">
+                                        <Check className="w-10 h-10 text-white stroke-[4]" />
+                                    </div>
+                                    <div className="absolute inset-0 bg-green-200 blur-2xl opacity-40 scale-150 animate-pulse" />
+                                </div>
+
+                                {/* Headline */}
+                                <div className="space-y-4">
+                                    <h2 className="text-5xl md:text-8xl font-black tracking-tight text-gray-900 leading-[0.85]">
+                                        See you at <br />
+                                        <span className="text-gray-900/10 italic">{displayTitleLast}.</span>
+                                    </h2>
+                                    <p className="text-lg md:text-xl text-gray-400 font-bold max-w-lg mx-auto leading-relaxed">
+                                        You're all set for <span className="text-gray-900">{event.start_date}</span>. We've sent a confirmation email to <span className="text-blue-600">{guests[0].email}</span>.
+                                    </p>
+                                </div>
+
+                                {/* The Receipt Card (Fixed Overlap) */}
+                                <div className="relative max-w-2xl mx-auto">
+                                    <div className="absolute -inset-4 bg-gray-900/[0.02] rounded-[72px] -z-10" />
+
+                                    <div className="bg-white rounded-[64px] border border-gray-100 shadow-[0_48px_96px_-32px_rgba(0,0,0,0.08)] overflow-hidden text-left relative">
+                                        {/* Decorative Ticket Notch */}
+                                        <div className="absolute top-1/2 -left-4 w-8 h-8 bg-white border border-gray-100 rounded-full -translate-y-1/2" />
+                                        <div className="absolute top-1/2 -right-4 w-8 h-8 bg-white border border-gray-100 rounded-full -translate-y-1/2" />
+
+                                        <div className="p-10 md:p-14 space-y-12">
+                                            {/* Top: Branding & Reference */}
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-6 h-6 bg-red-50 text-red-600 rounded flex items-center justify-center font-black text-[10px] border border-red-100">❤</div>
+                                                    <span className="font-black text-xs tracking-tighter uppercase italic">EventFlow</span>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-300">Reference</div>
+                                                    <div className="text-xs font-bold text-gray-900">EF-{currentTicket?.id.slice(0, 4).toUpperCase()}-{Math.floor(Math.random() * 89999 + 10000)}</div>
+                                                </div>
+                                            </div>
+
+                                            {/* Middle: Guest & Pass (Stacked to avoid overlap) */}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                                <div className="space-y-2">
+                                                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Lead Attendee</div>
+                                                    <div className="text-4xl font-black text-gray-900 tracking-tight break-words">
+                                                        {guests[0].firstName} {guests[0].lastName}
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2 md:text-right">
+                                                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Pass Hierarchy</div>
+                                                    <div className="text-4xl font-black text-blue-600 tracking-tight">
+                                                        {currentTicket?.title}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Bottom: Status & Action */}
+                                            <div className="pt-10 border-t border-gray-50 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+                                                <div className="flex flex-wrap gap-3">
+                                                    <div className="px-3 py-1.5 bg-green-50 text-green-600 text-[10px] font-black uppercase tracking-widest rounded-xl border border-green-100 flex items-center gap-2">
+                                                        <Check className="w-3 h-3" /> Pass Active
+                                                    </div>
+                                                    {totalGuests > 1 && (
+                                                        <div className="px-3 py-1.5 bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest rounded-xl border border-blue-100 flex items-center gap-2">
+                                                            <Mail className="w-3 h-3" /> {guests.filter(g => g.isInvite).length} Invites Sent
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <button className="flex items-center gap-2.5 px-6 py-3 bg-gray-50 hover:bg-gray-100 transition-colors rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-600">
+                                                    <Ticket className="w-4 h-4" /> View Wallet
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Shared Action Suite */}
+                                <div className="pt-8 flex flex-col sm:flex-row items-center justify-center gap-6">
+                                    <button className="w-full sm:w-auto px-10 py-5 bg-white border border-gray-100 text-gray-900 rounded-[24px] font-black text-sm hover:shadow-lg transition-all flex items-center justify-center gap-3">
+                                        <Sparkles className="w-5 h-5 text-blue-500" /> Share Invitation
+                                    </button>
+                                    <button
+                                        onClick={() => setStep(1)}
+                                        className="w-full sm:w-auto px-10 py-5 bg-gray-900 text-white rounded-[24px] font-black text-sm hover:scale-[1.05] active:scale-95 transition-all shadow-xl shadow-gray-200 flex items-center justify-center gap-3"
+                                    >
+                                        <ArrowLeft className="w-5 h-5" /> Back to Event
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+        </div>
+    );
+}

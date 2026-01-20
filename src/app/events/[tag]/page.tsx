@@ -10,6 +10,9 @@ import {
     GLOBAL_NAV,
     Event,
     Pass,
+    Question,
+    QuestionOption,
+    Attendee,
 } from "./types";
 import { GlobalSidebar } from "./components/Sidebar";
 import { BackbonePane } from "./components/Backbone";
@@ -56,6 +59,16 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
     const [loadingPasses, setLoadingPasses] = useState<boolean>(false);
     const [passesError, setPassesError] = useState<string | null>(null);
 
+    // Registration Form State
+    const [questions, setQuestions] = useState<Question[]>([]);
+    const [loadingQuestions, setLoadingQuestions] = useState<boolean>(false);
+    const [questionsError, setQuestionsError] = useState<string | null>(null);
+
+    // Attendees State
+    const [attendees, setAttendees] = useState<Attendee[]>([]);
+    const [loadingAttendees, setLoadingAttendees] = useState<boolean>(false);
+    const [attendeesError, setAttendeesError] = useState<string | null>(null);
+
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key === "b" && activeGlobal === "studio") {
@@ -74,8 +87,12 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
         let mounted = true;
         setLoadingEvent(true);
         setLoadingPasses(true);
+        setLoadingQuestions(true);
+        setLoadingAttendees(true);
         setEventError(null);
         setPassesError(null);
+        setQuestionsError(null);
+        setAttendeesError(null);
 
         const supabase = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -119,13 +136,65 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                     } else {
                         setPasses(passesData ?? []);
                     }
+
+                    // Fetch questions with their options
+                    const { data: questionsData, error: questionsErr } = await supabase
+                        .from("questions")
+                        .select(`
+                            *,
+                            options:question_options(*)
+                        `)
+                        .eq("event_id", eventData.id)
+                        .order("question_order", { ascending: true });
+
+                    if (!mounted) return;
+
+                    if (questionsErr) {
+                        setQuestionsError(questionsErr.message || "Failed to load questions");
+                    } else {
+                        // Ensure options are sorted by display_order
+                        const sortedQuestions = (questionsData ?? []).map(q => ({
+                            ...q,
+                            options: (q.options ?? []).sort((a: any, b: any) => a.display_order - b.display_order)
+                        }));
+                        setQuestions(sortedQuestions);
+                    }
+
+                    // Fetch attendees for this event
+                    const { data: attendeesData, error: attendeesErr } = await supabase
+                        .from("attendees")
+                        .select(`
+                            *,
+                            responses:answers(*)
+                        `)
+                        .eq("event_id", eventData.id)
+                        .order("created_at", { ascending: false });
+
+                    if (!mounted) return;
+
+                    if (attendeesErr) {
+                        setAttendeesError(attendeesErr.message || "Failed to load attendees");
+                    } else {
+                        const transformedAttendees = (attendeesData ?? []).map((a: any) => ({
+                            ...a,
+                            responses: (a.responses ?? []).reduce((acc: any, curr: any) => {
+                                acc[curr.question_id] = curr.answer_text;
+                                return acc;
+                            }, {})
+                        }));
+                        setAttendees(transformedAttendees);
+                    }
                 }
             } catch (err: any) {
                 if (!mounted) return;
                 setEventError(err?.message ?? "An unexpected error occurred");
                 setEvent(null);
             } finally {
-                if (mounted) setLoadingPasses(false);
+                if (mounted) {
+                    setLoadingPasses(false);
+                    setLoadingQuestions(false);
+                    setLoadingAttendees(false);
+                }
             }
         })();
 
@@ -133,6 +202,97 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
             mounted = false;
         };
     }, [initialEvent, tag]);
+
+    const refetchQuestions = async () => {
+        if (!event?.id) return;
+
+        setLoadingQuestions(true);
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+
+        const { data, error } = await supabase
+            .from("questions")
+            .select(`
+                *,
+                options:question_options(*)
+            `)
+            .eq("event_id", event.id)
+            .order("question_order", { ascending: true });
+
+        if (error) {
+            setQuestionsError(error.message);
+        } else {
+            const sortedQuestions = (data ?? []).map(q => ({
+                ...q,
+                options: (q.options ?? []).sort((a: any, b: any) => a.display_order - b.display_order)
+            }));
+            setQuestions(sortedQuestions);
+            setQuestionsError(null);
+        }
+        setLoadingQuestions(false);
+    };
+
+    // Refetch attendees
+    const refetchAttendees = async () => {
+        if (!event?.id) return;
+
+        setLoadingAttendees(true);
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+
+        const { data, error } = await supabase
+            .from("attendees")
+            .select(`
+                *,
+                responses:answers(*)
+            `)
+            .eq("event_id", event.id)
+            .order("created_at", { ascending: false });
+
+        if (error) {
+            setAttendeesError(error.message);
+        } else {
+            const transformedAttendees = (data ?? []).map((a: any) => ({
+                ...a,
+                responses: (a.responses ?? []).reduce((acc: any, curr: any) => {
+                    acc[curr.question_id] = curr.answer_text;
+                    return acc;
+                }, {})
+            }));
+            setAttendees(transformedAttendees);
+            setAttendeesError(null);
+        }
+        setLoadingAttendees(false);
+    };
+
+    // Refetch passes (called after creating a new pass)
+    const refetchPasses = async () => {
+        if (!event?.id) return;
+
+        setLoadingPasses(true);
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+
+        const { data, error } = await supabase
+            .from("passes")
+            .select("*")
+            .eq("event_id", event.id)
+            .order("display_order", { ascending: true });
+
+        if (error) {
+            setPassesError(error.message);
+        } else {
+            setPasses(data ?? []);
+            setPassesError(null);
+        }
+        setLoadingPasses(false);
+    };
 
     const showBackbone = activeGlobal === "studio";
 
@@ -254,7 +414,13 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                             {activeGlobal === "studio" && (
                                 <>
                                     {activeBuilderCategory === "registration" && (
-                                        <RegistrationView />
+                                        <RegistrationView
+                                            questions={questions}
+                                            loading={loadingQuestions}
+                                            error={questionsError}
+                                            eventId={event?.id ?? null}
+                                            onQuestionCreated={refetchQuestions}
+                                        />
                                     )}
                                     {activeBuilderCategory === "essentials" && (
                                         <BasicInfoView event={event} />
@@ -264,6 +430,8 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                                             passes={passes}
                                             loading={loadingPasses}
                                             error={passesError}
+                                            eventId={event?.id ?? null}
+                                            onPassCreated={refetchPasses}
                                         />
                                     )}
                                     {activeBuilderCategory === "variables" && (
@@ -277,7 +445,16 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                             {activeGlobal === "live" && <OperationsView />}
 
                             {/* Professional Organizer Views */}
-                            {activeGlobal === "registry" && <RegistryView />}
+                            {activeGlobal === "registry" && (
+                                <RegistryView
+                                    attendees={attendees}
+                                    questions={questions}
+                                    loading={loadingAttendees}
+                                    error={attendeesError}
+                                    eventId={event?.id ?? null}
+                                    onRefresh={refetchAttendees}
+                                />
+                            )}
                             {activeGlobal === "automations" && <AutomationsView />}
                             {activeGlobal === "broadcast" && <BroadcastView />}
                             {activeGlobal === "settings" && <SettingsView />}

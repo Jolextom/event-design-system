@@ -1,14 +1,21 @@
 "use client";
 
-import React from "react";
-import { Plus, Tag, CircleDollarSign, Users, Settings, Trash2, Infinity as InfinityIcon, Clock } from "lucide-react";
+import React, { useState } from "react";
+import { Plus, Tag, CircleDollarSign, Users, User, Settings, Trash2, Infinity as InfinityIcon, Clock, AlertTriangle, X, Hash } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Pass } from "../types";
+import { CreatePassModal } from "../components/CreatePassModal";
+import { EditPassModal } from "../components/EditPassModal";
+import { createClient } from "@supabase/supabase-js";
+import { motion, AnimatePresence } from "framer-motion";
+import { createPortal } from "react-dom";
 
 interface TicketingViewProps {
     passes: Pass[];
     loading: boolean;
     error: string | null;
+    eventId: string | null;
+    onPassCreated: () => void;
 }
 
 // Skeleton loading component for a single pass card
@@ -38,7 +45,43 @@ function PassCardSkeleton() {
     );
 }
 
-export function TicketingView({ passes, loading, error }: TicketingViewProps) {
+export function TicketingView({ passes, loading, error, eventId, onPassCreated }: TicketingViewProps) {
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [deletePassId, setDeletePassId] = useState<string | null>(null);
+    const [deletePassTitle, setDeletePassTitle] = useState<string>("");
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [editingPassId, setEditingPassId] = useState<string | null>(null);
+
+    // Delete pass handler
+    const handleDeletePass = async () => {
+        if (!deletePassId) return;
+
+        setIsDeleting(true);
+        try {
+            const supabase = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            );
+
+            const { error: deleteError } = await supabase
+                .from("passes")
+                .delete()
+                .eq("id", deletePassId);
+
+            if (deleteError) {
+                console.error("Failed to delete pass:", deleteError);
+            } else {
+                onPassCreated(); // Refetch passes
+            }
+        } catch (err) {
+            console.error("Delete error:", err);
+        } finally {
+            setIsDeleting(false);
+            setDeletePassId(null);
+            setDeletePassTitle("");
+        }
+    };
+
     // Map pass data to display values
     const getPassStatus = (pass: Pass) => {
         if (pass.is_paused) return "paused";
@@ -66,10 +109,36 @@ export function TicketingView({ passes, loading, error }: TicketingViewProps) {
                         <h2 className="text-2xl font-black tracking-tight text-gray-900">Ticket Types</h2>
                         <p className="text-sm text-gray-400 mt-1.5 font-bold">Set your pricing strategy and availability.</p>
                     </div>
-                    <button className="flex items-center gap-2 bg-gray-900 text-white px-6 py-3 rounded-2xl text-xs font-black hover:bg-black transition-all shadow-xl shadow-gray-100 active:scale-95">
+                    <button
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="flex items-center gap-2 bg-gray-900 text-white px-6 py-3 rounded-2xl text-xs font-black hover:bg-black transition-all shadow-xl shadow-gray-100 active:scale-95"
+                    >
                         <Plus className="w-4 h-4" /> Create Ticket
                     </button>
                 </header>
+
+                {/* Create Pass Modal */}
+                {eventId && (
+                    <CreatePassModal
+                        isOpen={isCreateModalOpen}
+                        onClose={() => setIsCreateModalOpen(false)}
+                        eventId={eventId}
+                        onPassCreated={onPassCreated}
+                    />
+                )}
+
+                {/* Edit Pass Modal */}
+                {editingPassId && passes.find(p => p.id === editingPassId) && (
+                    <EditPassModal
+                        isOpen={!!editingPassId}
+                        onClose={() => setEditingPassId(null)}
+                        pass={passes.find(p => p.id === editingPassId)!}
+                        onPassUpdated={() => {
+                            setEditingPassId(null);
+                            onPassCreated();
+                        }}
+                    />
+                )}
 
                 {/* Error state */}
                 {error && (
@@ -115,7 +184,7 @@ export function TicketingView({ passes, loading, error }: TicketingViewProps) {
                                                 "w-12 h-12 rounded-2xl flex items-center justify-center border transition-all",
                                                 status === "active" ? "bg-blue-50 border-blue-100 text-[var(--brand-blue)]" : "bg-gray-50 border-gray-100 text-gray-400"
                                             )}>
-                                                <Tag className="w-5 h-5" />
+                                                {pass.type === 'group' ? <Users className="w-5 h-5" /> : <User className="w-5 h-5" />}
                                             </div>
                                             <div>
                                                 <h3 className="text-lg font-black text-gray-900 tracking-tight">{pass.title}</h3>
@@ -154,9 +223,24 @@ export function TicketingView({ passes, loading, error }: TicketingViewProps) {
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2 p-1.5 bg-gray-50 rounded-xl border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button className="p-1.5 text-gray-300 hover:text-gray-900 transition-colors"><Settings className="w-3.5 h-3.5" /></button>
+                                                <button
+                                                    onClick={() => setEditingPassId(pass.id)}
+                                                    title="Edit pass"
+                                                    className="p-1.5 text-gray-300 hover:text-gray-900 transition-colors"
+                                                >
+                                                    <Settings className="w-3.5 h-3.5" />
+                                                </button>
                                                 <div className="w-px h-3.5 bg-gray-200" />
-                                                <button className="p-1.5 text-gray-300 hover:text-red-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                                                <button
+                                                    onClick={() => {
+                                                        setDeletePassId(pass.id);
+                                                        setDeletePassTitle(pass.title);
+                                                    }}
+                                                    title="Delete pass"
+                                                    className="p-1.5 text-gray-300 hover:text-red-500 transition-colors"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -183,6 +267,56 @@ export function TicketingView({ passes, loading, error }: TicketingViewProps) {
                     </div>
                 </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {deletePassId && typeof document !== 'undefined' && createPortal(
+                <AnimatePresence>
+                    <motion.div
+                        key="delete-backdrop"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => { setDeletePassId(null); setDeletePassTitle(""); }}
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
+                    />
+                    <motion.div
+                        key="delete-modal"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none p-4"
+                    >
+                        <div className="bg-white rounded-[28px] shadow-2xl max-w-sm w-full pointer-events-auto p-8">
+                            <div className="flex items-center justify-center w-14 h-14 bg-red-50 rounded-2xl mx-auto mb-5">
+                                <AlertTriangle className="w-7 h-7 text-red-500" />
+                            </div>
+                            <h3 className="text-lg font-black text-gray-900 text-center mb-2">Delete Ticket</h3>
+                            <p className="text-sm text-gray-500 text-center font-bold mb-6">
+                                Are you sure you want to delete <span className="text-gray-900">{deletePassTitle}</span>? This action cannot be undone.
+                            </p>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => { setDeletePassId(null); setDeletePassTitle(""); }}
+                                    className="flex-1 px-5 py-3 text-sm font-black text-gray-500 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleDeletePass}
+                                    disabled={isDeleting}
+                                    className={cn(
+                                        "flex-1 px-5 py-3 text-sm font-black text-white bg-red-500 rounded-xl transition-all",
+                                        isDeleting ? "opacity-50 cursor-not-allowed" : "hover:bg-red-600 active:scale-95"
+                                    )}
+                                >
+                                    {isDeleting ? "Deleting..." : "Delete"}
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                </AnimatePresence>,
+                document.body
+            )}
         </div>
     );
 }

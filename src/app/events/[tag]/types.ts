@@ -17,6 +17,8 @@ export interface Event {
 }
 
 // Pass (ticket) type for event passes
+export type PassType = 'individual' | 'group';
+
 export interface Pass {
   id: string;
   event_id: string | null;
@@ -27,7 +29,8 @@ export interface Pass {
   max_per_person: number | null;
   min_per_person: number | null;
   quantity_available: number;
-  type: string;
+  type: PassType;
+  group_size: number | null;
   quantity_sold: number | null;
   sales_volume: number | null;
   organiser_fees_volume: number | null;
@@ -36,6 +39,55 @@ export interface Pass {
   created_at: string | null;
   updated_at: string | null;
   display_order: number | null;
+}
+
+// Payload for creating a new pass
+export interface CreatePassPayload {
+  event_id: string;
+  title: string;
+  description?: string;
+  price: number;
+  is_free: boolean;
+  type: PassType;
+  quantity_available: number;
+  max_per_person?: number;
+  group_size?: number;
+}
+
+// Registration Form Question types
+export type QuestionType = 'text' | 'select';
+
+export interface QuestionOption {
+  id: string;
+  question_id: string;
+  option_text: string;
+  display_order: number;
+  created_at?: string;
+}
+
+export interface Question {
+  id: string;
+  event_id: string;
+  title: string;
+  question_type: QuestionType;
+  is_required: boolean;
+  question_order: number;
+  created_at?: string;
+  options?: QuestionOption[]; // Joined data
+}
+
+export interface CreateQuestionPayload {
+  event_id: string;
+  title: string;
+  question_type: QuestionType;
+  is_required: boolean;
+  question_order: number;
+}
+
+export interface CreateQuestionOptionPayload {
+  question_id: string;
+  option_text: string;
+  display_order: number;
 }
 import { LucideIcon } from "lucide-react";
 import {
@@ -102,11 +154,31 @@ export const BUILDER_CATEGORIES: Category[] = [
 ];
 
 export const GLOBAL_NAV = [
-  { id: "command", icon: Home, label: "Command" },
+  { id: "command", icon: Home, label: "Dashboard" },
   { id: "studio", icon: Command, label: "Studio" },
-  { id: "registry", icon: Users, label: "Registry" },
+  { id: "registry", icon: Users, label: "Guests" },
   { id: "automations", icon: Zap, label: "Automations" },
-  { id: "broadcast", icon: MessageSquare, label: "Broadcast" },
+  { id: "broadcast", icon: MessageSquare, label: "Communications" },
   { id: "live", icon: Check, label: "Live Ops" },
   { id: "settings", icon: Settings, label: "Settings" },
 ];
+
+// Guest/Attendee interface based on the attendees table
+export interface Attendee {
+  id: string;
+  event_id: string | null;
+  order_id: string | null;
+  first_name: string;
+  last_name: string;
+  email: string;
+  ref: string;
+  created_at: string | null;
+  check_in: boolean | null;
+  check_in_time: string | null;
+  email_status: string | null;
+  last_email_sent: string | null;
+  team_id: string | null;
+  checked_in_by_staff_id: string | null;
+  checked_in_by: string | null;
+  responses?: Record<string, string>;
+}

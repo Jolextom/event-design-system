@@ -40,9 +40,11 @@ export function GlobalSidebar({
                         )}
                     >
                         <item.icon className="w-5 h-5 shrink-0" />
-                        <span className={cn("text-sm font-bold transition-opacity whitespace-nowrap", isExpanded ? "opacity-100" : "opacity-0 invisible")}>
-                            {item.label}
-                        </span>
+                        {isExpanded && (
+                            <span className="text-sm font-bold whitespace-nowrap animate-in fade-in duration-300">
+                                {item.label}
+                            </span>
+                        )}
                     </button>
                 ))}
             </div>
