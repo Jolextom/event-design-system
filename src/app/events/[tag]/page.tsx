@@ -1,21 +1,18 @@
 "use client";
-
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-    PanelLeftOpen,
-    Eye
-} from "lucide-react";
+import { PanelLeftOpen, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// --- Types & Constants ---
-import { GlobalSection, CategoryId, BUILDER_CATEGORIES, GLOBAL_NAV } from "./types";
-
-// --- Components ---
+import {
+    GlobalSection,
+    CategoryId,
+    BUILDER_CATEGORIES,
+    GLOBAL_NAV,
+    Event,
+    Pass,
+} from "./types";
 import { GlobalSidebar } from "./components/Sidebar";
 import { BackbonePane } from "./components/Backbone";
-
-// --- Views ---
 import { CommandHubView } from "./views/CommandHubView";
 import { BasicInfoView } from "./views/BasicInfoView";
 import { RegistrationView } from "./views/RegistrationView";
@@ -27,28 +24,116 @@ import { AutomationsView } from "./views/AutomationsView";
 import { BroadcastView } from "./views/BroadcastView";
 import { SettingsView } from "./views/SettingsView";
 
-export default function AppContainer() {
+import { createClient } from "@supabase/supabase-js";
+import { useParams } from "next/navigation";
+
+type PageProps = {
+    event?: Event | null;
+};
+
+export default function Page({ event: initialEvent }: PageProps) {
+    return <AppContainer initialEvent={initialEvent ?? null} />;
+}
+
+function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
+    const params = useParams();
+    const tag = typeof params === "object" && params?.tag ? String(params.tag) : null;
+
     const [activeGlobal, setActiveGlobal] = useState<GlobalSection>("studio");
-    const [activeBuilderCategory, setActiveBuilderCategory] = useState<CategoryId>("registration");
+    const [activeBuilderCategory, setActiveBuilderCategory] =
+        useState<CategoryId>("registration");
     const [isBackboneOpen, setIsBackboneOpen] = useState(true);
     const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
     const [isLive, setIsLive] = useState(false);
-    // Fix: define selectedSegment state before usage
-    // Removed selectedSegment state (no longer used)
 
-    // Keyboard shortcut for Pane 2 toggle (Studio context only)
+    // Event state: either provided by prop or fetched client-side
+    const [event, setEvent] = useState<Event | null>(initialEvent);
+    const [loadingEvent, setLoadingEvent] = useState<boolean>(!initialEvent && Boolean(tag));
+    const [eventError, setEventError] = useState<string | null>(null);
+
+    // Passes state
+    const [passes, setPasses] = useState<Pass[]>([]);
+    const [loadingPasses, setLoadingPasses] = useState<boolean>(false);
+    const [passesError, setPassesError] = useState<string | null>(null);
+
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key === "b" && activeGlobal === "studio") {
                 e.preventDefault();
-                setIsBackboneOpen(prev => !prev);
+                setIsBackboneOpen((prev) => !prev);
             }
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [activeGlobal]);
 
-    // PRD Business Rule: Backbone only appears in the Studio context
+    // If no event was passed in, fetch it client-side by tag (reads tag from URL)
+    useEffect(() => {
+        if (initialEvent || !tag) return;
+
+        let mounted = true;
+        setLoadingEvent(true);
+        setLoadingPasses(true);
+        setEventError(null);
+        setPassesError(null);
+
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+
+        (async () => {
+            try {
+                // Fetch event by tag
+                const { data: eventData, error: eventErr } = await supabase
+                    .from("events")
+                    .select("*")
+                    .eq("tag", tag)
+                    .single();
+
+                if (!mounted) return;
+
+                if (eventErr) {
+                    setEventError(eventErr.message || "Failed to load event");
+                    setEvent(null);
+                    setLoadingEvent(false);
+                    setLoadingPasses(false);
+                    return;
+                }
+
+                setEvent(eventData ?? null);
+                setLoadingEvent(false);
+
+                // Fetch passes for this event
+                if (eventData?.id) {
+                    const { data: passesData, error: passesErr } = await supabase
+                        .from("passes")
+                        .select("*")
+                        .eq("event_id", eventData.id)
+                        .order("display_order", { ascending: true });
+
+                    if (!mounted) return;
+
+                    if (passesErr) {
+                        setPassesError(passesErr.message || "Failed to load passes");
+                    } else {
+                        setPasses(passesData ?? []);
+                    }
+                }
+            } catch (err: any) {
+                if (!mounted) return;
+                setEventError(err?.message ?? "An unexpected error occurred");
+                setEvent(null);
+            } finally {
+                if (mounted) setLoadingPasses(false);
+            }
+        })();
+
+        return () => {
+            mounted = false;
+        };
+    }, [initialEvent, tag]);
+
     const showBackbone = activeGlobal === "studio";
 
     return (
@@ -80,22 +165,28 @@ export default function AppContainer() {
                         {!isBackboneOpen && showBackbone && (
                             <button
                                 onClick={() => setIsBackboneOpen(true)}
-                                className="p-2.5 bg-gray-50 border border-gray-100 rounded-xl text-(--brand-blue) transition-all hover:bg-(--brand-blue) hover:text-white shadow-sm"
+                                className="p-2.5 bg-gray-50 border border-gray-100 rounded-xl text-[var(--brand-blue)] transition-all hover:bg-[var(--brand-blue)] hover:text-white shadow-sm"
                             >
                                 <PanelLeftOpen className="w-5 h-5" />
                             </button>
                         )}
+
                         <div className="flex flex-col">
                             <div className="flex items-center gap-2 mb-1">
                                 <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.25em] leading-none">
                                     {activeGlobal === "studio" ? "Event Studio" : "Intelligence"}
                                 </h2>
                             </div>
+
                             <div className="flex items-center gap-2.5">
                                 <span className="text-lg font-black text-gray-900 tracking-tight">
-                                    {activeGlobal === "studio" ? BUILDER_CATEGORIES.find(c => c.id === activeBuilderCategory)?.label : GLOBAL_NAV.find(n => n.id === activeGlobal)?.label}
+                                    {activeGlobal === "studio"
+                                        ? BUILDER_CATEGORIES.find((c) => c.id === activeBuilderCategory)?.label
+                                        : GLOBAL_NAV.find((n) => n.id === activeGlobal)?.label}
                                 </span>
-                                {isLive && <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
+                                {isLive && (
+                                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                )}
                             </div>
                         </div>
                     </div>
@@ -106,9 +197,11 @@ export default function AppContainer() {
                                 title="Preview Registration"
                                 className="p-2 text-gray-400 hover:text-gray-900 hover:bg-white hover:shadow-sm rounded-xl transition-all border border-transparent hover:border-gray-100"
                             >
-                                <Eye className="w-4.5 h-4.5" />
+                                <Eye className="w-5 h-5" />
                             </button>
+
                             <div className="w-px h-4 bg-gray-200" />
+
                             <div
                                 title={isLive ? "Event is Public" : "Event is in Draft"}
                                 className="flex items-center gap-3 pr-3 cursor-pointer"
@@ -125,7 +218,10 @@ export default function AppContainer() {
                                         className="w-4 h-4 bg-white rounded-full shadow-md"
                                     />
                                 </div>
-                                <span className="text-[9px] font-black uppercase tracking-widest text-gray-500 leading-none">{isLive ? "Live" : "Draft"}</span>
+
+                                <span className="text-[9px] font-black uppercase tracking-widest text-gray-500 leading-none">
+                                    {isLive ? "Live" : "Draft"}
+                                </span>
                             </div>
                         </div>
 
@@ -136,6 +232,14 @@ export default function AppContainer() {
                 </header>
 
                 <main className="flex-1 overflow-hidden">
+                    {/* Show a small inline loader / error if event is loading or failed */}
+                    {loadingEvent && (
+                        <div className="p-4 text-sm text-gray-500">Loading event…</div>
+                    )}
+                    {eventError && (
+                        <div className="p-4 text-sm text-red-600">Error: {eventError}</div>
+                    )}
+
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={`${activeGlobal}-${activeBuilderCategory}`}
@@ -146,11 +250,22 @@ export default function AppContainer() {
                             className="h-full"
                         >
                             {activeGlobal === "command" && <CommandHubView />}
+
                             {activeGlobal === "studio" && (
                                 <>
-                                    {activeBuilderCategory === "registration" && <RegistrationView />}
-                                    {activeBuilderCategory === "essentials" && <BasicInfoView />}
-                                    {activeBuilderCategory === "ticketing" && <TicketingView />}
+                                    {activeBuilderCategory === "registration" && (
+                                        <RegistrationView />
+                                    )}
+                                    {activeBuilderCategory === "essentials" && (
+                                        <BasicInfoView event={event} />
+                                    )}
+                                    {activeBuilderCategory === "ticketing" && (
+                                        <TicketingView
+                                            passes={passes}
+                                            loading={loadingPasses}
+                                            error={passesError}
+                                        />
+                                    )}
                                     {activeBuilderCategory === "variables" && (
                                         <SmartGroupsView
                                             onNavigateToRegistry={() => setActiveGlobal("registry")}
@@ -158,6 +273,7 @@ export default function AppContainer() {
                                     )}
                                 </>
                             )}
+
                             {activeGlobal === "live" && <OperationsView />}
 
                             {/* Professional Organizer Views */}
