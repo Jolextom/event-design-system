@@ -28,7 +28,7 @@ import { BroadcastView } from "./views/BroadcastView";
 import { SettingsView } from "./views/SettingsView";
 
 import { createClient } from "@supabase/supabase-js";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 type PageProps = {
     event?: Event | null;
@@ -43,16 +43,39 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
     const tag = typeof params === "object" && params?.tag ? String(params.tag) : null;
 
     const [activeGlobal, setActiveGlobal] = useState<GlobalSection>("studio");
-    const [activeBuilderCategory, setActiveBuilderCategory] =
-        useState<CategoryId>("registration");
-    const [isBackboneOpen, setIsBackboneOpen] = useState(true);
-    const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
-    const [isLive, setIsLive] = useState(false);
 
     // Event state: either provided by prop or fetched client-side
     const [event, setEvent] = useState<Event | null>(initialEvent);
+
+    const isPublished = event?.is_published || false;
+    const contentLocked = !isPublished;
+
+    // Determine initial builder category based on locked status
+    const [activeBuilderCategory, setActiveBuilderCategory] =
+        useState<CategoryId>(contentLocked ? "essentials" : "registration");
+
+    const [isBackboneOpen, setIsBackboneOpen] = useState(true);
+    const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+
     const [loadingEvent, setLoadingEvent] = useState<boolean>(!initialEvent && Boolean(tag));
     const [eventError, setEventError] = useState<string | null>(null);
+
+    // Can only publish if basic info is complete
+    const canPublish = Boolean(
+        event?.event_title &&
+        event?.start_date &&
+        event?.location
+    );
+
+    const router = useRouter(); // Need router for refresh
+
+
+    // Effect to enforce locking if event data updates and confirms incomplete setup
+    useEffect(() => {
+        if (event && !event.location && activeBuilderCategory !== "essentials") {
+            setActiveBuilderCategory("essentials");
+        }
+    }, [event, activeBuilderCategory]);
 
     // Passes state
     const [passes, setPasses] = useState<Pass[]>([]);
@@ -294,6 +317,45 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
         setLoadingPasses(false);
     };
 
+    const handlePublish = async () => {
+        if (!event?.id || (!canPublish && !isPublished)) return;
+
+        // If already published, confirm unpublish
+        if (isPublished) {
+            const confirmUnpublish = window.confirm("Are you sure you want to unpublish this event? It will return to draft mode.");
+            if (!confirmUnpublish) return;
+        }
+
+        const newStatus = !isPublished;
+
+        try {
+            const supabase = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            );
+
+            const { error } = await supabase
+                .from("events")
+                .update({ is_published: newStatus })
+                .eq("id", event.id);
+
+            if (error) throw error;
+
+            // Optimistic update
+            setEvent(prev => prev ? { ...prev, is_published: newStatus } : null);
+            router.refresh();
+
+            if (newStatus) {
+                alert("Event Published! Dashboard Unlocked.");
+            } else {
+                alert("Event Unpublished. Returned to Draft.");
+            }
+        } catch (error) {
+            console.error("Error updating publish status:", error);
+            alert("Failed to update status.");
+        }
+    };
+
     const showBackbone = activeGlobal === "studio";
 
     return (
@@ -344,8 +406,16 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                                         ? BUILDER_CATEGORIES.find((c) => c.id === activeBuilderCategory)?.label
                                         : GLOBAL_NAV.find((n) => n.id === activeGlobal)?.label}
                                 </span>
-                                {isLive && (
-                                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                {isPublished ? (
+                                    <div className="flex items-center gap-2 px-2 py-1 bg-green-50 border border-green-100 rounded-lg">
+                                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                                        <span className="text-[10px] font-bold text-green-700 uppercase tracking-wide">Live</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 px-2 py-1 bg-yellow-50 border border-yellow-100 rounded-lg">
+                                        <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                                        <span className="text-[10px] font-bold text-yellow-700 uppercase tracking-wide">Draft</span>
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -359,34 +429,21 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                             >
                                 <Eye className="w-5 h-5" />
                             </button>
-
-                            <div className="w-px h-4 bg-gray-200" />
-
-                            <div
-                                title={isLive ? "Event is Public" : "Event is in Draft"}
-                                className="flex items-center gap-3 pr-3 cursor-pointer"
-                                onClick={() => setIsLive(!isLive)}
-                            >
-                                <div
-                                    className={cn(
-                                        "w-8 h-5 rounded-full relative transition-all duration-300 p-0.5 shadow-inner",
-                                        isLive ? "bg-green-500" : "bg-gray-200"
-                                    )}
-                                >
-                                    <motion.div
-                                        animate={{ x: isLive ? 12 : 0 }}
-                                        className="w-4 h-4 bg-white rounded-full shadow-md"
-                                    />
-                                </div>
-
-                                <span className="text-[9px] font-black uppercase tracking-widest text-gray-500 leading-none">
-                                    {isLive ? "Live" : "Draft"}
-                                </span>
-                            </div>
                         </div>
 
-                        <button className="bg-gray-900 text-white px-8 py-3 rounded-xl text-[11px] font-black shadow-xl shadow-gray-200 hover:bg-black hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest">
-                            Publish Changes
+                        <button
+                            disabled={!canPublish && !isPublished}
+                            onClick={handlePublish}
+                            className={cn(
+                                "px-8 py-3 rounded-xl text-[11px] font-black shadow-xl transition-all uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none",
+                                isPublished
+                                    ? "bg-white text-red-500 border border-red-100 hover:bg-red-50 hover:border-red-200 shadow-sm"
+                                    : !canPublish
+                                        ? "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
+                                        : "bg-gray-900 text-white shadow-gray-200 hover:bg-black hover:scale-[1.02] active:scale-95"
+                            )}
+                        >
+                            {isPublished ? "Unpublish Event" : "Publish Event"}
                         </button>
                     </div>
                 </header>
@@ -423,7 +480,9 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                                         />
                                     )}
                                     {activeBuilderCategory === "essentials" && (
-                                        <BasicInfoView event={event} />
+                                        <BasicInfoView
+                                            event={event}
+                                        />
                                     )}
                                     {activeBuilderCategory === "ticketing" && (
                                         <TicketingView

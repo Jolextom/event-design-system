@@ -30,7 +30,7 @@ export default function AuthPage() {
     if (user) {
         // Redirect to a static dashboard or home page (customize as needed)
         if (typeof window !== 'undefined') {
-            window.location.href = "/events/demo/dashboard";
+            window.location.href = "/events/dashboard";
         }
         return (
             <div className="min-h-screen flex items-center justify-center">
