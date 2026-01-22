@@ -133,17 +133,16 @@ export const BUILDER_CATEGORIES: Category[] = [
     description: "Title, description, and location",
   },
   {
-    id: "registration",
-    label: "Signup Form",
-    icon: MessageSquare,
-    description: "Questions for your guests",
-    badge: "Live",
-  },
-  {
     id: "ticketing",
     label: "Ticket Types",
     icon: Ticket,
     description: "Pricing and availability",
+  },
+  {
+    id: "registration",
+    label: "Signup Form",
+    icon: MessageSquare,
+    description: "Questions for your guests",
   },
   {
     id: "variables",

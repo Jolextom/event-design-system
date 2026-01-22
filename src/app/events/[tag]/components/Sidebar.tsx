@@ -2,7 +2,8 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, ArrowLeft, Lock } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { GlobalSection, GLOBAL_NAV } from "../types";
 
@@ -11,19 +12,23 @@ interface SidebarProps {
     onSelect: (id: GlobalSection) => void;
     isExpanded: boolean;
     onToggle: () => void;
+    contentLocked?: boolean;
+    isLoading?: boolean;
 }
 
 export function GlobalSidebar({
     activeId,
     onSelect,
     isExpanded,
-    onToggle
+    onToggle,
+    contentLocked,
+    isLoading
 }: SidebarProps) {
     return (
         <motion.div
             animate={{ width: isExpanded ? 240 : 72 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="border-r border-gray-100 flex flex-col py-6 bg-white h-full shrink-0 z-50 overflow-hidden"
+            className="border-r border-gray-100 flex flex-col py-6 bg-white h-full shrink-0 z-50"
         >
             {/* Logo */}
             <div className="flex items-center px-5 mb-10 gap-3">
@@ -33,25 +38,87 @@ export function GlobalSidebar({
                 )}
             </div>
 
+            {/* Back to Events */}
+            <div className="px-5 mb-6">
+                <Link
+                    href="/events/dashboard"
+                    className="flex items-center gap-3 text-gray-400 hover:text-gray-900 transition-colors group"
+                >
+                    <div className="p-1.5 rounded-lg group-hover:bg-gray-100 transition-colors">
+                        <ArrowLeft className="w-4 h-4" />
+                    </div>
+                    {isExpanded && (
+                        <span className="text-xs font-bold animate-in fade-in duration-300">Back</span>
+                    )}
+                </Link>
+            </div>
+
             {/* Navigation */}
             <div className="flex flex-col gap-2 flex-1 px-3">
-                {GLOBAL_NAV.map((item) => (
-                    <button
-                        key={item.id}
-                        onClick={() => onSelect(item.id as GlobalSection)}
-                        className={cn(
-                            "flex items-center gap-4 p-3.5 rounded-2xl transition-all group",
-                            activeId === item.id ? "bg-gray-50 text-[var(--brand-blue)] shadow-sm" : "text-gray-400 hover:text-gray-600 hover:bg-gray-50/50"
-                        )}
-                    >
-                        <item.icon className="w-5 h-5 shrink-0" />
-                        {isExpanded && (
-                            <span className="text-sm font-bold whitespace-nowrap animate-in fade-in duration-300">
-                                {item.label}
-                            </span>
-                        )}
-                    </button>
-                ))}
+                {GLOBAL_NAV.map((item) => {
+                    // During loading, only enable Studio. After loading, use contentLocked logic
+                    const isLoadingState = isLoading && item.id !== "studio";
+                    const isLocked = !isLoading && contentLocked && item.id !== "studio";
+                    const isDisabled = isLoadingState || isLocked;
+
+                    return (
+                        <div key={item.id} className="relative group">
+                            <button
+                                onClick={() => !isDisabled && onSelect(item.id as GlobalSection)}
+                                className={cn(
+                                    "w-full flex items-center gap-4 p-3.5 rounded-2xl transition-all",
+                                    isLoadingState
+                                        ? "opacity-50 cursor-wait text-gray-400"
+                                        : isLocked
+                                            ? "opacity-40 cursor-not-allowed text-gray-400"
+                                            : activeId === item.id
+                                                ? "bg-gray-50 text-[var(--brand-blue)] shadow-sm"
+                                                : "text-gray-400 hover:text-gray-600 hover:bg-gray-50/50"
+                                )}
+                            >
+                                <item.icon className="w-5 h-5 shrink-0" />
+                                {isExpanded && (
+                                    <span className="text-sm font-bold whitespace-nowrap animate-in fade-in duration-300">
+                                        {item.label}
+                                    </span>
+                                )}
+                            </button>
+                            {/* Only show tooltips when NOT loading */}
+                            {!isLoading && (
+                                isLocked ? (
+                                    isExpanded ? (
+                                        // Expanded + Locked: Overlay on the item
+                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-[100] pointer-events-none bg-white/80 backdrop-blur-[1px] rounded-2xl">
+                                            <div className="bg-gray-900 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg shadow-xl border border-white/10 whitespace-nowrap flex items-center gap-2">
+                                                <Lock className="w-3 h-3" />
+                                                <span className="font-black uppercase tracking-widest">Publish to Access</span>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        // Collapsed + Locked: Tooltip with arrow showing lock message
+                                        <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-[100] pointer-events-none">
+                                            <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-r-[6px] border-r-gray-900" />
+                                            <div className="bg-gray-900 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg shadow-xl border border-white/10 whitespace-nowrap flex items-center gap-2">
+                                                <Lock className="w-3 h-3" />
+                                                <span className="font-black uppercase tracking-widest">Publish to Access</span>
+                                            </div>
+                                        </div>
+                                    )
+                                ) : (
+                                    // Collapsed + Not Locked: Tooltip showing item name
+                                    !isExpanded && (
+                                        <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-[100] pointer-events-none">
+                                            <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-r-[6px] border-r-gray-900" />
+                                            <div className="bg-gray-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-xl border border-white/10 whitespace-nowrap">
+                                                {item.label}
+                                            </div>
+                                        </div>
+                                    )
+                                )
+                            )}
+                        </div>
+                    );
+                })}
             </div>
 
             {/* Footer */}

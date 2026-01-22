@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PanelLeftOpen, Eye } from "lucide-react";
+import Link from 'next/link';
 import { cn } from "@/lib/utils";
 import {
     GlobalSection,
@@ -16,6 +17,8 @@ import {
 } from "./types";
 import { GlobalSidebar } from "./components/Sidebar";
 import { BackbonePane } from "./components/Backbone";
+import { Toast, ToastType } from "./components/Toast";
+import { ConfirmModal } from "./components/ConfirmModal";
 import { CommandHubView } from "./views/CommandHubView";
 import { BasicInfoView } from "./views/BasicInfoView";
 import { RegistrationView } from "./views/RegistrationView";
@@ -47,12 +50,27 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
     // Event state: either provided by prop or fetched client-side
     const [event, setEvent] = useState<Event | null>(initialEvent);
 
+    useEffect(() => {
+        if (initialEvent) {
+            setEvent(initialEvent);
+        }
+    }, [initialEvent]);
+
     const isPublished = event?.is_published || false;
-    const contentLocked = !isPublished;
+    const globalLocked = !isPublished;
+
+    // Can only publish (and access studio) if basic info is complete
+    const isSetupComplete = Boolean(
+        event?.event_title &&
+        event?.start_date &&
+        event?.location
+    );
+
+    const studioLocked = !isSetupComplete;
 
     // Determine initial builder category based on locked status
     const [activeBuilderCategory, setActiveBuilderCategory] =
-        useState<CategoryId>(contentLocked ? "essentials" : "registration");
+        useState<CategoryId>(studioLocked ? "essentials" : "registration");
 
     const [isBackboneOpen, setIsBackboneOpen] = useState(true);
     const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
@@ -60,12 +78,7 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
     const [loadingEvent, setLoadingEvent] = useState<boolean>(!initialEvent && Boolean(tag));
     const [eventError, setEventError] = useState<string | null>(null);
 
-    // Can only publish if basic info is complete
-    const canPublish = Boolean(
-        event?.event_title &&
-        event?.start_date &&
-        event?.location
-    );
+
 
     const router = useRouter(); // Need router for refresh
 
@@ -91,6 +104,11 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
     const [attendees, setAttendees] = useState<Attendee[]>([]);
     const [loadingAttendees, setLoadingAttendees] = useState<boolean>(false);
     const [attendeesError, setAttendeesError] = useState<string | null>(null);
+
+    // UX State
+    const [confirmUnpublishOpen, setConfirmUnpublishOpen] = useState(false);
+    const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -317,15 +335,16 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
         setLoadingPasses(false);
     };
 
-    const handlePublish = async () => {
-        if (!event?.id || (!canPublish && !isPublished)) return;
+    const handleEventUpdate = (updates: Partial<Event>) => {
+        if (!event) return;
+        setEvent({ ...event, ...updates });
+        router.refresh();
+    };
 
-        // If already published, confirm unpublish
-        if (isPublished) {
-            const confirmUnpublish = window.confirm("Are you sure you want to unpublish this event? It will return to draft mode.");
-            if (!confirmUnpublish) return;
-        }
+    const togglePublish = async () => {
+        if (!event?.id) return;
 
+        // This is the actual DB update function, separated from the button handler
         const newStatus = !isPublished;
 
         try {
@@ -346,13 +365,25 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
             router.refresh();
 
             if (newStatus) {
-                alert("Event Published! Dashboard Unlocked.");
+                setToast({ message: "Event Launched Successfully!", type: "success" });
             } else {
-                alert("Event Unpublished. Returned to Draft.");
+                setToast({ message: "Event Returned to Draft.", type: "info" });
             }
         } catch (error) {
             console.error("Error updating publish status:", error);
-            alert("Failed to update status.");
+            setToast({ message: "Failed to update status", type: "error" });
+        }
+    };
+
+    const handlePublishClick = () => {
+        if (!event?.id || (!isSetupComplete && !isPublished)) return;
+
+        if (isPublished) {
+            // Confirm unpublish
+            setConfirmUnpublishOpen(true);
+        } else {
+            // Publish immediately
+            togglePublish();
         }
     };
 
@@ -360,12 +391,31 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
 
     return (
         <div className="flex h-screen bg-white overflow-hidden text-[#111827]">
+            <Toast
+                message={toast?.message ?? null}
+                type={toast?.type}
+                onClose={() => setToast(null)}
+            />
+
+            <ConfirmModal
+                isOpen={confirmUnpublishOpen}
+                onClose={() => setConfirmUnpublishOpen(false)}
+                onConfirm={togglePublish}
+                title="Unpublish Event?"
+                description="This will hide the event from the public. Attendees will no longer be able to access the event page or register."
+                confirmLabel="Unpublish"
+                cancelLabel="Cancel"
+                isDestructive={true}
+            />
+
             {/* Pane 1: Global Context Switcher */}
             <GlobalSidebar
                 activeId={activeGlobal}
                 onSelect={setActiveGlobal}
                 isExpanded={isSidebarExpanded}
                 onToggle={() => setIsSidebarExpanded(!isSidebarExpanded)}
+                contentLocked={globalLocked}
+                isLoading={loadingEvent}
             />
 
             {/* Pane 2: Contextual Backbone (Studio Only) */}
@@ -376,6 +426,8 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                         activeId={activeBuilderCategory}
                         onSelect={setActiveBuilderCategory}
                         onToggle={() => setIsBackboneOpen(false)}
+                        contentLocked={studioLocked}
+                        isLoading={loadingEvent}
                     />
                 )}
             </AnimatePresence>
@@ -384,6 +436,7 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
             <div className="flex-1 flex flex-col min-w-0 h-full relative bg-white">
                 <header className="h-20 border-b border-gray-100 px-10 flex items-center justify-between bg-white/80 backdrop-blur-xl z-40 sticky top-0">
                     <div className="flex items-center gap-5">
+
                         {!isBackboneOpen && showBackbone && (
                             <button
                                 onClick={() => setIsBackboneOpen(true)}
@@ -423,24 +476,27 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
 
                     <div className="flex items-center gap-6">
                         <div className="flex items-center gap-4 bg-gray-50/50 p-1.5 rounded-2xl border border-gray-100/80">
-                            <button
+                            <Link
+                                href={`/${event?.tag || ''}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 title="Preview Registration"
-                                className="p-2 text-gray-400 hover:text-gray-900 hover:bg-white hover:shadow-sm rounded-xl transition-all border border-transparent hover:border-gray-100"
+                                className="p-2 text-gray-400 hover:text-gray-900 hover:bg-white hover:shadow-sm rounded-xl transition-all border border-transparent hover:border-gray-100 flex items-center justify-center"
                             >
                                 <Eye className="w-5 h-5" />
-                            </button>
+                            </Link>
                         </div>
 
                         <button
-                            disabled={!canPublish && !isPublished}
-                            onClick={handlePublish}
+                            disabled={!isSetupComplete && !isPublished}
+                            onClick={handlePublishClick}
                             className={cn(
                                 "px-8 py-3 rounded-xl text-[11px] font-black shadow-xl transition-all uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none",
                                 isPublished
                                     ? "bg-white text-red-500 border border-red-100 hover:bg-red-50 hover:border-red-200 shadow-sm"
-                                    : !canPublish
-                                        ? "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
-                                        : "bg-gray-900 text-white shadow-gray-200 hover:bg-black hover:scale-[1.02] active:scale-95"
+                                    : (isSetupComplete
+                                        ? "bg-[var(--brand-blue)] text-white hover:bg-blue-600 shadow-blue-200 shadow-lg"
+                                        : "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none")
                             )}
                         >
                             {isPublished ? "Unpublish Event" : "Publish Event"}
@@ -449,77 +505,135 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                 </header>
 
                 <main className="flex-1 overflow-hidden">
-                    {/* Show a small inline loader / error if event is loading or failed */}
-                    {loadingEvent && (
-                        <div className="p-4 text-sm text-gray-500">Loading event…</div>
+                    {/* Show skeleton while loading, error state if failed, or content if ready */}
+                    {loadingEvent ? (
+                        <PageSkeleton />
+                    ) : eventError ? (
+                        <div className="flex flex-col items-center justify-center h-full gap-4">
+                            <div className="text-center">
+                                <p className="text-lg font-bold text-gray-900 mb-2">Event Not Found</p>
+                                <p className="text-sm text-gray-500">{eventError}</p>
+                            </div>
+                            <a href="/events/dashboard" className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-bold text-gray-700 transition-colors">
+                                Back to Dashboard
+                            </a>
+                        </div>
+                    ) : !event ? (
+                        <div className="flex flex-col items-center justify-center h-full gap-4">
+                            <div className="text-center">
+                                <p className="text-lg font-bold text-gray-900 mb-2">Event Not Found</p>
+                                <p className="text-sm text-gray-500">This event doesn't exist or has been removed.</p>
+                            </div>
+                            <a href="/events/dashboard" className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-bold text-gray-700 transition-colors">
+                                Back to Dashboard
+                            </a>
+                        </div>
+                    ) : (
+
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={`${activeGlobal}-${activeBuilderCategory}`}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.2, ease: "circOut" }}
+                                className="h-full"
+                            >
+                                {activeGlobal === "command" && <CommandHubView />}
+
+                                {activeGlobal === "studio" && (
+                                    <>
+                                        {activeBuilderCategory === "registration" && (
+                                            <RegistrationView
+                                                questions={questions}
+                                                loading={loadingQuestions}
+                                                error={questionsError}
+                                                eventId={event?.id ?? null}
+                                                onQuestionCreated={refetchQuestions}
+                                            />
+                                        )}
+                                        {activeBuilderCategory === "essentials" && (
+                                            <BasicInfoView
+                                                event={event}
+                                                hasTickets={passes.length > 0}
+                                                hasQuestions={questions.length > 0}
+                                                onNavigate={setActiveBuilderCategory}
+                                                onUpdate={handleEventUpdate}
+                                            />
+                                        )}
+                                        {activeBuilderCategory === "ticketing" && (
+                                            <TicketingView
+                                                passes={passes}
+                                                loading={loadingPasses}
+                                                error={passesError}
+                                                eventId={event?.id ?? null}
+                                                onPassCreated={refetchPasses}
+                                            />
+                                        )}
+                                        {activeBuilderCategory === "variables" && (
+                                            <SmartGroupsView
+                                                onNavigateToRegistry={() => setActiveGlobal("registry")}
+                                            />
+                                        )}
+                                    </>
+                                )}
+
+                                {activeGlobal === "live" && <OperationsView />}
+
+                                {/* Professional Organizer Views */}
+                                {activeGlobal === "registry" && (
+                                    <RegistryView
+                                        attendees={attendees}
+                                        questions={questions}
+                                        loading={loadingAttendees}
+                                        error={attendeesError}
+                                        eventId={event?.id ?? null}
+                                        onRefresh={refetchAttendees}
+                                    />
+                                )}
+                                {activeGlobal === "automations" && <AutomationsView />}
+                                {activeGlobal === "broadcast" && <BroadcastView />}
+                                {activeGlobal === "settings" && <SettingsView />}
+                            </motion.div>
+                        </AnimatePresence>
                     )}
-                    {eventError && (
-                        <div className="p-4 text-sm text-red-600">Error: {eventError}</div>
-                    )}
-
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={`${activeGlobal}-${activeBuilderCategory}`}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.2, ease: "circOut" }}
-                            className="h-full"
-                        >
-                            {activeGlobal === "command" && <CommandHubView />}
-
-                            {activeGlobal === "studio" && (
-                                <>
-                                    {activeBuilderCategory === "registration" && (
-                                        <RegistrationView
-                                            questions={questions}
-                                            loading={loadingQuestions}
-                                            error={questionsError}
-                                            eventId={event?.id ?? null}
-                                            onQuestionCreated={refetchQuestions}
-                                        />
-                                    )}
-                                    {activeBuilderCategory === "essentials" && (
-                                        <BasicInfoView
-                                            event={event}
-                                        />
-                                    )}
-                                    {activeBuilderCategory === "ticketing" && (
-                                        <TicketingView
-                                            passes={passes}
-                                            loading={loadingPasses}
-                                            error={passesError}
-                                            eventId={event?.id ?? null}
-                                            onPassCreated={refetchPasses}
-                                        />
-                                    )}
-                                    {activeBuilderCategory === "variables" && (
-                                        <SmartGroupsView
-                                            onNavigateToRegistry={() => setActiveGlobal("registry")}
-                                        />
-                                    )}
-                                </>
-                            )}
-
-                            {activeGlobal === "live" && <OperationsView />}
-
-                            {/* Professional Organizer Views */}
-                            {activeGlobal === "registry" && (
-                                <RegistryView
-                                    attendees={attendees}
-                                    questions={questions}
-                                    loading={loadingAttendees}
-                                    error={attendeesError}
-                                    eventId={event?.id ?? null}
-                                    onRefresh={refetchAttendees}
-                                />
-                            )}
-                            {activeGlobal === "automations" && <AutomationsView />}
-                            {activeGlobal === "broadcast" && <BroadcastView />}
-                            {activeGlobal === "settings" && <SettingsView />}
-                        </motion.div>
-                    </AnimatePresence>
                 </main>
+            </div >
+        </div >
+    );
+}
+
+// Skeleton component for initial page load
+function PageSkeleton() {
+    return (
+        <div className="h-full flex flex-col animate-pulse">
+            {/* Header skeleton */}
+            <div className="p-10 border-b border-gray-100">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <div className="h-3 w-20 bg-gray-100 rounded mb-3" />
+                        <div className="h-6 w-48 bg-gray-100 rounded" />
+                    </div>
+                    <div className="h-10 w-32 bg-gray-100 rounded-xl" />
+                </div>
+            </div>
+
+            {/* Content skeleton */}
+            <div className="flex-1 p-10 space-y-8">
+                {/* Banner placeholder */}
+                <div className="h-56 bg-gray-50 rounded-4xl border-2 border-dashed border-gray-100" />
+
+                {/* Title placeholder */}
+                <div className="space-y-4">
+                    <div className="h-8 w-64 bg-gray-100 rounded" />
+                    <div className="h-4 w-96 bg-gray-50 rounded" />
+                </div>
+
+                {/* Cards grid placeholder */}
+                <div className="grid grid-cols-2 gap-6">
+                    <div className="h-32 bg-gray-50 rounded-3xl border border-gray-100" />
+                    <div className="h-32 bg-gray-50 rounded-3xl border border-gray-100" />
+                </div>
             </div>
         </div>
     );

@@ -30,7 +30,7 @@ export function EditDescriptionModal({ isOpen, onClose, eventId, initialValue, o
         content: initialValue,
         editorProps: {
             attributes: {
-                class: 'prose prose-sm sm:prose-base lg:prose-lg xl:prose-2xl focus:outline-none min-h-[200px] max-h-[400px] overflow-y-auto px-1 py-2 text-gray-900 font-medium prose-p:my-1 prose-p:leading-normal prose-headings:font-black prose-headings:tracking-tight',
+                class: 'prose prose-sm sm:prose-base lg:prose-lg xl:prose-2xl focus:outline-none min-h-[200px] max-h-[400px] overflow-y-auto px-1 py-2 text-gray-900 font-medium prose-p:my-3 prose-p:leading-normal prose-headings:font-black prose-headings:tracking-tight prose-ul:list-disc prose-ol:list-decimal prose-li:ml-4',
             },
         },
         immediatelyRender: false,
@@ -74,39 +74,7 @@ export function EditDescriptionModal({ isOpen, onClose, eventId, initialValue, o
         }
     };
 
-    const Toolbar = () => {
-        if (!editor) return null;
 
-        return (
-            <div className="flex items-center gap-1 pb-3 mb-3 border-b border-gray-100 overflow-x-auto">
-                <MenuButton
-                    onClick={() => editor.chain().focus().toggleBold().run()}
-                    isActive={editor.isActive('bold')}
-                    icon={Bold}
-                    label="Bold"
-                />
-                <MenuButton
-                    onClick={() => editor.chain().focus().toggleItalic().run()}
-                    isActive={editor.isActive('italic')}
-                    icon={Italic}
-                    label="Italic"
-                />
-                <div className="w-[1px] h-4 bg-gray-200 mx-2" />
-                <MenuButton
-                    onClick={() => editor.chain().focus().toggleBulletList().run()}
-                    isActive={editor.isActive('bulletList')}
-                    icon={List}
-                    label="Bullet List"
-                />
-                <MenuButton
-                    onClick={() => editor.chain().focus().toggleOrderedList().run()}
-                    isActive={editor.isActive('orderedList')}
-                    icon={ListOrdered}
-                    label="Numbered List"
-                />
-            </div>
-        );
-    };
 
     return (
         <AnimatePresence>
@@ -139,8 +107,8 @@ export function EditDescriptionModal({ isOpen, onClose, eventId, initialValue, o
                         </div>
 
                         <form onSubmit={handleSubmit} className="flex-1 flex flex-col px-5 pb-5 min-h-0">
-                            <div className="flex-1 min-h-0 bg-gray-50/50 border border-gray-100 rounded-xl p-3 flex flex-col focus-within:bg-white focus-within:ring-2 focus-within:ring-black/5 transition-all">
-                                <Toolbar />
+                            <div className="flex-1 min-h-0 bg-gray-50/50 rounded-xl p-3 flex flex-col focus-within:bg-white transition-all">
+                                {editor && <Toolbar editor={editor} />}
                                 <EditorContent editor={editor} className="flex-1 overflow-y-auto custom-scrollbar" />
                             </div>
 
@@ -185,5 +153,39 @@ function MenuButton({ onClick, isActive, icon: Icon, label }: { onClick: () => v
         >
             <Icon className="w-4 h-4" />
         </button>
+    );
+}
+
+function Toolbar({ editor }: { editor: any }) {
+    if (!editor) return null;
+
+    return (
+        <div className="flex items-center gap-1 pb-3 mb-3 border-b border-gray-100 overflow-x-auto">
+            <MenuButton
+                onClick={() => editor.chain().focus().toggleBold().run()}
+                isActive={editor.isActive('bold')}
+                icon={Bold}
+                label="Bold"
+            />
+            <MenuButton
+                onClick={() => editor.chain().focus().toggleItalic().run()}
+                isActive={editor.isActive('italic')}
+                icon={Italic}
+                label="Italic"
+            />
+            <div className="w-[1px] h-4 bg-gray-200 mx-2" />
+            <MenuButton
+                onClick={() => editor.chain().focus().toggleBulletList().run()}
+                isActive={editor.isActive('bulletList')}
+                icon={List}
+                label="Bullet List"
+            />
+            <MenuButton
+                onClick={() => editor.chain().focus().toggleOrderedList().run()}
+                isActive={editor.isActive('orderedList')}
+                icon={ListOrdered}
+                label="Numbered List"
+            />
+        </div>
     );
 }

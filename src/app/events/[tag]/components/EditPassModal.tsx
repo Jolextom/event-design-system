@@ -22,7 +22,6 @@ export function EditPassModal({ isOpen, onClose, pass, onPassUpdated }: EditPass
     const [isFree, setIsFree] = useState(pass.is_free);
     const [price, setPrice] = useState(pass.price?.toString() || "0");
     const [quantity, setQuantity] = useState(pass.quantity_available.toString());
-    const [maxPerPerson, setMaxPerPerson] = useState(pass.max_per_person?.toString() || "5");
     const [groupSize, setGroupSize] = useState(pass.group_size?.toString() || "2");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -40,7 +39,6 @@ export function EditPassModal({ isOpen, onClose, pass, onPassUpdated }: EditPass
         setIsFree(pass.is_free);
         setPrice(pass.price?.toString() || "0");
         setQuantity(pass.quantity_available.toString());
-        setMaxPerPerson(pass.max_per_person?.toString() || "5");
         setGroupSize(pass.group_size?.toString() || "2");
         setError(null);
     }, [pass]);
@@ -76,7 +74,7 @@ export function EditPassModal({ isOpen, onClose, pass, onPassUpdated }: EditPass
                 is_free: isFree,
                 type,
                 quantity_available: parseInt(quantity),
-                max_per_person: type === "individual" ? parseInt(maxPerPerson) || 5 : null,
+                max_per_person: type === "individual" ? 1 : null,
                 group_size: type === "group" ? parseInt(groupSize) || 2 : null,
                 updated_at: new Date().toISOString(),
             };
@@ -274,24 +272,7 @@ export function EditPassModal({ isOpen, onClose, pass, onPassUpdated }: EditPass
                                         </div>
                                     </div>
 
-                                    {type === "individual" ? (
-                                        <div className="space-y-3">
-                                            <label className="text-[9px] font-black uppercase tracking-[0.25em] text-gray-400 block ml-1">
-                                                Max per Person
-                                            </label>
-                                            <div className="relative">
-                                                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
-                                                <input
-                                                    type="number"
-                                                    value={maxPerPerson}
-                                                    onChange={(e) => setMaxPerPerson(e.target.value)}
-                                                    min="1"
-                                                    max="10"
-                                                    className="w-full pl-10 pr-5 py-3.5 bg-gray-50 border border-gray-100 rounded-xl text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--brand-blue)]/20 focus:border-[var(--brand-blue)] transition-all"
-                                                />
-                                            </div>
-                                        </div>
-                                    ) : (
+                                    {type === "group" && (
                                         <div className="space-y-3">
                                             <label className="text-[9px] font-black uppercase tracking-[0.25em] text-gray-400 block ml-1">
                                                 Group Size

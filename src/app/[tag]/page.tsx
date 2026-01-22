@@ -38,7 +38,8 @@ export default function RegistrationPage() {
 
     // --- State ---
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);  // Page-level error (event not found)
+    const [formError, setFormError] = useState<string | null>(null);  // Form validation errors
     const [event, setEvent] = useState<Event | null>(null);
     const [passes, setPasses] = useState<Pass[]>([]);
     const [questions, setQuestions] = useState<Question[]>([]);
@@ -137,7 +138,7 @@ export default function RegistrationPage() {
     const handleRegister = async () => {
         if (!event || !selectedTicket) return;
         setSubmitting(true);
-        setError(null);
+        setFormError(null);
 
         const supabase = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -145,40 +146,185 @@ export default function RegistrationPage() {
         );
 
         try {
-            for (const guest of guests) {
-                if (guest.isInvite && !guest.email) continue;
-                if (!guest.isInvite && (!guest.email || !guest.firstName)) continue;
+            // Get the selected pass
+            const pass = passes.find(p => p.id === selectedTicket);
+            if (!pass) throw new Error("Selected ticket not found");
 
-                const { data: attendeeData, error: attendeeErr } = await supabase
+            // === VALIDATION 1: Check primary guest has required fields ===
+            const primaryGuest = guests[0];
+            if (!primaryGuest.firstName?.trim() && !primaryGuest.isInvite) {
+                throw new Error("First name is required");
+            }
+            if (!primaryGuest.email?.trim()) {
+                throw new Error("Email is required");
+            }
+
+            // Basic email format check
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (primaryGuest.email && !emailRegex.test(primaryGuest.email)) {
+                throw new Error("Please enter a valid email address");
+            }
+
+            // === VALIDATION 2: Filter valid guests ===
+            const validGuests = guests.filter(g => {
+                if (g.isInvite && !g.email) return false;
+                if (!g.isInvite && (!g.email || !g.firstName)) return false;
+                return true;
+            });
+
+            if (validGuests.length === 0) {
+                throw new Error("Please complete at least one guest's registration details");
+            }
+
+            // === VALIDATION 3: Check for duplicate emails in form ===
+            const emailsInForm = validGuests.map(g => g.email.toLowerCase().trim());
+            const uniqueEmails = new Set(emailsInForm);
+            if (uniqueEmails.size !== emailsInForm.length) {
+                throw new Error("Each attendee must have a unique email address");
+            }
+
+            // === VALIDATION 4: Check if emails already registered for this event ===
+            const { data: existingAttendees } = await supabase
+                .from("attendees")
+                .select("email")
+                .eq("event_id", event.id)
+                .in("email", emailsInForm);
+
+            if (existingAttendees && existingAttendees.length > 0) {
+                const alreadyRegistered = existingAttendees.map(a => a.email).join(", ");
+                throw new Error(`Already registered for this event: ${alreadyRegistered}`);
+            }
+
+            // === VALIDATION 5: Check required questions are answered ===
+            const requiredQuestions = questions.filter(q => q.is_required);
+            for (let i = 0; i < validGuests.length; i++) {
+                const guest = validGuests[i];
+                // Only check non-invite guests (invites just have email)
+                if (!guest.isInvite) {
+                    for (const rq of requiredQuestions) {
+                        const answer = guest.answers[rq.id];
+                        if (!answer || !String(answer).trim()) {
+                            const guestLabel = i === 0 ? "Primary guest" : `Guest ${i + 1}`;
+                            throw new Error(`${guestLabel} must answer: "${rq.title}"`);
+                        }
+                    }
+                }
+            }
+
+            // === VALIDATION 6: Check ticket availability ===
+            const ticketQuantity = pass.type === "group" ? 1 : validGuests.length;
+            const remaining = (pass.quantity_available || 0) - (pass.quantity_sold || 0);
+            if (ticketQuantity > remaining) {
+                throw new Error(`Only ${remaining} ticket(s) remaining for ${pass.title}`);
+            }
+
+            // Generate order reference
+            const orderRef = `EF-${event.tag?.toUpperCase() || 'EV'}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+            // === CREATE ORDER ===
+            const { data: order, error: orderErr } = await supabase
+                .from("orders_table")
+                .insert({
+                    event_id: event.id,
+                    pass_id: pass.id,
+                    quantity: ticketQuantity,
+                    first_name: primaryGuest.firstName || "Guest",
+                    last_name: primaryGuest.lastName || "",
+                    email: primaryGuest.email,
+                    order_ref: orderRef,
+                    total_amount: 0,
+                    expected_amount_kobo: 0,
+                    status: "completed"
+                })
+                .select()
+                .single();
+
+            if (orderErr) {
+                console.error("Order creation failed:", orderErr);
+                throw new Error("Failed to create order. Please try again.");
+            }
+
+            // === CREATE ATTENDEES ===
+            for (const guest of validGuests) {
+                const attendeeRef = `EF-${event.tag?.toUpperCase() || 'EV'}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+
+                const { data: attendee, error: attendeeErr } = await supabase
                     .from("attendees")
                     .insert({
                         event_id: event.id,
+                        order_id: order.id,
+                        pass_id: pass.id,
                         first_name: guest.firstName || "Guest",
                         last_name: guest.lastName || "",
                         email: guest.email,
-                        ref: `EF-${event.tag?.toUpperCase() || 'EV'}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+                        ref: attendeeRef,
                         email_status: guest.isInvite ? "invited" : "registered"
                     })
                     .select()
                     .single();
 
-                if (attendeeErr) throw attendeeErr;
+                if (attendeeErr) {
+                    // Handle unique constraint violation gracefully
+                    if (attendeeErr.code === "23505") {
+                        throw new Error(`${guest.email} is already registered for this event`);
+                    }
+                    console.error("Attendee creation failed:", attendeeErr);
+                    throw new Error(`Failed to register ${guest.email}. Please try again.`);
+                }
 
-                if (attendeeData && Object.keys(guest.answers).length > 0) {
-                    const responseInserts = Object.entries(guest.answers).map(([qId, answer]) => ({
-                        attendee_id: attendeeData.id,
+                // === SAVE ANSWERS ===
+                if (attendee && Object.keys(guest.answers).length > 0) {
+                    const answerInserts = Object.entries(guest.answers).map(([qId, answer]) => ({
+                        attendee_id: attendee.id,
                         question_id: qId,
                         answer_text: String(answer)
                     }));
 
-                    await supabase.from("answers").insert(responseInserts);
+                    const { error: answerErr } = await supabase.from("answers").insert(answerInserts);
+                    if (answerErr) console.error("Failed to save answers:", answerErr);
                 }
             }
 
-            setStep(3);
+            // === UPDATE QUANTITY_SOLD ===
+            const { error: rpcErr } = await supabase.rpc('increment_quantity_sold', {
+                pass_id_param: pass.id,
+                amount: ticketQuantity
+            });
+            if (rpcErr) console.error("Failed to update quantity:", rpcErr);
+
+            // === SEND INVITE EMAILS (for invited guests) ===
+            // We'll send invites asynchronously - don't block the redirect
+            const invitedAttendees = await supabase
+                .from("attendees")
+                .select("id")
+                .eq("order_id", order.id)
+                .eq("email_status", "invited");
+
+            if (invitedAttendees.data && invitedAttendees.data.length > 0) {
+                // Fire and forget - send invites in background
+                Promise.all(
+                    invitedAttendees.data.map(att =>
+                        fetch('/api/send-invite', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ attendeeId: att.id, eventTag: event.tag })
+                        }).catch(err => console.error('Failed to send invite:', err))
+                    )
+                );
+            }
+
+            // === REDIRECT TO RECEIPT ===
+            window.location.href = `/${event.tag}/receipt/${orderRef}`;
+
         } catch (err: any) {
             console.error("Registration error:", err);
-            setError(err.message || "Failed to complete registration");
+            // Provide user-friendly error message
+            let errorMsg = err.message || "Failed to complete registration";
+            // Clean up technical error messages
+            if (errorMsg.includes("duplicate key") || errorMsg.includes("unique_event_email")) {
+                errorMsg = "This email is already registered for this event";
+            }
+            setFormError(errorMsg);
         } finally {
             setSubmitting(false);
         }
@@ -289,6 +435,39 @@ export default function RegistrationPage() {
     const displayTitleMain = titleParts.slice(0, -1).join(' ');
     const displayTitleLast = titleParts[titleParts.length - 1];
 
+    const displayDate = (() => {
+        if (!event.start_date) return "Date TBA";
+
+        const startDate = new Date(event.start_date);
+        const startYear = startDate.getFullYear();
+        const startMonth = startDate.toLocaleDateString('en-US', { month: 'short' });
+        const startDay = startDate.getDate();
+        const startWeekday = startDate.toLocaleDateString('en-US', { weekday: 'short' });
+
+        let dateStr = `${startWeekday}, ${startMonth} ${startDay}, ${startYear}`;
+
+        if (event.end_date) {
+            const endDate = new Date(event.end_date);
+            const isSameDay = startDate.toDateString() === endDate.toDateString();
+
+            if (!isSameDay) {
+                const endYear = endDate.getFullYear();
+                const endMonth = endDate.toLocaleDateString('en-US', { month: 'short' });
+                const endDay = endDate.getDate();
+
+                // Format: Jan 22 - 25, 2026
+                if (startYear !== endYear) {
+                    dateStr = `${startMonth} ${startDay}, ${startYear} – ${endMonth} ${endDay}, ${endYear}`;
+                } else if (startMonth !== endMonth) {
+                    dateStr = `${startMonth} ${startDay} – ${endMonth} ${endDay}, ${startYear}`;
+                } else {
+                    dateStr = `${startMonth} ${startDay} – ${endDay}, ${startYear}`;
+                }
+            }
+        }
+        return dateStr;
+    })();
+
     return (
         <div className="min-h-screen bg-white text-[#111827] selection:bg-blue-100 pb-32">
 
@@ -377,7 +556,9 @@ export default function RegistrationPage() {
                                         <CalendarPlus className="w-2.5 h-2.5" /> Save
                                     </button>
                                 </div>
-                                <div className="text-base font-black text-gray-900">{event.start_date}</div>
+                                <div className="text-base font-black text-gray-900">
+                                    {displayDate}
+                                </div>
                             </div>
                             <div className="space-y-3 md:border-x px-0 md:px-8 border-gray-50">
                                 <div className="flex items-center gap-2 text-[9px] font-black text-gray-300 uppercase tracking-widest mb-1.5">
@@ -406,9 +587,10 @@ export default function RegistrationPage() {
                         {/* Event Story */}
                         <div className="space-y-6">
                             <h2 className="text-[9px] font-black uppercase tracking-[0.4em] text-gray-300">The Narrative</h2>
-                            <div className="text-xl md:text-2xl font-bold text-gray-500/80 leading-[1.6] whitespace-pre-line selection:bg-blue-50">
-                                {event.description || "Join us for this exclusive event."}
-                            </div>
+                            <div
+                                className="max-w-none [&_p]:text-xl [&_p]:md:text-3xl [&_p]:font-medium [&_p]:text-gray-600 [&_p]:leading-relaxed [&_strong]:text-gray-900 [&_strong]:font-black [&_em]:italic [&_ul]:list-disc [&_ul]:ml-6 [&_ol]:list-decimal [&_ol]:ml-6 [&_li]:text-xl [&_li]:md:text-2xl [&_a]:text-blue-600 [&_a]:underline"
+                                dangerouslySetInnerHTML={{ __html: event.description || "<p>Join us for this exclusive event.</p>" }}
+                            />
                         </div>
 
                         {/* Footer Vibe */}
@@ -686,13 +868,26 @@ export default function RegistrationPage() {
                                         );
                                     })}
 
-                                    <div className="space-y-3">
-                                        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Broadcasting Notes (Optional)</label>
-                                        <textarea placeholder="Dietary requirements or special requests for the group?" rows={2} className="w-full bg-gray-50/50 border-gray-100 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border resize-none" />
-                                    </div>
+
                                 </div>
 
-                                <div className="pt-4">
+                                <div className="pt-4 space-y-4">
+                                    {/* Inline Error Display */}
+                                    {formError && (
+                                        <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3">
+                                            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                                            <div>
+                                                <p className="text-sm font-bold text-red-600">{formError}</p>
+                                                <button
+                                                    onClick={() => setFormError(null)}
+                                                    className="text-xs font-bold text-red-400 hover:text-red-600 mt-1 underline"
+                                                >
+                                                    Dismiss
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <button
                                         onClick={handleRegister}
                                         disabled={submitting}
