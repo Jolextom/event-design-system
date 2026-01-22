@@ -301,8 +301,8 @@ export default function RegistrationPage() {
                 .eq("email_status", "invited");
 
             if (invitedAttendees.data && invitedAttendees.data.length > 0) {
-                // Fire and forget - send invites in background
-                Promise.all(
+                // Wait for invites to send to prevent browser collecting requests on redirect
+                await Promise.all(
                     invitedAttendees.data.map(att =>
                         fetch('/api/send-invite', {
                             method: 'POST',
@@ -312,6 +312,7 @@ export default function RegistrationPage() {
                     )
                 );
             }
+
 
             // === REDIRECT TO RECEIPT ===
             window.location.href = `/${event.tag}/receipt/${orderRef}`;
@@ -331,14 +332,7 @@ export default function RegistrationPage() {
     };
 
     if (loading) {
-        return (
-            <div className="min-h-screen bg-white flex flex-col items-center justify-center">
-                <div className="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center mb-6">
-                    <Loader2 className="w-8 h-8 text-gray-900 animate-spin" />
-                </div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Initializing Flow...</p>
-            </div>
-        );
+        return <PublicPageSkeleton />;
     }
 
     if (error || !event) {
@@ -397,33 +391,7 @@ export default function RegistrationPage() {
                                 </div>
                             </button>
 
-                            {/* Quantity Selector (Only for individual tickets) */}
-                            {isSelected && ticket.type === "individual" && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: -10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="flex items-center justify-between px-6 py-4 bg-gray-50/50 rounded-[24px] border border-gray-100"
-                                >
-                                    <div className="text-[9px] font-black uppercase tracking-widest text-gray-400">
-                                        Quantity
-                                    </div>
-                                    <div className="flex items-center gap-4">
-                                        <button
-                                            onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
-                                            className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-200 hover:border-blue-200 hover:text-blue-500 transition-all active:scale-90"
-                                        >
-                                            <Minus className="w-4 h-4" />
-                                        </button>
-                                        <span className="text-base font-black text-gray-900 w-4 text-center">{quantity}</span>
-                                        <button
-                                            onClick={() => setQuantity(prev => Math.min(10, prev + 1))}
-                                            className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-200 hover:border-blue-200 hover:text-blue-500 transition-all active:scale-90"
-                                        >
-                                            <Plus className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                </motion.div>
-                            )}
+
                         </div>
                     );
                 })}
@@ -621,26 +589,44 @@ export default function RegistrationPage() {
                         <div className="sticky top-32">
                             <div className="bg-white border border-gray-100 shadow-[0_48px_96px_-32px_rgba(0,0,0,0.06)] rounded-[48px] overflow-hidden">
                                 <div className="p-8 md:p-10 space-y-8">
-                                    <TicketSelector />
-
-                                    <div className="space-y-4 pt-2">
-                                        <button
-                                            onClick={() => setStep(2)}
-                                            className="w-full py-5 bg-gray-900 text-white rounded-[24px] font-black text-base shadow-[0_20px_40px_-12px_rgba(0,0,0,0.15)] hover:bg-gray-800 active:scale-95 transition-all flex items-center justify-center gap-3"
-                                        >
-                                            Next step <ArrowRight className="w-5 h-5" />
-                                        </button>
-                                        <div className="flex items-center justify-center gap-4">
-                                            <div className="flex -space-x-2">
-                                                {[1, 2, 3, 4].map(i => (
-                                                    <div key={i} className="w-8 h-8 rounded-full bg-gray-100 border-2 border-white overflow-hidden">
-                                                        <img src={`https://i.pravatar.cc/100?u=${i + 10}`} alt="User" />
+                                    {passes.length > 0 ? (
+                                        <>
+                                            <TicketSelector />
+                                            <div className="space-y-4 pt-2">
+                                                <button
+                                                    onClick={() => setStep(2)}
+                                                    className="w-full py-5 bg-gray-900 text-white rounded-[24px] font-black text-base shadow-[0_20px_40px_-12px_rgba(0,0,0,0.15)] hover:bg-gray-800 active:scale-95 transition-all flex items-center justify-center gap-3"
+                                                >
+                                                    Next step <ArrowRight className="w-5 h-5" />
+                                                </button>
+                                                <div className="flex items-center justify-center gap-4">
+                                                    <div className="flex -space-x-2">
+                                                        {[1, 2, 3, 4].map(i => (
+                                                            <div key={i} className="w-8 h-8 rounded-full bg-gray-100 border-2 border-white overflow-hidden">
+                                                                <img src={`https://i.pravatar.cc/100?u=${i + 10}`} alt="User" />
+                                                            </div>
+                                                        ))}
                                                     </div>
-                                                ))}
+                                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">+{Math.floor(Math.random() * 500 + 100)} attending</span>
+                                                </div>
                                             </div>
-                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">+{Math.floor(Math.random() * 500 + 100)} attending</span>
+                                        </>
+                                    ) : (
+                                        <div className="text-center py-10 space-y-6">
+                                            <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto border border-gray-100">
+                                                <Ticket className="w-8 h-8 text-gray-300" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <h3 className="text-xl font-black text-gray-900 tracking-tight">Tickets Not Available</h3>
+                                                <p className="text-gray-400 font-medium text-sm leading-relaxed max-w-[240px] mx-auto">
+                                                    Ticket sales haven't started for this event yet. Please check back later.
+                                                </p>
+                                            </div>
+                                            <button disabled className="w-full py-4 bg-gray-100 text-gray-400 rounded-[24px] font-black text-sm uppercase tracking-wider cursor-not-allowed">
+                                                Coming Soon
+                                            </button>
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
                                 <div className="bg-gray-50/50 p-5 flex items-center justify-center border-t border-gray-50">
                                     <span className="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em]">Verified Event — EventFlow Safe</span>
@@ -653,20 +639,28 @@ export default function RegistrationPage() {
 
             {/* --- MOBILE STICKY FOOTER --- */}
             <div className="fixed bottom-0 left-0 w-full p-6 md:hidden z-[60] bg-white/95 backdrop-blur-2xl border-t border-gray-100 shadow-[0_-20px_60px_rgba(0,0,0,0.08)]">
-                <div className="max-w-md mx-auto flex items-center justify-between gap-6">
-                    <div className="flex flex-col">
-                        <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1">Your Pass</span>
-                        <div className="flex items-baseline gap-1">
-                            <span className="text-3xl font-black text-gray-900 tracking-tight">{currentTicket?.is_free ? 'FREE' : `$${currentTicket?.price}`}</span>
+                {passes.length > 0 ? (
+                    <div className="max-w-md mx-auto flex items-center justify-between gap-6">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1">Your Pass</span>
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-3xl font-black text-gray-900 tracking-tight">{currentTicket?.is_free ? 'FREE' : `$${currentTicket?.price}`}</span>
+                            </div>
                         </div>
+                        <button
+                            onClick={() => setStep(2)}
+                            className="flex-1 py-5 bg-gray-900 text-white rounded-[24px] font-black text-base shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
+                        >
+                            Register <ChevronRight className="w-5 h-5" />
+                        </button>
                     </div>
-                    <button
-                        onClick={() => setStep(2)}
-                        className="flex-1 py-5 bg-gray-900 text-white rounded-[24px] font-black text-base shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
-                    >
-                        Register <ChevronRight className="w-5 h-5" />
-                    </button>
-                </div>
+                ) : (
+                    <div className="max-w-md mx-auto">
+                        <button disabled className="w-full py-4 bg-gray-100 text-gray-400 rounded-[24px] font-black text-sm uppercase tracking-wider cursor-not-allowed">
+                            Tickets Coming Soon
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* --- REGISTRATION MODAL --- */}
@@ -1023,6 +1017,71 @@ export default function RegistrationPage() {
                 )}
             </AnimatePresence>
 
+        </div>
+    );
+}
+
+function PublicPageSkeleton() {
+    return (
+        <div className="min-h-screen bg-white">
+            {/* Header Skeleton */}
+            <div className="w-full p-6 md:px-10 md:py-8 flex items-center justify-between border-b border-gray-50">
+                <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-gray-100 animate-pulse" />
+                    <div className="w-24 h-6 rounded-lg bg-gray-100 animate-pulse" />
+                </div>
+            </div>
+
+            <main className="max-w-6xl mx-auto px-6 md:px-10 pt-10 md:pt-14">
+                {/* Header Skeleton */}
+                <div className="max-w-3xl mb-10 space-y-6">
+                    <div className="flex items-center gap-3">
+                        <div className="w-20 h-6 rounded-full bg-gray-100 animate-pulse" />
+                        <div className="w-16 h-6 rounded-full bg-gray-100 animate-pulse" />
+                    </div>
+                    <div className="space-y-4">
+                        <div className="w-3/4 h-16 rounded-3xl bg-gray-100 animate-pulse" />
+                        <div className="w-1/2 h-8 rounded-2xl bg-gray-100 animate-pulse" />
+                    </div>
+                </div>
+
+                {/* Cover Image Skeleton */}
+                <div className="mb-16">
+                    <div className="aspect-[16/9] md:aspect-[21/9] w-full rounded-[48px] bg-gray-100 animate-pulse" />
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 md:gap-20">
+                    {/* Left Col Skeleton */}
+                    <div className="lg:col-span-7 space-y-20">
+                        {/* Info Tiles */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            {[1, 2, 3].map(i => (
+                                <div key={i} className="space-y-3">
+                                    <div className="w-16 h-4 rounded bg-gray-100 animate-pulse" />
+                                    <div className="w-32 h-6 rounded bg-gray-100 animate-pulse" />
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Description Skeleton */}
+                        <div className="space-y-6">
+                            <div className="w-32 h-4 rounded bg-gray-100 animate-pulse" />
+                            <div className="space-y-4">
+                                <div className="w-full h-4 rounded bg-gray-100 animate-pulse" />
+                                <div className="w-full h-4 rounded bg-gray-100 animate-pulse" />
+                                <div className="w-2/3 h-4 rounded bg-gray-100 animate-pulse" />
+                                <div className="w-full h-4 rounded bg-gray-100 animate-pulse" />
+                                <div className="w-1/2 h-4 rounded bg-gray-100 animate-pulse" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Right Col Skeleton (Sticky) */}
+                    <div className="hidden lg:block lg:col-span-5">
+                        <div className="h-96 rounded-[48px] bg-gray-100 animate-pulse" />
+                    </div>
+                </div>
+            </main>
         </div>
     );
 }
