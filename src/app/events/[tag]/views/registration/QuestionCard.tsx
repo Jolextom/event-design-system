@@ -1,9 +1,11 @@
 "use client";
 
 import React from "react";
-import { Reorder } from "framer-motion";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { ListChecks, Type, Settings, Trash2, GripVertical } from "lucide-react";
 import { Question } from "../../types";
+import { cn } from "@/lib/utils";
 
 interface QuestionCardProps {
     question: Question;
@@ -16,10 +18,30 @@ export function QuestionCard({
     onEdit,
     onDelete
 }: QuestionCardProps) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: question.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : "auto",
+        position: isDragging ? "relative" as const : "static" as const,
+    };
+
     return (
-        <Reorder.Item
-            value={question}
-            className="p-7 border border-gray-100 rounded-[24px] bg-white hover:border-[var(--brand-blue)]/40 transition-all group shadow-sm hover:shadow-md cursor-default active:shadow-lg active:scale-[1.01] list-none"
+        <div
+            ref={setNodeRef}
+            style={style}
+            className={cn(
+                "p-7 border border-gray-100 rounded-[24px] bg-white transition-all group shadow-sm list-none touch-none",
+                isDragging ? "shadow-xl ring-2 ring-[var(--brand-blue)]/20 rotate-1" : "hover:border-[var(--brand-blue)]/40 hover:shadow-md"
+            )}
         >
             <div className="flex justify-between items-start">
                 <div className="flex items-center gap-4">
@@ -33,7 +55,8 @@ export function QuestionCard({
                         </p>
                     </div>
                 </div>
-                <div className="flex items-center gap-2 p-1.5 bg-gray-50 rounded-xl border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Actions: Always visible on mobile/touch (lg:opacity-0 hides it on desktop until hover) */}
+                <div className="flex items-center gap-2 p-1.5 bg-gray-50 rounded-xl border border-gray-100 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                         onClick={() => onEdit(question)}
                         className="p-1.5 text-gray-300 hover:text-gray-900 transition-colors"
@@ -50,7 +73,12 @@ export function QuestionCard({
                         <Trash2 className="w-3.5 h-3.5" />
                     </button>
                     <div className="w-px h-3.5 bg-gray-200" />
-                    <button className="p-1.5 text-gray-300 cursor-grab active:cursor-grabbing" title="Drag to reorder">
+                    <button
+                        className="p-1.5 text-gray-300 cursor-grab active:cursor-grabbing hover:text-gray-900 touch-none"
+                        title="Drag to reorder"
+                        {...attributes}
+                        {...listeners}
+                    >
                         <GripVertical className="w-3.5 h-3.5" />
                     </button>
                 </div>
@@ -65,6 +93,6 @@ export function QuestionCard({
                     ))}
                 </div>
             )}
-        </Reorder.Item>
+        </div>
     );
 }
