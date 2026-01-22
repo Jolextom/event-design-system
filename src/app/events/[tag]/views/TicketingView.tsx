@@ -103,7 +103,7 @@ export function TicketingView({ passes, loading, error, eventId, onPassCreated }
 
     return (
         <div className="h-full overflow-y-auto bg-white custom-scrollbar">
-            <div className="max-w-4xl p-10 mx-auto space-y-10 pb-24">
+            <div className="max-w-3xl px-4 py-8 md:p-10 mx-auto space-y-10 pb-24">
                 <header className="flex justify-between items-end border-b border-gray-100 pb-8 mt-4">
                     <div>
                         <h2 className="text-2xl font-black tracking-tight text-gray-900">Ticket Types</h2>
@@ -222,7 +222,7 @@ export function TicketingView({ passes, loading, error, eventId, onPassCreated }
                                                     />
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2 p-1.5 bg-gray-50 rounded-xl border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <div className="flex items-center gap-2 p-1.5 bg-gray-50 rounded-xl border border-gray-100 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button
                                                     onClick={() => setEditingPassId(pass.id)}
                                                     title="Edit pass"
