@@ -91,10 +91,13 @@ export function RegistryView({
     };
 
     const filteredAttendees = useMemo(() => {
-        if (!searchTerm) return [...attendees];
+        // First filter out invited guests (unless registered)
+        const activeAttendees = attendees.filter(a => a.email_status !== "invited");
+
+        if (!searchTerm) return activeAttendees;
 
         const lowSearch = searchTerm.toLowerCase();
-        return attendees.filter(a => {
+        return activeAttendees.filter(a => {
             // Search basic info
             const basicMatch =
                 a.first_name.toLowerCase().includes(lowSearch) ||
