@@ -31,7 +31,7 @@ import { BroadcastView } from "./views/BroadcastView";
 import { SettingsView } from "./views/SettingsView";
 
 import { createClient } from "@supabase/supabase-js";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams, usePathname } from "next/navigation";
 
 type PageProps = {
     event?: Event | null;
@@ -43,9 +43,17 @@ export default function Page({ event: initialEvent }: PageProps) {
 
 function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
     const params = useParams();
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
     const tag = typeof params === "object" && params?.tag ? String(params.tag) : null;
 
-    const [activeGlobal, setActiveGlobal] = useState<GlobalSection>("studio");
+    // Initialize from URL or default
+    const [activeGlobal, setActiveGlobal] = useState<GlobalSection>(() => {
+        const view = searchParams.get("view");
+        const validViews: GlobalSection[] = ["command", "studio", "registry", "automations", "broadcast", "live", "settings"];
+        return (view && validViews.includes(view as GlobalSection)) ? (view as GlobalSection) : "studio";
+    });
 
     // Event state: either provided by prop or fetched client-side
     const [event, setEvent] = useState<Event | null>(initialEvent);
@@ -68,9 +76,45 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
 
     const studioLocked = !isSetupComplete;
 
-    // Determine initial builder category based on locked status
-    const [activeBuilderCategory, setActiveBuilderCategory] =
-        useState<CategoryId>(studioLocked ? "essentials" : "registration");
+    // Determine initial builder category based on locked status or URL
+    const [activeBuilderCategory, setActiveBuilderCategory] = useState<CategoryId>(() => {
+        const section = searchParams.get("section");
+        const validSections: CategoryId[] = ["essentials", "registration", "ticketing", "variables"];
+        if (section && validSections.includes(section as CategoryId)) {
+            return section as CategoryId;
+        }
+        return studioLocked ? "essentials" : "registration";
+    });
+
+    // Sync state to URL
+    useEffect(() => {
+        const params = new URLSearchParams(searchParams.toString());
+        let changed = false;
+
+        if (params.get("view") !== activeGlobal) {
+            params.set("view", activeGlobal);
+            changed = true;
+        }
+
+        // Only sync section if in studio (or relevant views)
+        if (activeGlobal === "studio") {
+            if (params.get("section") !== activeBuilderCategory) {
+                params.set("section", activeBuilderCategory);
+                changed = true;
+            }
+        } else {
+            // Optional: clear section if not in studio to keep URL clean? 
+            // Or keep it for history? Let's keep it clean.
+            if (params.get("section")) {
+                params.delete("section");
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+        }
+    }, [activeGlobal, activeBuilderCategory, pathname, router, searchParams]);
 
     const [isBackboneOpen, setIsBackboneOpen] = useState(true);
     const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
@@ -99,7 +143,7 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
         }
     }, [activeGlobal, isMobile]);
 
-    const router = useRouter(); // Need router for refresh
+
 
 
     // Effect to enforce locking if event data updates and confirms incomplete setup
