@@ -1,7 +1,7 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useLayoutEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { PanelLeftOpen, Eye } from "lucide-react";
+import { PanelLeftOpen, Eye, Menu, X } from "lucide-react";
 import Link from 'next/link';
 import { cn } from "@/lib/utils";
 import {
@@ -78,7 +78,26 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
     const [loadingEvent, setLoadingEvent] = useState<boolean>(!initialEvent && Boolean(tag));
     const [eventError, setEventError] = useState<string | null>(null);
 
+    // Mobile responsive state
+    const [isMobile, setIsMobile] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+    // Detect mobile viewport
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 1024);
+        };
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    // Close mobile menu when switching sections
+    useEffect(() => {
+        if (isMobile) {
+            setIsMobileMenuOpen(false);
+        }
+    }, [activeGlobal, isMobile]);
 
     const router = useRouter(); // Need router for refresh
 
@@ -409,38 +428,70 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
             />
 
             {/* Pane 1: Global Context Switcher */}
-            <GlobalSidebar
-                activeId={activeGlobal}
-                onSelect={setActiveGlobal}
-                isExpanded={isSidebarExpanded}
-                onToggle={() => setIsSidebarExpanded(!isSidebarExpanded)}
-                contentLocked={globalLocked}
-                isLoading={loadingEvent}
-            />
-
-            {/* Pane 2: Contextual Backbone (Studio Only) */}
-            <AnimatePresence mode="popLayout">
-                {showBackbone && isBackboneOpen && (
-                    <BackbonePane
-                        isOpen={isBackboneOpen}
-                        activeId={activeBuilderCategory}
-                        onSelect={setActiveBuilderCategory}
-                        onToggle={() => setIsBackboneOpen(false)}
-                        contentLocked={studioLocked}
+            {/* Desktop: Always rendered, hidden on mobile via CSS */}
+            <div className="hidden lg:block">
+                <GlobalSidebar
+                    activeId={activeGlobal}
+                    onSelect={setActiveGlobal}
+                    isExpanded={isSidebarExpanded}
+                    onToggle={() => setIsSidebarExpanded(!isSidebarExpanded)}
+                    contentLocked={globalLocked}
+                    isLoading={loadingEvent}
+                />
+            </div>
+            {/* Mobile: drawer overlay (JS controlled) */}
+            <AnimatePresence>
+                {isMobileMenuOpen && (
+                    <GlobalSidebar
+                        activeId={activeGlobal}
+                        onSelect={(id) => {
+                            setActiveGlobal(id);
+                            setIsMobileMenuOpen(false);
+                        }}
+                        isExpanded={true}
+                        onToggle={() => setIsMobileMenuOpen(false)}
+                        contentLocked={globalLocked}
                         isLoading={loadingEvent}
+                        isMobile={true}
+                        onClose={() => setIsMobileMenuOpen(false)}
                     />
                 )}
             </AnimatePresence>
 
+            {/* Pane 2: Contextual Backbone (Studio Only) - Hidden on mobile via CSS */}
+            <div className="hidden lg:block">
+                <AnimatePresence mode="popLayout">
+                    {showBackbone && isBackboneOpen && (
+                        <BackbonePane
+                            isOpen={isBackboneOpen}
+                            activeId={activeBuilderCategory}
+                            onSelect={setActiveBuilderCategory}
+                            onToggle={() => setIsBackboneOpen(false)}
+                            contentLocked={studioLocked}
+                            isLoading={loadingEvent}
+                        />
+                    )}
+                </AnimatePresence>
+            </div>
+
             {/* Pane 3: Main Action Surface */}
             <div className="flex-1 flex flex-col min-w-0 h-full relative bg-white">
-                <header className="h-20 border-b border-gray-100 px-10 flex items-center justify-between bg-white/80 backdrop-blur-xl z-40 sticky top-0">
-                    <div className="flex items-center gap-5">
+                <header className="h-16 lg:h-20 border-b border-gray-100 px-4 lg:px-10 flex items-center justify-between bg-white/80 backdrop-blur-xl z-40 sticky top-0">
+                    <div className="flex items-center gap-3 lg:gap-5">
 
+                        {/* Mobile hamburger menu - hidden on desktop via CSS */}
+                        <button
+                            onClick={() => setIsMobileMenuOpen(true)}
+                            className="lg:hidden p-2.5 bg-gray-50 border border-gray-100 rounded-xl text-gray-600 transition-all hover:bg-gray-100 shadow-sm"
+                        >
+                            <Menu className="w-5 h-5" />
+                        </button>
+
+                        {/* Desktop: Show backbone toggle - hidden on mobile via CSS */}
                         {!isBackboneOpen && showBackbone && (
                             <button
                                 onClick={() => setIsBackboneOpen(true)}
-                                className="p-2.5 bg-gray-50 border border-gray-100 rounded-xl text-[var(--brand-blue)] transition-all hover:bg-[var(--brand-blue)] hover:text-white shadow-sm"
+                                className="hidden lg:flex p-2.5 bg-gray-50 border border-gray-100 rounded-xl text-[var(--brand-blue)] transition-all hover:bg-[var(--brand-blue)] hover:text-white shadow-sm"
                             >
                                 <PanelLeftOpen className="w-5 h-5" />
                             </button>
@@ -491,7 +542,7 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                             disabled={!isSetupComplete && !isPublished}
                             onClick={handlePublishClick}
                             className={cn(
-                                "px-8 py-3 rounded-xl text-[11px] font-black shadow-xl transition-all uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none",
+                                "px-4 lg:px-8 py-2.5 lg:py-3 rounded-xl text-[10px] lg:text-[11px] font-black shadow-xl transition-all uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none",
                                 isPublished
                                     ? "bg-white text-red-500 border border-red-100 hover:bg-red-50 hover:border-red-200 shadow-sm"
                                     : (isSetupComplete
@@ -499,10 +550,41 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                                         : "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none")
                             )}
                         >
-                            {isPublished ? "Unpublish Event" : "Publish Event"}
+                            <span className="hidden sm:inline">{isPublished ? "Unpublish Event" : "Publish Event"}</span>
+                            <span className="sm:hidden">{isPublished ? "Unpublish" : "Publish"}</span>
                         </button>
                     </div>
                 </header>
+
+                {/* Mobile Studio Tabs - Show builder categories as tabs on mobile */}
+                {isMobile && activeGlobal === "studio" && (
+                    <div
+                        className="flex overflow-x-auto border-b border-gray-100 bg-gray-50/50 px-4 py-2 gap-2 shrink-0"
+                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
+                    >
+                        {BUILDER_CATEGORIES.map((cat) => {
+                            const isActive = activeBuilderCategory === cat.id;
+                            const isLocked = studioLocked && cat.id !== "essentials";
+                            return (
+                                <button
+                                    key={cat.id}
+                                    onClick={() => !isLocked && setActiveBuilderCategory(cat.id)}
+                                    className={cn(
+                                        "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0",
+                                        isLocked
+                                            ? "opacity-40 cursor-not-allowed bg-gray-100 text-gray-400"
+                                            : isActive
+                                                ? "bg-white text-[var(--brand-blue)] shadow-sm border border-gray-100"
+                                                : "text-gray-500 hover:bg-white/50"
+                                    )}
+                                >
+                                    <cat.icon className="w-4 h-4" />
+                                    {cat.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
 
                 <main className="flex-1 overflow-hidden">
                     {/* Show skeleton while loading, error state if failed, or content if ready */}
@@ -529,53 +611,61 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                             </a>
                         </div>
                     ) : (
-
-                        <AnimatePresence mode="wait">
+                        <AnimatePresence mode="popLayout">
                             <motion.div
-                                key={`${activeGlobal}-${activeBuilderCategory}`}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                transition={{ duration: 0.2, ease: "circOut" }}
+                                key={activeGlobal}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.1 }}
                                 className="h-full"
                             >
                                 {activeGlobal === "command" && <CommandHubView />}
 
                                 {activeGlobal === "studio" && (
-                                    <>
-                                        {activeBuilderCategory === "registration" && (
-                                            <RegistrationView
-                                                questions={questions}
-                                                loading={loadingQuestions}
-                                                error={questionsError}
-                                                eventId={event?.id ?? null}
-                                                onQuestionCreated={refetchQuestions}
-                                            />
-                                        )}
-                                        {activeBuilderCategory === "essentials" && (
-                                            <BasicInfoView
-                                                event={event}
-                                                hasTickets={passes.length > 0}
-                                                hasQuestions={questions.length > 0}
-                                                onNavigate={setActiveBuilderCategory}
-                                                onUpdate={handleEventUpdate}
-                                            />
-                                        )}
-                                        {activeBuilderCategory === "ticketing" && (
-                                            <TicketingView
-                                                passes={passes}
-                                                loading={loadingPasses}
-                                                error={passesError}
-                                                eventId={event?.id ?? null}
-                                                onPassCreated={refetchPasses}
-                                            />
-                                        )}
-                                        {activeBuilderCategory === "variables" && (
-                                            <SmartGroupsView
-                                                onNavigateToRegistry={() => setActiveGlobal("registry")}
-                                            />
-                                        )}
-                                    </>
+                                    <AnimatePresence mode="wait">
+                                        <motion.div
+                                            key={activeBuilderCategory}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -10 }}
+                                            transition={{ duration: 0.2, ease: "circOut" }}
+                                            className="h-full"
+                                        >
+                                            {activeBuilderCategory === "registration" && (
+                                                <RegistrationView
+                                                    questions={questions}
+                                                    loading={loadingQuestions}
+                                                    error={questionsError}
+                                                    eventId={event?.id ?? null}
+                                                    onQuestionCreated={refetchQuestions}
+                                                />
+                                            )}
+                                            {activeBuilderCategory === "essentials" && (
+                                                <BasicInfoView
+                                                    event={event}
+                                                    hasTickets={passes.length > 0}
+                                                    hasQuestions={questions.length > 0}
+                                                    onNavigate={setActiveBuilderCategory}
+                                                    onUpdate={handleEventUpdate}
+                                                />
+                                            )}
+                                            {activeBuilderCategory === "ticketing" && (
+                                                <TicketingView
+                                                    passes={passes}
+                                                    loading={loadingPasses}
+                                                    error={passesError}
+                                                    eventId={event?.id ?? null}
+                                                    onPassCreated={refetchPasses}
+                                                />
+                                            )}
+                                            {activeBuilderCategory === "variables" && (
+                                                <SmartGroupsView
+                                                    onNavigateToRegistry={() => setActiveGlobal("registry")}
+                                                />
+                                            )}
+                                        </motion.div>
+                                    </AnimatePresence>
                                 )}
 
                                 {activeGlobal === "live" && <OperationsView />}
