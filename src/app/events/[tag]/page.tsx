@@ -269,7 +269,8 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                         .from("attendees")
                         .select(`
                             *,
-                            responses:answers(*)
+                            responses:answers(*),
+                            order:orders_table!order_id (email)
                         `)
                         .eq("event_id", eventData.id)
                         .order("created_at", { ascending: false });
@@ -352,7 +353,8 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
             .from("attendees")
             .select(`
                 *,
-                responses:answers(*)
+                responses:answers(*),
+                order:orders_table!order_id (email)
             `)
             .eq("event_id", event.id)
             .order("created_at", { ascending: false });
@@ -719,6 +721,7 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                                     <RegistryView
                                         attendees={attendees}
                                         questions={questions}
+                                        passes={passes}
                                         loading={loadingAttendees}
                                         error={attendeesError}
                                         eventId={event?.id ?? null}

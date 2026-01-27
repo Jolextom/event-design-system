@@ -177,7 +177,11 @@ export interface Attendee {
   email_status: string | null;
   last_email_sent: string | null;
   team_id: string | null;
+  pass_id: string | null;
   checked_in_by_staff_id: string | null;
   checked_in_by: string | null;
   responses?: Record<string, string>;
+  order?: {
+    email: string;
+  };
 }

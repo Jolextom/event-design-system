@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { AlertCircle } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
-import { Attendee, Question } from "../../types";
+import { Attendee, Question, Pass } from "../../types";
 import { RegistryHeader } from "./RegistryHeader";
 import { RegistryTable } from "./RegistryTable";
 import { PaginationFooter } from "./PaginationFooter";
@@ -12,6 +12,7 @@ import { AddGuestModal } from "./AddGuestModal";
 interface RegistryViewProps {
     attendees: Attendee[];
     questions?: Question[];
+    passes?: Pass[];
     loading?: boolean;
     error?: string | null;
     eventId: string | null;
@@ -21,6 +22,7 @@ interface RegistryViewProps {
 export function RegistryView({
     attendees,
     questions = [],
+    passes = [],
     loading,
     error,
     eventId,
@@ -130,6 +132,16 @@ export function RegistryView({
         return filteredAttendees.slice(start, start + itemsPerPage);
     }, [filteredAttendees, currentPage]);
 
+    // Calculate group stats (order_id -> count) from ALL attendees to ensure accuracy across pages
+    const groupStats = useMemo(() => {
+        return attendees.reduce((acc, curr) => {
+            if (curr.order_id) {
+                acc[curr.order_id] = (acc[curr.order_id] || 0) + 1;
+            }
+            return acc;
+        }, {} as Record<string, number>);
+    }, [attendees]);
+
     if (error) {
         return (
             <div className="h-full flex flex-col items-center justify-center bg-white p-8">
@@ -164,6 +176,8 @@ export function RegistryView({
             <RegistryTable
                 attendees={paginatedAttendees}
                 questions={questions}
+                passes={passes}
+                groupStats={groupStats}
                 loading={loading}
             />
 
