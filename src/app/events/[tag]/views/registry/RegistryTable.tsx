@@ -57,6 +57,14 @@ export function RegistryTable({
                         ) : (
                             attendees.map((attendee) => {
                                 const ticketName = passes.find(p => p.id === attendee.pass_id)?.title || "-";
+
+                                // Logic extracted here for cleaner usage in the JSX below
+                                const pass = passes.find(p => p.id === attendee.pass_id);
+                                const isGroup = pass?.type === 'group';
+                                const isPrimary = isGroup && attendee.order?.email === attendee.email;
+                                const groupSize = pass?.group_size || 0;
+                                const usedSlots = (attendee.order_id && groupStats[attendee.order_id]) || 1;
+
                                 return (
                                     <motion.tr
                                         key={attendee.id}
@@ -83,31 +91,15 @@ export function RegistryTable({
                                         </td>
                                         <td className="px-4 py-4">
                                             <div className="flex items-center gap-2">
+                                                {/* ICON RENDER LOGIC */}
                                                 {(() => {
-                                                    const pass = passes.find(p => p.id === attendee.pass_id);
-                                                    const isGroup = pass?.type === 'group';
-                                                    const isPrimary = isGroup && attendee.order?.email === attendee.email;
-
                                                     if (isPrimary) {
-                                                        const groupSize = pass?.group_size || 0;
-                                                        const usedSlots = (attendee.order_id && groupStats[attendee.order_id]) || 1;
-
                                                         return (
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="w-6 h-6 rounded-lg bg-blue-500 text-white flex items-center justify-center shadow-blue-200 shadow-sm relative group/icon">
-                                                                    <Users className="w-3 h-3" />
-                                                                </div>
-                                                                {groupSize > 1 && (
-                                                                    <div className="flex items-center gap-1.5 px-1.5 py-0.5 bg-blue-50 border border-blue-100 rounded-md">
-                                                                        <span className="text-[9px] font-black text-blue-600 tracking-tight">
-                                                                            {usedSlots}/{groupSize}
-                                                                        </span>
-                                                                    </div>
-                                                                )}
+                                                            <div className="w-6 h-6 rounded-lg bg-blue-500 text-white flex items-center justify-center shadow-blue-200 shadow-sm relative group/icon">
+                                                                <Users className="w-3 h-3" />
                                                             </div>
                                                         );
                                                     }
-
                                                     if (isGroup) {
                                                         return (
                                                             <div className="w-6 h-6 rounded-lg bg-gray-100/50 flex items-center justify-center text-gray-400">
@@ -115,16 +107,26 @@ export function RegistryTable({
                                                             </div>
                                                         );
                                                     }
-
                                                     return (
                                                         <div className="w-6 h-6 rounded-lg bg-gray-100/50 flex items-center justify-center text-gray-400">
                                                             <Ticket className="w-3 h-3" />
                                                         </div>
                                                     );
                                                 })()}
+
+                                                {/* TICKET NAME */}
                                                 <span className="text-[11px] font-bold text-gray-600 truncate max-w-[140px]" title={ticketName}>
                                                     {ticketName}
                                                 </span>
+
+                                                {/* SLOT USAGE BADGE (Moved Here) */}
+                                                {isPrimary && groupSize > 1 && (
+                                                    <div className="flex items-center gap-1.5 px-1.5 py-0.5 bg-blue-50 border border-blue-100 rounded-md">
+                                                        <span className="text-[9px] font-black text-blue-600 tracking-tight">
+                                                            {usedSlots}/{groupSize}
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </td>
                                         {questions.map(q => {

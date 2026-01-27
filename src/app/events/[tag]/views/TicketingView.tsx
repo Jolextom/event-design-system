@@ -16,6 +16,7 @@ interface TicketingViewProps {
     error: string | null;
     eventId: string | null;
     onPassCreated: () => void;
+    attendees: any[];
 }
 
 // Skeleton loading component for a single pass card
@@ -45,7 +46,7 @@ function PassCardSkeleton() {
     );
 }
 
-export function TicketingView({ passes, loading, error, eventId, onPassCreated }: TicketingViewProps) {
+export function TicketingView({ passes, loading, error, eventId, onPassCreated, attendees = [] }: TicketingViewProps) {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [deletePassId, setDeletePassId] = useState<string | null>(null);
     const [deletePassTitle, setDeletePassTitle] = useState<string>("");
@@ -94,8 +95,16 @@ export function TicketingView({ passes, loading, error, eventId, onPassCreated }
         return `$${pass.price.toFixed(2)}`;
     };
 
+    const getSoldCount = (passId: string) => {
+        // Fallback to database count if attendees list is empty (e.g. initial load or error)
+        // AND we have a DB count. But generally, the live list is the source of truth for "who is coming".
+        // However, for "sold", we want confirmed orders. Attendees basically ARE confirmed.
+        const count = attendees.filter(a => a.pass_id === passId).length;
+        return count;
+    };
+
     const getSoldPercentage = (pass: Pass) => {
-        const sold = pass.quantity_sold ?? 0;
+        const sold = getSoldCount(pass.id);
         const available = pass.quantity_available;
         if (available <= 0) return 0;
         return Math.min((sold / available) * 100, 100);
@@ -172,7 +181,7 @@ export function TicketingView({ passes, loading, error, eventId, onPassCreated }
                     <div className="grid grid-cols-1 gap-4">
                         {passes.map((pass) => {
                             const status = getPassStatus(pass);
-                            const sold = pass.quantity_sold ?? 0;
+                            const sold = getSoldCount(pass.id);
                             const capacity = pass.quantity_available;
                             const soldPercentage = getSoldPercentage(pass);
 

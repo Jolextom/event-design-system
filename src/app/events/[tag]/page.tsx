@@ -556,16 +556,18 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                                         ? BUILDER_CATEGORIES.find((c) => c.id === activeBuilderCategory)?.label
                                         : GLOBAL_NAV.find((n) => n.id === activeGlobal)?.label}
                                 </span>
-                                {isPublished ? (
-                                    <div className="flex items-center gap-2 px-2 py-1 bg-green-50 border border-green-100 rounded-lg">
-                                        <div className="w-2 h-2 rounded-full bg-green-500" />
-                                        <span className="text-[10px] font-bold text-green-700 uppercase tracking-wide">Live</span>
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center gap-2 px-2 py-1 bg-yellow-50 border border-yellow-100 rounded-lg">
-                                        <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-                                        <span className="text-[10px] font-bold text-yellow-700 uppercase tracking-wide">Draft</span>
-                                    </div>
+                                {!loadingEvent && (
+                                    isPublished ? (
+                                        <div className="flex items-center gap-2 px-2 py-1 bg-green-50 border border-green-100 rounded-lg">
+                                            <div className="w-2 h-2 rounded-full bg-green-500" />
+                                            <span className="text-[10px] font-bold text-green-700 uppercase tracking-wide">Live</span>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2 px-2 py-1 bg-yellow-50 border border-yellow-100 rounded-lg">
+                                            <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                                            <span className="text-[10px] font-bold text-yellow-700 uppercase tracking-wide">Draft</span>
+                                        </div>
+                                    )
                                 )}
                             </div>
                         </div>
@@ -703,6 +705,7 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                                                     error={passesError}
                                                     eventId={event?.id ?? null}
                                                     onPassCreated={refetchPasses}
+                                                    attendees={attendees}
                                                 />
                                             )}
                                             {activeBuilderCategory === "variables" && (
