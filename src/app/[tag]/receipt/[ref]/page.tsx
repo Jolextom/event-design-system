@@ -344,7 +344,8 @@ export default function ReceiptPage() {
                         </h2>
                         <p className="text-lg md:text-xl text-gray-400 font-bold max-w-lg mx-auto leading-relaxed">
                             You're all set for <span className="text-gray-900">{formatDate(event?.start_date || "")}</span>.
-                            We've sent a confirmation to <span className="text-blue-600">{order.email}</span>.
+                            We've sent a confirmation to <span className="text-blue-600">{order.email}</span>. <br />
+                            <span className="text-sm opacity-60">(Check your spam folder if you don't see it)</span>
                         </p>
                     </div>
 
@@ -613,7 +614,7 @@ export default function ReceiptPage() {
 
                     {/* Footer */}
                     <p className="text-xs text-gray-300 font-bold pt-8">
-                        Confirmation sent to {order.email} • Powered by EventFlow
+                        Confirmation sent to {order.email} • Check your spam folder • Powered by EventFlow
                     </p>
                 </div>
             </div>
