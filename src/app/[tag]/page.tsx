@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Event, Pass, Question } from "../events/[tag]/types";
+import { sendWelcomeEmail } from "../actions";
 
 export default function RegistrationPage() {
     const params = useParams();
@@ -313,6 +314,27 @@ export default function RegistrationPage() {
                 );
             }
 
+
+            // === SEND WELCOME EMAIL (registered primary user only) ===
+            // Per user request, we only trigger the confirmation email for the primary guest (purchaser).
+            // This avoids "bulk" thinking and keeps it simple: 1 Order = 1 Receipt Email.
+            if (primaryGuest.email) {
+                // We already have the order ref and event details.
+                // We just need the primary attendee ID to link the log.
+                // Since we just created the attendees, and we know local "guests[0]" is primary,
+                // we can query for the attendee that matches this email and order_id.
+                const { data: primaryAttendee } = await supabase
+                    .from("attendees")
+                    .select("id")
+                    .eq("order_id", order.id)
+                    .eq("email", primaryGuest.email)
+                    .single();
+
+                if (primaryAttendee) {
+                    // Fire and forget (or await if critical) - using await as before to ensure delivery
+                    await sendWelcomeEmail(primaryAttendee.id, event.id);
+                }
+            }
 
             // === REDIRECT TO RECEIPT ===
             window.location.href = `/${event.tag}/receipt/${orderRef}`;
