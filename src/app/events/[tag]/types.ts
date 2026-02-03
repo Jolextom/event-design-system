@@ -185,3 +185,16 @@ export interface Attendee {
     email: string;
   };
 }
+
+export interface Staff {
+  id: string;
+  event_id: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  access_code: string;
+  status: 'online' | 'offline';
+  current_station: string | null;
+  last_active: string | null;
+  created_at: string;
+}
