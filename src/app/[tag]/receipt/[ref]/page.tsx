@@ -64,6 +64,24 @@ interface Event {
     image?: string;
 }
 
+// ... existing interfaces ...
+
+interface QuestionOption {
+    id: string;
+    question_id: string;
+    option_text: string;
+    display_order: number;
+}
+
+interface Question {
+    id: string;
+    title: string;
+    question_type: "text" | "select";
+    is_required: boolean;
+    question_order: number;
+    options?: QuestionOption[];
+}
+
 export default function ReceiptPage() {
     const params = useParams();
     const tag = typeof params === "object" && params?.tag ? String(params.tag) : null;
@@ -75,6 +93,7 @@ export default function ReceiptPage() {
     const [attendees, setAttendees] = useState<Attendee[]>([]);
     const [pass, setPass] = useState<Pass | null>(null);
     const [event, setEvent] = useState<Event | null>(null);
+    const [questions, setQuestions] = useState<Question[]>([]);
     const [copied, setCopied] = useState(false);
     const [resending, setResending] = useState<string | null>(null);
 
@@ -83,6 +102,8 @@ export default function ReceiptPage() {
     const [addingMember, setAddingMember] = useState(false);
     const [newMemberEmail, setNewMemberEmail] = useState("");
     const [newMemberFirstName, setNewMemberFirstName] = useState("");
+    const [newMemberLastName, setNewMemberLastName] = useState("");
+    const [newMemberAnswers, setNewMemberAnswers] = useState<Record<string, string>>({});
     const [newMemberMode, setNewMemberMode] = useState<"fill" | "invite">("invite");
     const [addError, setAddError] = useState<string | null>(null);
 
@@ -135,11 +156,36 @@ export default function ReceiptPage() {
                 if (orderData.event_id) {
                     const { data: eventData } = await supabase
                         .from("events")
-                        .select("id, event_title, tag, start_date, start_time, location, image")
+                        .select(`
+                            id, event_title, tag, start_date, start_time, location, image,
+                            questions (
+                                *,
+                                options:question_options (*)
+                            )
+                        `)
                         .eq("id", orderData.event_id)
                         .single();
 
-                    setEvent(eventData);
+                    if (eventData) {
+                        setEvent({
+                            id: eventData.id,
+                            event_title: eventData.event_title,
+                            tag: eventData.tag,
+                            start_date: eventData.start_date,
+                            start_time: eventData.start_time,
+                            location: eventData.location,
+                            image: eventData.image
+                        });
+
+                        // Sort and set questions
+                        const sortedQuestions = (eventData.questions || [])
+                            .sort((a: any, b: any) => a.question_order - b.question_order)
+                            .map((q: any) => ({
+                                ...q,
+                                options: (q.options || []).sort((a: any, b: any) => a.display_order - b.display_order)
+                            }));
+                        setQuestions(sortedQuestions);
+                    }
                 }
 
             } catch (err: any) {
@@ -208,10 +254,27 @@ export default function ReceiptPage() {
             return;
         }
 
-        // If fill mode, require first name
-        if (newMemberMode === "fill" && !newMemberFirstName.trim()) {
-            setAddError("First name is required");
-            return;
+        // Validate fill mode fields
+        if (newMemberMode === "fill") {
+            if (!newMemberFirstName.trim()) {
+                setAddError("First name is required");
+                return;
+            }
+            if (!newMemberLastName.trim()) {
+                setAddError("Last name is required");
+                return;
+            }
+
+            // Check required questions
+            for (const q of questions) {
+                if (q.is_required) {
+                    const ans = newMemberAnswers[q.id];
+                    if (!ans || !ans.trim()) {
+                        setAddError(`Please answer: ${q.title}`);
+                        return;
+                    }
+                }
+            }
         }
 
         // Check for duplicate email
@@ -238,10 +301,11 @@ export default function ReceiptPage() {
                     order_id: order.id,
                     pass_id: pass.id,
                     first_name: newMemberMode === "fill" ? newMemberFirstName.trim() : "Guest",
-                    last_name: "",
+                    last_name: newMemberMode === "fill" ? newMemberLastName.trim() : "",
                     email: newMemberEmail.trim().toLowerCase(),
                     ref: attendeeRef,
-                    email_status: newMemberMode === "invite" ? "invited" : "registered"
+                    email_status: newMemberMode === "invite" ? "invited" : "registered",
+                    check_in: false
                 })
                 .select()
                 .single();
@@ -253,12 +317,29 @@ export default function ReceiptPage() {
                 throw insertErr;
             }
 
-            // Add to local state
+            // Save answers if in fill mode
+            if (newMemberMode === "fill" && newAttendee && Object.keys(newMemberAnswers).length > 0) {
+                const answerInserts = Object.entries(newMemberAnswers).map(([qId, answer]) => ({
+                    attendee_id: newAttendee.id,
+                    question_id: qId,
+                    answer_text: String(answer)
+                }));
+
+                const { error: answerErr } = await supabase.from("answers").insert(answerInserts);
+                if (answerErr) {
+                    console.error("Failed to save answers:", answerErr);
+                    // Non-blocking error, but good to note
+                }
+            }
+
+            // Add to local state (with empty responses for now, or update if needed)
             setAttendees([...attendees, newAttendee]);
 
             // Reset form
             setNewMemberEmail("");
             setNewMemberFirstName("");
+            setNewMemberLastName("");
+            setNewMemberAnswers({});
             setShowAddForm(false);
 
             // Send invite if in invite mode
@@ -525,18 +606,62 @@ export default function ReceiptPage() {
                                                             />
                                                         </div>
 
-                                                        {/* First Name (only for fill mode) */}
+                                                        {/* First & Last Name (only for fill mode) */}
                                                         {newMemberMode === "fill" && (
-                                                            <div className="space-y-2">
-                                                                <label className="text-[9px] font-black uppercase tracking-widest text-gray-400">First Name *</label>
-                                                                <input
-                                                                    value={newMemberFirstName}
-                                                                    onChange={(e) => setNewMemberFirstName(e.target.value)}
-                                                                    placeholder="John"
-                                                                    className="w-full bg-white border border-blue-100 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 rounded-xl p-3 text-sm font-bold outline-none transition-all"
-                                                                />
+                                                            <div className="grid grid-cols-2 gap-3">
+                                                                <div className="space-y-2">
+                                                                    <label className="text-[9px] font-black uppercase tracking-widest text-gray-400">First Name *</label>
+                                                                    <input
+                                                                        value={newMemberFirstName}
+                                                                        onChange={(e) => setNewMemberFirstName(e.target.value)}
+                                                                        placeholder="John"
+                                                                        className="w-full bg-white border border-blue-100 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 rounded-xl p-3 text-sm font-bold outline-none transition-all"
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <label className="text-[9px] font-black uppercase tracking-widest text-gray-400">Last Name *</label>
+                                                                    <input
+                                                                        value={newMemberLastName}
+                                                                        onChange={(e) => setNewMemberLastName(e.target.value)}
+                                                                        placeholder="Doe"
+                                                                        className="w-full bg-white border border-blue-100 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 rounded-xl p-3 text-sm font-bold outline-none transition-all"
+                                                                    />
+                                                                </div>
                                                             </div>
                                                         )}
+
+                                                        {/* Custom Questions (only for fill mode) */}
+                                                        {newMemberMode === "fill" && questions.map((q) => (
+                                                            <div key={q.id} className="space-y-2">
+                                                                <label className="text-[9px] font-black uppercase tracking-widest text-gray-400">
+                                                                    {q.title} {q.is_required && <span className="text-red-500">*</span>}
+                                                                </label>
+                                                                {q.question_type === 'select' ? (
+                                                                    <div className="relative">
+                                                                        <select
+                                                                            value={newMemberAnswers[q.id] || ""}
+                                                                            onChange={(e) => setNewMemberAnswers({ ...newMemberAnswers, [q.id]: e.target.value })}
+                                                                            className="w-full bg-white border border-blue-100 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 rounded-xl p-3 text-sm font-bold outline-none transition-all appearance-none cursor-pointer"
+                                                                        >
+                                                                            <option value="" disabled>Select an option</option>
+                                                                            {q.options?.map(opt => (
+                                                                                <option key={opt.id} value={opt.option_text}>{opt.option_text}</option>
+                                                                            ))}
+                                                                        </select>
+                                                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                                                            <Plus className="w-4 h-4 rotate-45" />
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <input
+                                                                        value={newMemberAnswers[q.id] || ""}
+                                                                        onChange={(e) => setNewMemberAnswers({ ...newMemberAnswers, [q.id]: e.target.value })}
+                                                                        placeholder="Your answer"
+                                                                        className="w-full bg-white border border-blue-100 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 rounded-xl p-3 text-sm font-bold outline-none transition-all"
+                                                                    />
+                                                                )}
+                                                            </div>
+                                                        ))}
 
                                                         {/* Error */}
                                                         {addError && (
