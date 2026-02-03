@@ -93,7 +93,7 @@ export function RegistryView({
     };
 
     const filteredAttendees = useMemo(() => {
-        // First filter out invited guests (unless registered)
+        // Filter out invited guests (only show registered)
         const activeAttendees = attendees.filter(a => a.email_status !== "invited");
 
         if (!searchTerm) return activeAttendees;
@@ -121,8 +121,10 @@ export function RegistryView({
     }, [attendees, searchTerm]);
 
     const stats = useMemo(() => {
-        const total = attendees.length;
-        const checkedIn = attendees.filter(a => !!a.check_in_time).length;
+        // Only count registered guests (exclude invited)
+        const registeredGuests = attendees.filter(a => a.email_status !== "invited");
+        const total = registeredGuests.length;
+        const checkedIn = registeredGuests.filter(a => !!a.check_in_time).length;
         return { total, checkedIn };
     }, [attendees]);
 
@@ -141,6 +143,58 @@ export function RegistryView({
             return acc;
         }, {} as Record<string, number>);
     }, [attendees]);
+
+    const handleDelete = async (ids: string[]) => {
+        if (!eventId) return;
+
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+
+        // 1. Delete answers first (Foreign Key Constraint)
+        const { error: answersErr } = await supabase
+            .from("answers")
+            .delete()
+            .in("attendee_id", ids);
+
+        if (answersErr) {
+            console.error("Failed to delete answers:", answersErr);
+            alert("Failed to delete answers: " + answersErr.message);
+            return;
+        }
+
+        // 2. Delete email deliveries (Foreign Key Constraint)
+        const { error: emailsErr } = await supabase
+            .from("email_deliveries")
+            .delete()
+            .in("attendee_id", ids);
+
+        if (emailsErr) {
+            console.warn("Failed to delete email_deliveries:", emailsErr);
+        }
+
+        // 3. Delete attendees
+        const { error: deleteErr } = await supabase
+            .from("attendees")
+            .delete()
+            .in("id", ids);
+
+        if (deleteErr) {
+            console.error("Failed to delete attendees:", deleteErr);
+            alert("Failed to delete: " + deleteErr.message);
+        } else {
+            onRefresh?.();
+        }
+    };
+
+    // Determine if we are in dev environment (client-side check)
+    const [isDev, setIsDev] = useState(false);
+    React.useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setIsDev(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        }
+    }, []);
 
     if (error) {
         return (
@@ -179,6 +233,8 @@ export function RegistryView({
                 passes={passes}
                 groupStats={groupStats}
                 loading={loading}
+                isDev={isDev}
+                onDelete={handleDelete}
             />
 
             <PaginationFooter

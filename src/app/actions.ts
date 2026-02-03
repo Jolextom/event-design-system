@@ -56,7 +56,7 @@ export async function sendWelcomeEmail(attendeeId: string, eventId: string) {
             }),
             eventLocation: event.location || "Virtual Event",
             orderRef: attendee?.order?.order_ref || "N/A",
-            receiptLink: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/${event.tag}/receipt/${attendee?.order?.order_ref}`,
+            receiptLink: `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/${event.tag}/receipt/${attendee?.order?.order_ref}`,
             attendeeName: attendee.first_name
         });
 

@@ -99,7 +99,7 @@ export function TicketingView({ passes, loading, error, eventId, onPassCreated, 
         // Fallback to database count if attendees list is empty (e.g. initial load or error)
         // AND we have a DB count. But generally, the live list is the source of truth for "who is coming".
         // However, for "sold", we want confirmed orders. Attendees basically ARE confirmed.
-        const count = attendees.filter(a => a.pass_id === passId).length;
+        const count = attendees.filter(a => a.pass_id === passId && a.email_status !== "invited").length;
         return count;
     };
 

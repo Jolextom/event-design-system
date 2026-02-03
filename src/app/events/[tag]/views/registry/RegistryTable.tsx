@@ -2,7 +2,7 @@
 
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Clock, ShieldCheck, CheckCircle2, MoreHorizontal, User, Ticket, Users } from "lucide-react";
+import { Search, Clock, ShieldCheck, CheckCircle2, MoreHorizontal, User, Ticket, Users, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Attendee, Question, Pass } from "../../types";
 import { cn } from "@/lib/utils";
@@ -20,17 +20,68 @@ export function RegistryTable({
     questions,
     passes = [],
     loading,
-    groupStats = {}
-}: RegistryTableProps) {
+    groupStats = {},
+    isDev = false,
+    onDelete
+}: RegistryTableProps & { isDev?: boolean; onDelete?: (ids: string[]) => void }) {
+    const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+
+    // Handle Select All
+    const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.checked) {
+            setSelectedIds(new Set(attendees.map(a => a.id)));
+        } else {
+            setSelectedIds(new Set());
+        }
+    };
+
+    // Handle Individual Select
+    const handleSelectOne = (id: string, checked: boolean) => {
+        const next = new Set(selectedIds);
+        if (checked) next.add(id);
+        else next.delete(id);
+        setSelectedIds(next);
+    };
+
+    // Handle Bulk Delete
+    const handleBulkDelete = () => {
+        if (!onDelete) return;
+        if (confirm(`Delete ${selectedIds.size} attendees? This cannot be undone.`)) {
+            onDelete(Array.from(selectedIds));
+            setSelectedIds(new Set());
+        }
+    };
+
+    const allSelected = attendees.length > 0 && selectedIds.size === attendees.length;
+    const isIndeterminate = selectedIds.size > 0 && selectedIds.size < attendees.length;
+
     return (
         <div className="flex-1 overflow-auto custom-scrollbar bg-white border-t border-gray-50">
             <table className="w-full text-left border-separate border-spacing-0 min-w-max">
                 <thead className="sticky top-0 bg-white z-30">
                     <tr className="border-b border-gray-100">
                         <th className="pl-8 py-6 w-12 text-center sticky left-0 bg-white z-40">
-                            <input type="checkbox" className="w-4 h-4 rounded border-gray-200 accent-(--brand-blue)" />
+                            <input
+                                type="checkbox"
+                                className="w-4 h-4 rounded border-gray-200 accent-(--brand-blue)"
+                                checked={allSelected}
+                                ref={input => { if (input) input.indeterminate = isIndeterminate; }}
+                                onChange={handleSelectAll}
+                            />
                         </th>
-                        <th className="px-4 py-6 text-[12px] font-black uppercase tracking-[0.2em] text-gray-400 sticky left-12 bg-white z-40 min-w-[240px]">Attendee</th>
+                        <th className="px-4 py-6 text-[12px] font-black uppercase tracking-[0.2em] text-gray-400 sticky left-12 bg-white z-40 min-w-[240px]">
+                            {isDev && selectedIds.size > 0 ? (
+                                <button
+                                    onClick={handleBulkDelete}
+                                    className="flex items-center gap-2 text-red-500 hover:text-red-600 transition-colors"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                    Delete ({selectedIds.size})
+                                </button>
+                            ) : (
+                                "Attendee"
+                            )}
+                        </th>
                         <th className="px-4 py-6 text-[12px] font-black uppercase tracking-[0.2em] text-gray-400 bg-white">Ticket</th>
                         {questions.map(q => (
                             <th key={q.id} className="px-4 py-6 text-[12px] font-black uppercase tracking-[0.2em] text-gray-400 max-w-[200px] truncate bg-white">
@@ -74,7 +125,12 @@ export function RegistryTable({
                                         className="group hover:bg-gray-50/50 transition-all cursor-default border-b border-gray-50 last:border-0"
                                     >
                                         <td className="pl-8 py-4 text-center sticky left-0 bg-white group-hover:bg-gray-50 z-20">
-                                            <input type="checkbox" className="w-4 h-4 rounded border-gray-200 accent-(--brand-blue)" />
+                                            <input
+                                                type="checkbox"
+                                                className="w-4 h-4 rounded border-gray-200 accent-(--brand-blue)"
+                                                checked={selectedIds.has(attendee.id)}
+                                                onChange={(e) => handleSelectOne(attendee.id, e.target.checked)}
+                                            />
                                         </td>
                                         <td className="px-4 py-4 sticky left-12 bg-white group-hover:bg-gray-50 z-20 shadow-[6px_0_12px_-6px_rgba(0,0,0,0.05)] border-r border-gray-100">
                                             <div className="flex items-center gap-3 pr-4">
@@ -148,7 +204,7 @@ export function RegistryTable({
                                             <div className="flex items-center gap-1.5 text-gray-400">
                                                 <Clock className="w-3 h-3" />
                                                 <span className="text-[10px] font-bold">
-                                                    {attendee.created_at ? formatDistanceToNow(new Date(attendee.created_at), { addSuffix: true }) : "N/A"}
+                                                    {attendee.created_at ? formatDistanceToNow(new Date(attendee.created_at.endsWith("Z") ? attendee.created_at : attendee.created_at + "Z"), { addSuffix: true }) : "N/A"}
                                                 </span>
                                             </div>
                                         </td>
@@ -168,9 +224,20 @@ export function RegistryTable({
                                             </div>
                                         </td>
                                         <td className="px-4 py-4 text-right pr-8 sticky right-0 bg-white group-hover:bg-gray-50 z-20 shadow-[-6px_0_12px_-6px_rgba(0,0,0,0.05)] border-l border-gray-100">
-                                            <button className="p-2 text-gray-300 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all">
-                                                <MoreHorizontal className="w-4 h-4" />
-                                            </button>
+                                            <div className="flex items-center justify-end gap-2">
+                                                {isDev && (
+                                                    <button
+                                                        onClick={() => onDelete?.([attendee.id])}
+                                                        title="Delete (Dev Only)"
+                                                        className="p-2 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                                <button className="p-2 text-gray-300 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all">
+                                                    <MoreHorizontal className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </td>
                                     </motion.tr>
                                 );
