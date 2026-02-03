@@ -22,7 +22,7 @@ export function OperationsView() {
             <div className="max-w-5xl p-10 mx-auto space-y-10 pb-24">
                 <header className="flex justify-between items-end border-b border-gray-100 pb-8 mt-4">
                     <div>
-                        <h2 className="text-2xl font-black tracking-tight text-gray-900">Operations Hub</h2>
+                        <h2 className="text-2xl font-black tracking-tight text-gray-900">Event Day</h2>
                         <p className="text-sm text-gray-400 mt-1.5 font-bold">Manage your team and monitor real-time check-in flow.</p>
                     </div>
                     <div className="flex gap-3">

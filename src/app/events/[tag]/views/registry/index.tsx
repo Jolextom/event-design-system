@@ -8,6 +8,7 @@ import { RegistryHeader } from "./RegistryHeader";
 import { RegistryTable } from "./RegistryTable";
 import { PaginationFooter } from "./PaginationFooter";
 import { AddGuestModal } from "./AddGuestModal";
+import { GuestDetailsSidePanel } from "./GuestDetailsSidePanel";
 
 interface RegistryViewProps {
     attendees: Attendee[];
@@ -31,9 +32,11 @@ export function RegistryView({
     const [searchTerm, setSearchTerm] = useState("");
     const [isAddGuestModalOpen, setIsAddGuestModalOpen] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
+    const [selectedGuest, setSelectedGuest] = useState<Attendee | null>(null);
     const itemsPerPage = 20;
 
     const handleAddGuest = async (formData: { first_name: string; last_name: string; email: string }) => {
+        // ... existing add logic ...
         if (!eventId) return;
 
         const supabase = createClient(
@@ -64,6 +67,7 @@ export function RegistryView({
     };
 
     const exportToCSV = () => {
+        // ... existing CSV logic ...
         if (attendees.length === 0) return;
 
         const headers = ["First Name", "Last Name", "Email", "Reference", "Status", "Registered At"];
@@ -145,6 +149,7 @@ export function RegistryView({
     }, [attendees]);
 
     const handleDelete = async (ids: string[]) => {
+        // ... existing delete logic ...
         if (!eventId) return;
 
         const supabase = createClient(
@@ -185,6 +190,10 @@ export function RegistryView({
             alert("Failed to delete: " + deleteErr.message);
         } else {
             onRefresh?.();
+            // Close side panel if deleted guest was selected
+            if (selectedGuest && ids.includes(selectedGuest.id)) {
+                setSelectedGuest(null);
+            }
         }
     };
 
@@ -235,6 +244,7 @@ export function RegistryView({
                 loading={loading}
                 isDev={isDev}
                 onDelete={handleDelete}
+                onView={setSelectedGuest}
             />
 
             <PaginationFooter
@@ -250,6 +260,15 @@ export function RegistryView({
                 isOpen={isAddGuestModalOpen}
                 onClose={() => setIsAddGuestModalOpen(false)}
                 onAdd={handleAddGuest}
+            />
+
+            <GuestDetailsSidePanel
+                isOpen={!!selectedGuest}
+                onClose={() => setSelectedGuest(null)}
+                attendee={selectedGuest}
+                questions={questions}
+                passes={passes}
+                onUpdate={() => onRefresh?.()}
             />
         </div>
     );

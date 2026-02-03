@@ -45,6 +45,8 @@ interface Attendee {
     email: string;
     ref: string;
     email_status: string;
+    created_at: string;
+    event_id: string;
 }
 
 interface Pass {
@@ -507,42 +509,50 @@ export default function ReceiptPage() {
                                         })()}
 
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            {attendees.map((attendee, index) => (
-                                                <div
-                                                    key={attendee.id}
-                                                    className="flex items-center gap-3 p-3 bg-gray-50/80 rounded-2xl border border-gray-100"
-                                                >
-                                                    <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center font-black text-xs text-gray-400 border border-gray-100">
-                                                        {index + 1}
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="font-bold text-sm text-gray-900 truncate">
-                                                            {attendee.email_status === "invited" && attendee.first_name === "Guest"
-                                                                ? <span className="text-gray-400 italic">Pending...</span>
-                                                                : `${attendee.first_name} ${attendee.last_name}`
-                                                            }
-                                                        </p>
-                                                        <p className="text-xs text-gray-400 truncate">{attendee.email}</p>
-                                                    </div>
-                                                    {attendee.email_status === "invited" ? (
-                                                        <button
-                                                            onClick={() => handleResendInvite(attendee.id)}
-                                                            disabled={resending === attendee.id}
-                                                            className="px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-                                                        >
-                                                            {resending === attendee.id ? (
-                                                                <><RefreshCw className="w-3 h-3 animate-spin" /> Sending...</>
-                                                            ) : (
-                                                                <><Mail className="w-3 h-3" /> Resend</>
-                                                            )}
-                                                        </button>
-                                                    ) : (
-                                                        <div className="px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider bg-green-100 text-green-600">
-                                                            Confirmed
+                                            {attendees
+                                                .sort((a, b) => {
+                                                    // Prioritize 'registered' over 'invited'
+                                                    if (a.email_status === 'registered' && b.email_status !== 'registered') return -1;
+                                                    if (a.email_status !== 'registered' && b.email_status === 'registered') return 1;
+                                                    // Secondary sort by creation date (oldest first)
+                                                    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+                                                })
+                                                .map((attendee, index) => (
+                                                    <div
+                                                        key={attendee.id}
+                                                        className="flex items-center gap-3 p-3 bg-gray-50/80 rounded-2xl border border-gray-100"
+                                                    >
+                                                        <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center font-black text-xs text-gray-400 border border-gray-100">
+                                                            {index + 1}
                                                         </div>
-                                                    )}
-                                                </div>
-                                            ))}
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="font-bold text-sm text-gray-900 truncate">
+                                                                {attendee.email_status === "invited" && attendee.first_name === "Guest"
+                                                                    ? <span className="text-gray-400 italic">Pending...</span>
+                                                                    : `${attendee.first_name} ${attendee.last_name}`
+                                                                }
+                                                            </p>
+                                                            <p className="text-xs text-gray-400 truncate">{attendee.email}</p>
+                                                        </div>
+                                                        {attendee.email_status === "invited" ? (
+                                                            <button
+                                                                onClick={() => handleResendInvite(attendee.id)}
+                                                                disabled={resending === attendee.id}
+                                                                className="px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                                                            >
+                                                                {resending === attendee.id ? (
+                                                                    <><RefreshCw className="w-3 h-3 animate-spin" /> Sending...</>
+                                                                ) : (
+                                                                    <><Mail className="w-3 h-3" /> Resend</>
+                                                                )}
+                                                            </button>
+                                                        ) : (
+                                                            <div className="px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider bg-green-100 text-green-600">
+                                                                Confirmed
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
                                         </div>
 
                                         {/* Add Member Button/Form */}

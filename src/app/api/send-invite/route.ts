@@ -90,6 +90,18 @@ export async function POST(request: NextRequest) {
             .update({ last_email_sent: new Date().toISOString() })
             .eq('id', attendeeId);
 
+        // Record email delivery
+        await supabase
+            .from('email_deliveries')
+            .insert({
+                attendee_id: attendeeId,
+                event_id: attendee.event_id,
+                email_type: 'invite',
+                status: 'sent',
+                resend_id: result.success && result.data ? result.data.id : null,
+                created_at: new Date().toISOString()
+            });
+
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Send invite error:', error);

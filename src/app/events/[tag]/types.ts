@@ -158,7 +158,7 @@ export const GLOBAL_NAV = [
   { id: "registry", icon: Users, label: "Guests" },
   { id: "automations", icon: Zap, label: "Automations" },
   { id: "broadcast", icon: MessageSquare, label: "Communications" },
-  { id: "live", icon: Check, label: "Live Ops" },
+  { id: "live", icon: Check, label: "Event Day" },
   { id: "settings", icon: Settings, label: "Settings" },
 ];
 
