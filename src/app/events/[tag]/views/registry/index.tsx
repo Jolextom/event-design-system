@@ -9,6 +9,10 @@ import { RegistryTable } from "./RegistryTable";
 import { PaginationFooter } from "./PaginationFooter";
 import { AddGuestModal } from "./AddGuestModal";
 import { GuestDetailsSidePanel } from "./GuestDetailsSidePanel";
+import { GuestFieldsDrawer } from "../GuestFieldsDrawer";
+import { RunAutomationModal } from "../RunAutomationModal";
+import { CreateVariableModal } from "../CreateVariableModal";
+import { EventVariable } from "../../types";
 
 interface RegistryViewProps {
     attendees: Attendee[];
@@ -33,7 +37,81 @@ export function RegistryView({
     const [isAddGuestModalOpen, setIsAddGuestModalOpen] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedGuest, setSelectedGuest] = useState<Attendee | null>(null);
+
     const itemsPerPage = 20;
+
+    // Fields & Automation State
+    const [variables, setVariables] = useState<EventVariable[]>([]);
+    const [isGuestFieldsDrawerOpen, setIsGuestFieldsDrawerOpen] = useState(false);
+    const [isRunAutomationModalOpen, setIsRunAutomationModalOpen] = useState(false);
+    const [targetVariable, setTargetVariable] = useState<EventVariable | undefined>(undefined);
+
+    // Variable CRUD State
+    const [isCreateVarModalOpen, setIsCreateVarModalOpen] = useState(false);
+    const [editingVariable, setEditingVariable] = useState<EventVariable | null>(null);
+
+    // Fetch variables on mount/change
+    React.useEffect(() => {
+        if (!eventId) return;
+        const fetchVars = async () => {
+            const supabase = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            );
+            const { data } = await supabase
+                .from("event_variables")
+                .select("*")
+                .eq("event_id", eventId)
+                .order("created_at", { ascending: true });
+            if (data) setVariables(data as EventVariable[]);
+        };
+        fetchVars();
+    }, [eventId]);
+
+    const handleSaveVariable = async (variable: any) => {
+        // Optimistic update
+        if (variable.id) {
+            setVariables(prev => prev.map(v => v.id === variable.id ? { ...v, ...variable } : v));
+        } else {
+            setVariables(prev => [...prev, { ...variable, id: `temp-${Date.now()}` } as EventVariable]);
+        }
+
+        setIsCreateVarModalOpen(false);
+        setEditingVariable(null);
+
+        if (eventId) {
+            const supabase = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            );
+            const { data } = await supabase.from("event_variables").upsert({
+                ...(variable.id && !variable.id.startsWith('temp-') ? { id: variable.id } : {}),
+                event_id: eventId,
+                name: variable.name,
+                type: variable.type,
+                options: variable.options
+            }).select().single();
+
+            if (data && !variable.id) {
+                // Replace temp ID with real ID
+                setVariables(prev => prev.map(v => v.id.startsWith('temp-') && v.name === data.name ? (data as EventVariable) : v));
+            }
+        }
+    };
+
+    const handleDeleteVariable = async (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        if (!confirm("Delete variable?")) return;
+        setVariables(prev => prev.filter(v => v.id !== id));
+
+        if (eventId && !id.startsWith('temp-')) {
+            const supabase = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            );
+            await supabase.from("event_variables").delete().eq("id", id);
+        }
+    };
 
     const handleAddGuest = async (formData: { first_name: string; last_name: string; email: string }) => {
         // ... existing add logic ...
@@ -234,6 +312,7 @@ export function RegistryView({
                 loading={loading}
                 onExportCSV={exportToCSV}
                 onAddGuest={() => setIsAddGuestModalOpen(true)}
+                onManageFields={() => setIsGuestFieldsDrawerOpen(true)}
             />
 
             <RegistryTable
@@ -270,6 +349,41 @@ export function RegistryView({
                 passes={passes}
                 onUpdate={() => onRefresh?.()}
             />
+
+            <GuestFieldsDrawer
+                isOpen={isGuestFieldsDrawerOpen}
+                onClose={() => setIsGuestFieldsDrawerOpen(false)}
+                variables={variables}
+                onOpenCreateModal={() => setIsCreateVarModalOpen(true)}
+                onEditVariable={(v) => { setEditingVariable(v); setIsCreateVarModalOpen(true); }}
+                onDeleteVariable={handleDeleteVariable}
+                onRunAutomation={(v) => {
+                    setTargetVariable(v);
+                    setIsRunAutomationModalOpen(true);
+                }}
+            />
+
+            <RunAutomationModal
+                isOpen={isRunAutomationModalOpen}
+                onClose={() => {
+                    setIsRunAutomationModalOpen(false);
+                    setTargetVariable(undefined);
+                }}
+                eventId={eventId || ""}
+                targetVariable={targetVariable}
+                onComplete={() => onRefresh?.()}
+            />
+
+            {(isCreateVarModalOpen || editingVariable) && (
+                <CreateVariableModal
+                    initialVariable={editingVariable || undefined}
+                    onClose={() => {
+                        setIsCreateVarModalOpen(false);
+                        setEditingVariable(null);
+                    }}
+                    onSave={handleSaveVariable}
+                />
+            )}
         </div>
     );
 }

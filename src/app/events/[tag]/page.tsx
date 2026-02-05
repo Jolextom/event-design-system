@@ -711,6 +711,8 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                                             {activeBuilderCategory === "variables" && (
                                                 <SmartGroupsView
                                                     onNavigateToRegistry={() => setActiveGlobal("registry")}
+                                                    eventId={event?.id ?? null}
+                                                    attendees={attendees}
                                                 />
                                             )}
                                         </motion.div>
@@ -731,7 +733,7 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                                         onRefresh={refetchAttendees}
                                     />
                                 )}
-                                {activeGlobal === "automations" && <AutomationsView />}
+                                {activeGlobal === "automations" && <AutomationsView eventId={event?.id ?? ""} />}
                                 {activeGlobal === "broadcast" && <BroadcastView />}
                                 {activeGlobal === "settings" && <SettingsView />}
                             </motion.div>

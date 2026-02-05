@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Search, Filter, Download, UserPlus, Loader2 } from "lucide-react";
+import { Search, Filter, Download, UserPlus, Loader2, Tag as TagIcon, Zap, Shuffle } from "lucide-react";
 import { Attendee } from "../../types";
 
 interface RegistryHeaderProps {
@@ -12,6 +12,7 @@ interface RegistryHeaderProps {
     loading?: boolean;
     onExportCSV: () => void;
     onAddGuest: () => void;
+    onManageFields: () => void;
 }
 
 export function RegistryHeader({
@@ -21,7 +22,8 @@ export function RegistryHeader({
     checkedInCount,
     loading,
     onExportCSV,
-    onAddGuest
+    onAddGuest,
+    onManageFields,
 }: RegistryHeaderProps) {
     return (
         <div className="flex flex-col px-8 py-6 bg-white border-b border-gray-100">
@@ -55,16 +57,26 @@ export function RegistryHeader({
                 </div>
 
                 {/* Actions */}
+
+
                 <div className="flex items-center gap-2 shrink-0">
-                    <button className="flex items-center gap-2 px-5 py-3 bg-white border border-gray-200 text-gray-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-gray-900 hover:bg-gray-50 transition-all shrink-0">
-                        <Filter className="w-4 h-4" /> Filter
+                    {/* Fields Management */}
+                    <button
+                        onClick={onManageFields}
+                        className="flex items-center gap-2 px-4 py-3 bg-white border border-gray-200 text-gray-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-gray-900 hover:bg-gray-50 transition-all shrink-0"
+                    >
+                        <TagIcon className="w-4 h-4" /> Fields
                     </button>
+
                     <button
                         onClick={onExportCSV}
                         className="flex items-center gap-2 px-5 py-3 bg-white border border-gray-200 text-gray-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-gray-900 hover:bg-gray-50 transition-all shrink-0"
                     >
                         <Download className="w-4 h-4" /> Export CSV
                     </button>
+
+
+
                     <button
                         onClick={onAddGuest}
                         className="flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-gray-100 shrink-0"
@@ -74,6 +86,6 @@ export function RegistryHeader({
                     {loading && <Loader2 className="w-5 h-5 text-blue-500 animate-spin ml-2" />}
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

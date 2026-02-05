@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
     Zap,
     Plus,
@@ -14,7 +14,12 @@ import {
     Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { RunAutomationModal } from "./RunAutomationModal";
+
+interface AutomationsViewProps {
+    eventId: string;
+}
 
 const MOCK_FLOWS = [
     { id: "1", name: "Speaker Onboarding", triggers: ["Ticket: Speaker"], actions: ["Assign Variable: {is_speaker: true}", "Mail: Speaker_Success_Kit"], active: true, usage: "12 hits" },
@@ -22,9 +27,18 @@ const MOCK_FLOWS = [
     { id: "3", name: "VIP Welcome Sequence", triggers: ["Ticket: VIP"], actions: ["Assign Variable: {priority: 'High'}", "Mail: Welcome_VIP"], active: true, usage: "142 hits" },
 ];
 
-export function AutomationsView() {
+export function AutomationsView({ eventId }: AutomationsViewProps) {
+    const [isRunModalOpen, setIsRunModalOpen] = useState(false);
+
     return (
         <div className="h-full overflow-y-auto bg-white custom-scrollbar">
+            <AnimatePresence>
+                <RunAutomationModal
+                    isOpen={isRunModalOpen}
+                    onClose={() => setIsRunModalOpen(false)}
+                    eventId={eventId}
+                />
+            </AnimatePresence>
             <div className="p-8 md:p-10 space-y-10 max-w-5xl mx-auto relative pb-24">
                 {/* Header */}
                 <header className="flex items-end justify-between relative z-10">

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Mail, Calendar, Hash, CheckCircle2, ShieldCheck, Clock, Ticket, MessageSquare, Trash2, Loader2, RotateCcw, Edit2, Eye, MousePointer, AlertCircle, Send, ChevronDown } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
-import { Attendee, Question, Pass } from "../../types";
+import { Attendee, Question, Pass, EventVariable } from "../../types";
 import { formatDistanceToNow, format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { GuestTimeline, TimelineEvent } from "./GuestTimeline";
@@ -35,6 +35,10 @@ export function GuestDetailsSidePanel({
     const [currentAttendeeId, setCurrentAttendeeId] = useState<string | null>(null);
     const [expandedEmailId, setExpandedEmailId] = useState<string | null>(null);
 
+    // Variable State
+    const [eventVariables, setEventVariables] = useState<EventVariable[]>([]);
+    const [savingProp, setSavingProp] = useState<string | null>(null);
+
     // Modal states
     const [previewModalOpen, setPreviewModalOpen] = useState(false);
     const [previewData, setPreviewData] = useState<{ type: string, params: any } | null>(null);
@@ -50,6 +54,7 @@ export function GuestDetailsSidePanel({
                 setCurrentAttendeeId(attendee.id);
             }
             fetchEmailHistory(attendee.id);
+            fetchEventVariables(attendee.event_id || "");
         } else if (!isOpen) {
             // Optional: reset on close
             setCurrentAttendeeId(null);
@@ -82,6 +87,49 @@ export function GuestDetailsSidePanel({
 
         setEmailHistory(data || []);
         setLoadingHistory(false);
+    };
+
+    const fetchEventVariables = async (eventId: string) => {
+        if (!eventId) return;
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+        const { data } = await supabase
+            .from("event_variables")
+            .select("*")
+            .eq("event_id", eventId)
+            .order("created_at", { ascending: true });
+
+        if (data) setEventVariables(data as EventVariable[]);
+    };
+
+    const handleUpdateProperty = async (variableName: string, value: any) => {
+        if (!attendee) return;
+        setSavingProp(variableName);
+
+        // Optimistic Update
+        const updatedProperties = { ...(attendee.properties || {}), [variableName]: value };
+        // Ideally we update the parent list too via onUpdate, but simplified here
+
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+
+        // Update DB
+        const { error } = await supabase
+            .from("attendees")
+            .update({ properties: updatedProperties })
+            .eq("id", attendee.id);
+
+        if (!error) {
+            // Force refresh to ensure sync
+            onUpdate();
+        } else {
+            alert("Failed to save property");
+        }
+        setSavingProp(null);
     };
 
     const handleCheckInToggle = async () => {
@@ -415,6 +463,76 @@ export function GuestDetailsSidePanel({
                                                         <span>{attendee.created_at ? new Date(attendee.created_at).toLocaleDateString() : "-"}</span>
                                                     </div>
                                                 </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Custom Fields Section */}
+                                    {eventVariables.length > 0 && activeTab === 'profile' && (
+                                        <div className="space-y-4">
+                                            <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">Custom Fields</h3>
+                                            <div className="bg-white border border-gray-100 rounded-2xl p-5 space-y-5 shadow-sm">
+                                                {eventVariables.map(variable => {
+                                                    const currentValue = attendee.properties?.[variable.name] || "";
+                                                    return (
+                                                        <div key={variable.id} className="space-y-2">
+                                                            <label className="text-sm font-bold text-gray-700 flex justify-between">
+                                                                {variable.name}
+                                                                {savingProp === variable.name && <Loader2 className="w-3 h-3 animate-spin text-gray-300" />}
+                                                            </label>
+
+                                                            {/* Input Types */}
+                                                            {variable.type === 'select' ? (
+                                                                <div className="relative">
+                                                                    <select
+                                                                        value={currentValue}
+                                                                        onChange={(e) => handleUpdateProperty(variable.name, e.target.value)}
+                                                                        className="w-full pl-3 pr-8 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[var(--brand-blue)]/20 focus:border-[var(--brand-blue)] outline-none transition-all appearance-none"
+                                                                    >
+                                                                        <option value="">Select option...</option>
+                                                                        {variable.options?.map(opt => (
+                                                                            <option key={opt} value={opt}>{opt}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                                                                </div>
+                                                            ) : variable.type === 'boolean' ? (
+                                                                <div className="flex items-center gap-3">
+                                                                    <button
+                                                                        onClick={() => handleUpdateProperty(variable.name, true)}
+                                                                        className={cn(
+                                                                            "px-4 py-2 rounded-lg text-xs font-bold border transition-all",
+                                                                            currentValue === true
+                                                                                ? "bg-green-50 border-green-200 text-green-700"
+                                                                                : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+                                                                        )}
+                                                                    >
+                                                                        Yes
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleUpdateProperty(variable.name, false)}
+                                                                        className={cn(
+                                                                            "px-4 py-2 rounded-lg text-xs font-bold border transition-all",
+                                                                            currentValue === false
+                                                                                ? "bg-red-50 border-red-200 text-red-700"
+                                                                                : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+                                                                        )}
+                                                                    >
+                                                                        No
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <input
+                                                                    type={variable.type === 'number' ? 'number' : 'text'}
+                                                                    defaultValue={currentValue}
+                                                                    onBlur={(e) => handleUpdateProperty(variable.name, e.target.value)}
+                                                                    placeholder={`Enter ${variable.name.toLowerCase()}...`}
+                                                                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[var(--brand-blue)]/20 focus:border-[var(--brand-blue)] outline-none transition-all"
+                                                                />
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     )}
