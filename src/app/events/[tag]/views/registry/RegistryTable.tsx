@@ -209,6 +209,10 @@ export function RegistryTable({
                                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100 text-[9px] font-black uppercase tracking-wider">
                                                     <ShieldCheck className="w-3 h-3" /> Checked In
                                                 </span>
+                                            ) : attendee.email_status === 'invited' ? (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-600 border border-yellow-100 text-[9px] font-black uppercase tracking-wider">
+                                                    <Clock className="w-3 h-3" /> Invited
+                                                </span>
                                             ) : (
                                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 border border-gray-100 text-[9px] font-black uppercase tracking-wider">
                                                     <CheckCircle2 className="w-3 h-3" /> Confirmed

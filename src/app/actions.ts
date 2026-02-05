@@ -45,19 +45,29 @@ export async function sendWelcomeEmail(attendeeId: string, eventId: string) {
         }
 
         // 3. Send the email
+        const eventDateStr = new Date(event.start_date).toLocaleDateString("en-US", {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        const eventLocation = event.location || "Virtual Event";
+        const orderRef = attendee?.order?.order_ref || "N/A";
+        const receiptLink = `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/${event.tag}/receipt/${attendee?.order?.order_ref}`;
+
+        // Prepare params for storage
+        const templateParams = {
+            eventTitle: event.event_title,
+            eventDate: eventDateStr,
+            eventLocation,
+            orderRef,
+            receiptLink,
+            attendeeName: attendee.first_name
+        };
+
         const result = await sendConfirmationEmail({
             to: attendee.email,
-            eventTitle: event.event_title,
-            eventDate: new Date(event.start_date).toLocaleDateString("en-US", {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            }),
-            eventLocation: event.location || "Virtual Event",
-            orderRef: attendee?.order?.order_ref || "N/A",
-            receiptLink: `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/${event.tag}/receipt/${attendee?.order?.order_ref}`,
-            attendeeName: attendee.first_name
+            ...templateParams
         });
 
         // 4. Update delivery status
@@ -67,6 +77,8 @@ export async function sendWelcomeEmail(attendeeId: string, eventId: string) {
                 .update({
                     status: result.success ? "sent" : "failed",
                     resend_id: result.success && result.data ? result.data.id : null,
+                    template_type: "confirmation",
+                    template_params: templateParams,
                     updated_at: new Date().toISOString()
                 })
                 .eq("id", delivery.id);

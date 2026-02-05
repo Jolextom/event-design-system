@@ -141,7 +141,7 @@ export function RegistryView({
     // Calculate group stats (order_id -> count) from ALL attendees to ensure accuracy across pages
     const groupStats = useMemo(() => {
         return attendees.reduce((acc, curr) => {
-            if (curr.order_id) {
+            if (curr.order_id && curr.email_status !== 'invited') {
                 acc[curr.order_id] = (acc[curr.order_id] || 0) + 1;
             }
             return acc;

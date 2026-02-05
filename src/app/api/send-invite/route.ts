@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { sendInviteEmail } from '@/lib/email';
+import { sendInviteEmail, sendConfirmationEmail } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
     try {
@@ -47,11 +47,8 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Build invite link
+        // Base URL and Date Formatting (Common)
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        const inviteLink = `${baseUrl}/${event.tag}/join/${attendee.ref}`;
-
-        // Format date
         const eventDate = event.start_date
             ? new Date(event.start_date).toLocaleDateString('en-US', {
                 weekday: 'long',
@@ -61,46 +58,113 @@ export async function POST(request: NextRequest) {
             })
             : 'TBA';
 
-        // Get inviter name
-        const inviterName = attendee.order
-            ? `${attendee.order.first_name} ${attendee.order.last_name}`.trim()
-            : 'Someone';
+        // Check for confirmation status
+        const isConfirmed = attendee.email_status === 'confirmed' || attendee.email_status === 'registered';
 
-        // Send email
-        const result = await sendInviteEmail({
-            to: attendee.email,
-            eventTitle: event.event_title,
-            eventDate,
-            eventLocation: event.location || 'TBA',
-            inviterName,
-            passType: attendee.pass?.title || 'General Admission',
-            inviteLink,
-        });
+        if (isConfirmed) {
+            // Send Confirmation Email
+            const receiptLink = `${baseUrl}/${event.tag}/receipt/${attendee.ref}`;
 
-        if (!result.success) {
-            return NextResponse.json(
-                { error: 'Failed to send email' },
-                { status: 500 }
-            );
-        }
-
-        // Update last_email_sent timestamp
-        await supabase
-            .from('attendees')
-            .update({ last_email_sent: new Date().toISOString() })
-            .eq('id', attendeeId);
-
-        // Record email delivery
-        await supabase
-            .from('email_deliveries')
-            .insert({
-                attendee_id: attendeeId,
-                event_id: attendee.event_id,
-                email_type: 'invite',
-                status: 'sent',
-                resend_id: result.success && result.data ? result.data.id : null,
-                created_at: new Date().toISOString()
+            // Send email
+            const result = await sendConfirmationEmail({
+                to: attendee.email,
+                eventTitle: event.event_title,
+                eventDate,
+                eventLocation: event.location || 'TBA',
+                orderRef: attendee.ref,
+                receiptLink,
+                attendeeName: `${attendee.first_name} ${attendee.last_name}`,
             });
+
+            if (!result.success) {
+                return NextResponse.json(
+                    { error: 'Failed to send confirmation email' },
+                    { status: 500 }
+                );
+            }
+
+            // Update last_email_sent
+            await supabase
+                .from('attendees')
+                .update({ last_email_sent: new Date().toISOString() })
+                .eq('id', attendeeId);
+
+            // Record delivery
+            await supabase
+                .from('email_deliveries')
+                .insert({
+                    attendee_id: attendeeId,
+                    event_id: attendee.event_id,
+                    email_type: 'confirmation',
+                    status: 'sent',
+                    resend_id: result.data ? result.data.id : null,
+                    template_type: 'confirmation',
+                    template_params: {
+                        eventTitle: event.event_title,
+                        eventDate,
+                        eventLocation: event.location || 'TBA',
+                        orderRef: attendee.ref,
+                        receiptLink,
+                        attendeeName: `${attendee.first_name} ${attendee.last_name}`,
+                        recipient_email: attendee.email
+                    },
+                    created_at: new Date().toISOString()
+                });
+        } else {
+            // Send Invite Email
+            const inviteLink = `${baseUrl}/${event.tag}/join/${attendee.ref}`;
+
+            // Get inviter name
+            const inviterName = attendee.order
+                ? `${attendee.order.first_name} ${attendee.order.last_name}`.trim()
+                : 'Someone';
+
+            // Send email
+            const result = await sendInviteEmail({
+                to: attendee.email,
+                eventTitle: event.event_title,
+                eventDate,
+                eventLocation: event.location || 'TBA',
+                inviterName,
+                passType: attendee.pass?.title || 'General Admission',
+                inviteLink,
+            });
+
+            if (!result.success) {
+                return NextResponse.json(
+                    { error: 'Failed to send invite email' },
+                    { status: 500 }
+                );
+            }
+
+            // Update last_email_sent
+            await supabase
+                .from('attendees')
+                .update({ last_email_sent: new Date().toISOString() })
+                .eq('id', attendeeId);
+
+            // Record delivery
+            await supabase
+                .from('email_deliveries')
+                .insert({
+                    attendee_id: attendeeId,
+                    event_id: attendee.event_id,
+                    email_type: 'invite',
+                    status: 'sent',
+                    resend_id: result.data ? result.data.id : null,
+                    template_type: 'invite',
+                    template_params: {
+                        eventTitle: event.event_title,
+                        eventDate,
+                        eventLocation: event.location || 'TBA',
+                        inviterName,
+                        passType: attendee.pass?.title || 'General Admission',
+                        inviteLink,
+                        recipient_email: attendee.email
+                    },
+                    created_at: new Date().toISOString()
+                });
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {
