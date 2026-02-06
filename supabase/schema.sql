@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS public.event_variables (
     name TEXT NOT NULL,
     type TEXT NOT NULL CHECK (type IN ('text', 'select', 'number', 'boolean', 'date')),
     options JSONB, -- For 'select' type: ["Red", "Blue"]
+    settings JSONB DEFAULT '{}'::jsonb, -- Configuration for assignment logic
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

@@ -50,6 +50,87 @@ export function RegistryView({
     const [isCreateVarModalOpen, setIsCreateVarModalOpen] = useState(false);
     const [editingVariable, setEditingVariable] = useState<EventVariable | null>(null);
 
+    // Column Configuration
+    const [columnConfig, setColumnConfig] = useState<{ id: string; label: string; type: 'standard' | 'custom'; visible: boolean }[]>([]);
+
+    // Sync Config (Standard + Questions + Variables)
+    React.useEffect(() => {
+        setColumnConfig(prev => {
+            const currentIds = new Set(prev.map(c => c.id));
+
+            // 1. Define Standard Columns
+            const standardCols: { id: string; label: string; type: 'standard' | 'custom'; visible: boolean }[] = [
+                { id: 'attendee', label: 'Attendee', type: 'standard', visible: true },
+                { id: 'ticket', label: 'Ticket', type: 'standard', visible: true },
+            ];
+
+            // 2. Questions (Treat as Custom/Standard? Let's say Custom so they are movable/toggleable but maybe not deletable via this UI)
+            // Ideally we separate Questions from "Variable Fields". But for table view they are peers.
+            // Let's mark them type='custom' but maybe distinct?
+            // Drawer logic: `isCustom = col.type === 'custom'`.
+            // If I call them 'custom', drawer tries to look up `variables.find`. It won't find them in `variables` array.
+            // So drawer will show them but maybe with default icon/actions.
+            // To be safe, let's stick to what we know: Variables.
+            // Questions should probably be in the config too.
+            // Let's add them.
+            const questionCols = questions.map(q => ({
+                id: q.id,
+                label: q.title,
+                type: 'custom' as const, // Rendered as custom (text)
+                visible: true
+            }));
+
+            // 3. Variables
+            const variableCols = variables.map(v => ({
+                id: v.id,
+                label: v.name,
+                type: 'custom' as const,
+                visible: true
+            }));
+
+            // 4. Other Standard
+            const metaCols: { id: string; label: string; type: 'standard' | 'custom'; visible: boolean }[] = [
+                { id: 'ref', label: 'Reference', type: 'standard', visible: true },
+                { id: 'created_at', label: 'Registered', type: 'standard', visible: true },
+                { id: 'status', label: 'Status', type: 'standard', visible: true },
+            ];
+
+            // Construction Logic:
+            // If prev is empty, build default.
+            if (prev.length === 0) {
+                return [
+                    ...standardCols,
+                    ...questionCols,
+                    ...variableCols,
+                    ...metaCols
+                ];
+            }
+
+            // If prev exists, merge new items (preserve order/visibility)
+            const newCols = [...prev];
+
+            // Add Missing Questions
+            questionCols.forEach(q => {
+                if (!currentIds.has(q.id)) newCols.push(q);
+            });
+
+            // Add Missing Variables
+            variableCols.forEach(v => {
+                if (!currentIds.has(v.id)) newCols.push(v);
+            });
+
+            // Remove Stale Items (that are likely deleted questions or variables)
+            // We need to know valid IDs.
+            const validIds = new Set([
+                'attendee', 'ticket', 'ref', 'created_at', 'status',
+                ...questions.map(q => q.id),
+                ...variables.map(v => v.id)
+            ]);
+
+            return newCols.filter(c => validIds.has(c.id));
+        });
+    }, [variables, questions]);
+
     // Fetch variables on mount/change
     React.useEffect(() => {
         if (!eventId) return;
@@ -89,7 +170,8 @@ export function RegistryView({
                 event_id: eventId,
                 name: variable.name,
                 type: variable.type,
-                options: variable.options
+                options: variable.options,
+                settings: variable.settings
             }).select().single();
 
             if (data && !variable.id) {
@@ -99,19 +181,7 @@ export function RegistryView({
         }
     };
 
-    const handleDeleteVariable = async (e: React.MouseEvent, id: string) => {
-        e.stopPropagation();
-        if (!confirm("Delete variable?")) return;
-        setVariables(prev => prev.filter(v => v.id !== id));
 
-        if (eventId && !id.startsWith('temp-')) {
-            const supabase = createClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-            );
-            await supabase.from("event_variables").delete().eq("id", id);
-        }
-    };
 
     const handleAddGuest = async (formData: { first_name: string; last_name: string; email: string }) => {
         // ... existing add logic ...
@@ -275,6 +345,73 @@ export function RegistryView({
         }
     };
 
+    // --- Column & Variable Handlers ---
+
+    const handleToggleColumn = (id: string) => {
+        setColumnConfig(prev => prev.map(c => c.id === id ? { ...c, visible: !c.visible } : c));
+    };
+
+    const handleMoveColumn = (id: string, direction: 'up' | 'down') => {
+        setColumnConfig(prev => {
+            const index = prev.findIndex(c => c.id === id);
+            if (index === -1) return prev;
+            if (direction === 'up' && index === 0) return prev;
+            if (direction === 'down' && index === prev.length - 1) return prev;
+
+            const newCols = [...prev];
+            const swapIndex = direction === 'up' ? index - 1 : index + 1;
+            [newCols[index], newCols[swapIndex]] = [newCols[swapIndex], newCols[index]];
+            return newCols;
+        });
+    };
+
+    const handleDeleteVariable = async (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        if (!confirm("Delete this variable? Data associated with it will be permanently removed.")) return;
+
+        const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+        await supabase.from("event_variables").delete().eq("id", id);
+
+        // Optimistic update
+        setVariables(prev => prev.filter(v => v.id !== id));
+        onRefresh?.();
+    };
+
+    const handleRunAutomation = async (variable: EventVariable) => {
+        const method = variable.settings?.method;
+
+        if ((method === 'random_equal' || method === 'random_pure') && variable.options && variable.options.length > 0) {
+            // Direct Smart Fill Logic
+            if (confirm(`Run Smart Fill for "${variable.name}"?\n\nThis will assign values to guests who don't have one yet.`)) {
+                try {
+                    const { runRandomSplit } = await import("../../utils/automationLogic");
+                    const result = await runRandomSplit(
+                        eventId!,
+                        {
+                            variableName: variable.name,
+                            options: variable.options
+                        },
+                        true // onlyEmpty
+                    );
+
+                    if (result.success) {
+                        alert(`Success! Updated ${result.count} guests.`);
+                        onRefresh?.();
+                    } else {
+                        alert(`Error: ${result.error}`);
+                    }
+                } catch (e) {
+                    console.error("Automation error:", e);
+                    alert("Failed to run automation.");
+                }
+            }
+        } else {
+            // Manual/Complex
+            setTargetVariable(variable);
+            setIsRunAutomationModalOpen(true);
+        }
+    };
+
     // Determine if we are in dev environment (client-side check)
     const [isDev, setIsDev] = useState(false);
     React.useEffect(() => {
@@ -324,6 +461,7 @@ export function RegistryView({
                 isDev={isDev}
                 onDelete={handleDelete}
                 onView={setSelectedGuest}
+                columnConfig={columnConfig}
             />
 
             <PaginationFooter
@@ -352,15 +490,19 @@ export function RegistryView({
 
             <GuestFieldsDrawer
                 isOpen={isGuestFieldsDrawerOpen}
-                onClose={() => setIsGuestFieldsDrawerOpen(false)}
+                onClose={() => {
+                    setIsGuestFieldsDrawerOpen(false);
+                    setIsCreateVarModalOpen(false); // Close nested modal
+                    setEditingVariable(null);
+                }}
                 variables={variables}
+                columnConfig={columnConfig}
                 onOpenCreateModal={() => setIsCreateVarModalOpen(true)}
                 onEditVariable={(v) => { setEditingVariable(v); setIsCreateVarModalOpen(true); }}
                 onDeleteVariable={handleDeleteVariable}
-                onRunAutomation={(v) => {
-                    setTargetVariable(v);
-                    setIsRunAutomationModalOpen(true);
-                }}
+                onRunAutomation={handleRunAutomation}
+                onToggleColumn={handleToggleColumn}
+                onMoveColumn={handleMoveColumn}
             />
 
             <RunAutomationModal

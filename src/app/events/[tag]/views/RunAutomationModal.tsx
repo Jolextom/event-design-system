@@ -121,21 +121,36 @@ export function RunAutomationModal({ isOpen, onClose, eventId, targetVariable, o
 
                     <div className="space-y-6">
                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-gray-900">Choose Variable to Split</label>
-                            <select
-                                value={selectedVariableId}
-                                onChange={(e) => setSelectedVariableId(e.target.value)}
-                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all"
-                            >
-                                <option value="">Select a variable...</option>
-                                {variables.map(v => (
-                                    <option key={v.id} value={v.id}>{v.name} ({v.options?.length || 0} options)</option>
-                                ))}
-                            </select>
-                            {selectedVariableId && (
-                                <p className="text-xs text-gray-400 font-medium px-1">
-                                    Guests will be assigned one of: <span className="text-gray-600">{variables.find(v => v.id === selectedVariableId)?.options?.join(", ")}</span>
-                                </p>
+                            {targetVariable ? (
+                                <div className="p-4 bg-purple-50 border border-purple-100 rounded-xl">
+                                    <h3 className="text-xs font-black uppercase tracking-widest text-purple-400 mb-1">Target Variable</h3>
+                                    <p className="text-sm font-bold text-purple-900 flex items-center gap-2">
+                                        <Shuffle className="w-3.5 h-3.5" />
+                                        {targetVariable.name}
+                                    </p>
+                                    <p className="text-[10px] text-purple-600 mt-1 font-medium">
+                                        Distribute values: {targetVariable.options?.join(", ")}
+                                    </p>
+                                </div>
+                            ) : (
+                                <>
+                                    <label className="text-sm font-bold text-gray-900">Choose Variable to Split</label>
+                                    <select
+                                        value={selectedVariableId}
+                                        onChange={(e) => setSelectedVariableId(e.target.value)}
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all"
+                                    >
+                                        <option value="">Select a variable...</option>
+                                        {variables.map(v => (
+                                            <option key={v.id} value={v.id}>{v.name} ({v.options?.length || 0} options)</option>
+                                        ))}
+                                    </select>
+                                    {selectedVariableId && (
+                                        <p className="text-xs text-gray-400 font-medium px-1">
+                                            Guests will be assigned one of: <span className="text-gray-600">{variables.find(v => v.id === selectedVariableId)?.options?.join(", ")}</span>
+                                        </p>
+                                    )}
+                                </>
                             )}
                         </div>
 

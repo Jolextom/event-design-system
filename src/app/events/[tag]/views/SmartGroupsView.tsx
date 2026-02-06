@@ -220,6 +220,52 @@ export function SmartGroupsView({ onNavigateToRegistry, eventId, attendees = [] 
         }
     };
 
+    // Column Configuration State (Mocked/Local for Drawer compatibility)
+    const [columnConfig, setColumnConfig] = useState<{ id: string; label: string; type: 'standard' | 'custom'; visible: boolean }[]>([
+        { id: 'attendee', label: 'Attendee', type: 'standard', visible: true },
+        { id: 'ticket', label: 'Ticket', type: 'standard', visible: true },
+        { id: 'ref', label: 'Reference', type: 'standard', visible: true },
+        { id: 'created_at', label: 'Registered At', type: 'standard', visible: true },
+        { id: 'status', label: 'Status', type: 'standard', visible: true },
+    ]);
+
+    // Sync variables to column config
+    React.useEffect(() => {
+        setColumnConfig(prev => {
+            const existingIds = new Set(prev.map(c => c.id));
+            const newCols = [...prev];
+
+            // Add new variables that aren't in config
+            variables.forEach(v => {
+                if (!existingIds.has(v.id)) {
+                    newCols.push({ id: v.id, label: v.name, type: 'custom', visible: true });
+                }
+            });
+
+            // Filter out stale custom variables
+            const variableIds = new Set(variables.map(v => v.id));
+            return newCols.filter(c => c.type === 'standard' || variableIds.has(c.id));
+        });
+    }, [variables]);
+
+    const handleToggleColumn = (id: string) => {
+        setColumnConfig(prev => prev.map(c => c.id === id ? { ...c, visible: !c.visible } : c));
+    };
+
+    const handleMoveColumn = (id: string, direction: 'up' | 'down') => {
+        setColumnConfig(prev => {
+            const index = prev.findIndex(c => c.id === id);
+            if (index === -1) return prev;
+            if (direction === 'up' && index === 0) return prev;
+            if (direction === 'down' && index === prev.length - 1) return prev;
+
+            const newCols = [...prev];
+            const swapIndex = direction === 'up' ? index - 1 : index + 1;
+            [newCols[index], newCols[swapIndex]] = [newCols[swapIndex], newCols[index]];
+            return newCols;
+        });
+    };
+
     // --- Render ---
 
     return (
@@ -263,6 +309,7 @@ export function SmartGroupsView({ onNavigateToRegistry, eventId, attendees = [] 
                         isOpen={isGuestFieldsDrawerOpen}
                         onClose={() => setIsGuestFieldsDrawerOpen(false)}
                         variables={variables}
+                        columnConfig={columnConfig}
                         onOpenCreateModal={() => setIsCreateVarModalOpen(true)}
                         onEditVariable={(v) => { setEditingVariable(v); setIsCreateVarModalOpen(true); }}
                         onDeleteVariable={handleDeleteVariable}
@@ -270,6 +317,8 @@ export function SmartGroupsView({ onNavigateToRegistry, eventId, attendees = [] 
                             setTargetVariable(v);
                             setIsRunAutomationModalOpen(true);
                         }}
+                        onToggleColumn={handleToggleColumn}
+                        onMoveColumn={handleMoveColumn}
                     />
 
                     {/* Side Panel */}

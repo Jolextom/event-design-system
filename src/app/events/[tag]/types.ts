@@ -206,4 +206,7 @@ export interface EventVariable {
   name: string;
   type: 'text' | 'select' | 'number' | 'boolean' | 'date';
   options?: string[]; // For select type
+  settings?: {
+    method?: 'manual' | 'random_equal' | 'random_pure';
+  };
 }

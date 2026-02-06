@@ -2,10 +2,17 @@
 
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Clock, ShieldCheck, CheckCircle2, MoreHorizontal, User, Ticket, Users, Trash2 } from "lucide-react";
+import { Search, Clock, ShieldCheck, CheckCircle2, MoreHorizontal, User, Ticket, Users, Trash2, Calendar, Hash } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Attendee, Question, Pass } from "../../types";
 import { cn } from "@/lib/utils";
+
+interface ColumnConfig {
+    id: string;
+    label: string;
+    type: 'standard' | 'custom';
+    visible: boolean;
+}
 
 interface RegistryTableProps {
     attendees: Attendee[];
@@ -14,6 +21,7 @@ interface RegistryTableProps {
     loading?: boolean;
     groupStats?: Record<string, number>;
     onView?: (attendee: Attendee) => void;
+    columnConfig?: ColumnConfig[]; // Optional to prevent breaking if not passed immediately
 }
 
 export function RegistryTable({
@@ -24,13 +32,24 @@ export function RegistryTable({
     groupStats = {},
     isDev = false,
     onDelete,
-    onView
+    onView,
+    columnConfig = [] // Default to empty, but we normally expect it populated
 }: RegistryTableProps & { isDev?: boolean; onDelete?: (ids: string[]) => void }) {
     const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
 
-    // ... selection logic ...
+    // Fallback config if not provided (backward compatibility)
+    const effectiveConfig: ColumnConfig[] = columnConfig.length > 0 ? columnConfig : [
+        { id: 'attendee', label: 'Attendee', type: 'standard', visible: true },
+        { id: 'ticket', label: 'Ticket', type: 'standard', visible: true },
+        ...questions.map(q => ({ id: q.id, label: q.title, type: 'custom' as const, visible: true })),
+        { id: 'ref', label: 'Reference', type: 'standard', visible: true },
+        { id: 'created_at', label: 'Registered', type: 'standard', visible: true },
+        { id: 'status', label: 'Status', type: 'standard', visible: true },
+    ];
 
-    // Handle Select All and Select One logic stays same...
+    const visibleColumns = effectiveConfig.filter(c => c.visible);
+
+    // ... selection logic ...
     const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.checked) {
             setSelectedIds(new Set(attendees.map(a => a.id)));
@@ -72,28 +91,29 @@ export function RegistryTable({
                                 onChange={handleSelectAll}
                             />
                         </th>
-                        <th className="px-4 py-6 text-[12px] font-black uppercase tracking-[0.2em] text-gray-400 sticky left-12 bg-white z-40 min-w-[240px]">
-                            {isDev && selectedIds.size > 0 ? (
-                                <button
-                                    onClick={handleBulkDelete}
-                                    className="flex items-center gap-2 text-red-500 hover:text-red-600 transition-colors"
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                    Delete ({selectedIds.size})
-                                </button>
-                            ) : (
-                                "Attendee"
-                            )}
-                        </th>
-                        <th className="px-4 py-6 text-[11px] font-black uppercase tracking-[0.2em] text-gray-400">Ticket</th>
-                        {questions.map(q => (
-                            <th key={q.id} className="px-4 py-6 text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 max-w-[200px] truncate">
-                                {q.title}
+
+                        {visibleColumns.map((col, index) => (
+                            <th
+                                key={col.id}
+                                className={cn(
+                                    "px-4 py-6 text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 whitespace-nowrap",
+                                    col.id === 'attendee' && "min-w-[240px] sticky left-12 bg-white z-40"
+                                )}
+                            >
+                                {col.id === 'attendee' && isDev && selectedIds.size > 0 ? (
+                                    <button
+                                        onClick={handleBulkDelete}
+                                        className="flex items-center gap-2 text-red-500 hover:text-red-600 transition-colors"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                        Delete ({selectedIds.size})
+                                    </button>
+                                ) : (
+                                    col.label
+                                )}
                             </th>
                         ))}
-                        <th className="px-4 py-6 text-[11px] font-black uppercase tracking-[0.2em] text-gray-400">Reference</th>
-                        <th className="px-4 py-6 text-[11px] font-black uppercase tracking-[0.2em] text-gray-400">Registered</th>
-                        <th className="px-4 py-6 text-[11px] font-black uppercase tracking-[0.2em] text-gray-400">Status</th>
+
                         <th className="px-8 py-6 text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 text-right sticky right-0 bg-white z-40">Actions</th>
                     </tr>
                 </thead>
@@ -101,7 +121,7 @@ export function RegistryTable({
                     <AnimatePresence mode="wait" initial={false}>
                         {attendees.length === 0 && !loading ? (
                             <tr key="empty">
-                                <td colSpan={8 + questions.length} className="py-20 text-center">
+                                <td colSpan={visibleColumns.length + 2} className="py-20 text-center">
                                     <div className="flex flex-col items-center justify-center text-gray-400">
                                         <Search className="w-10 h-10 mb-4 opacity-20" />
                                         <p className="text-sm font-bold">No guests found matching your criteria</p>
@@ -133,92 +153,122 @@ export function RegistryTable({
                                                 onChange={(e) => handleSelectOne(attendee.id, e.target.checked)}
                                             />
                                         </td>
-                                        <td className="px-4 py-3 sticky left-12 bg-white group-hover:bg-gray-50 z-20 border-r border-gray-50/50">
-                                            <div className="flex items-center gap-3 pr-4">
-                                                <div className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center font-black text-[10px] text-gray-500 group-hover:bg-gray-900 group-hover:text-white transition-all border border-gray-100">
-                                                    {attendee.first_name.charAt(0)}{attendee.last_name.charAt(0)}
-                                                </div>
-                                                <div>
-                                                    <p className="text-[13px] font-bold text-gray-900 tracking-tight leading-none mb-0.5">
-                                                        {attendee.first_name} {attendee.last_name}
-                                                    </p>
-                                                    <p className="text-[10px] font-bold text-gray-400">{attendee.email}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-2">
-                                                {/* ICON RENDER LOGIC */}
-                                                {(() => {
-                                                    if (isPrimary) {
-                                                        return (
-                                                            <div className="w-5 h-5 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center ring-1 ring-blue-100">
-                                                                <Users className="w-2.5 h-2.5" />
+
+                                        {visibleColumns.map((col) => {
+                                            if (col.id === 'attendee') {
+                                                return (
+                                                    <td key={col.id} className="px-4 py-3 sticky left-12 bg-white group-hover:bg-gray-50 z-20 border-r border-gray-50/50">
+                                                        <div className="flex items-center gap-3 pr-4">
+                                                            <div className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center font-black text-[10px] text-gray-500 group-hover:bg-gray-900 group-hover:text-white transition-all border border-gray-100">
+                                                                {attendee.first_name.charAt(0)}{attendee.last_name.charAt(0)}
                                                             </div>
-                                                        );
-                                                    }
-                                                    if (isGroup) {
-                                                        return (
-                                                            <div className="w-5 h-5 rounded-md bg-gray-50 text-gray-400 flex items-center justify-center ring-1 ring-gray-100">
-                                                                <Users className="w-2.5 h-2.5" />
+                                                            <div>
+                                                                <p className="text-[13px] font-bold text-gray-900 tracking-tight leading-none mb-0.5">
+                                                                    {attendee.first_name} {attendee.last_name}
+                                                                </p>
+                                                                <p className="text-[10px] font-bold text-gray-400">{attendee.email}</p>
                                                             </div>
-                                                        );
-                                                    }
-                                                    return (
-                                                        <div className="w-5 h-5 rounded-md bg-gray-50 text-gray-400 flex items-center justify-center ring-1 ring-gray-100">
-                                                            <Ticket className="w-2.5 h-2.5" />
                                                         </div>
-                                                    );
-                                                })()}
+                                                    </td>
+                                                );
+                                            } else if (col.id === 'ticket') {
+                                                return (
+                                                    <td key={col.id} className="px-4 py-3">
+                                                        <div className="flex items-center gap-2">
+                                                            {/* ICON RENDER LOGIC */}
+                                                            {(() => {
+                                                                if (isPrimary) {
+                                                                    return (
+                                                                        <div className="w-5 h-5 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center ring-1 ring-blue-100">
+                                                                            <Users className="w-2.5 h-2.5" />
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                                if (isGroup) {
+                                                                    return (
+                                                                        <div className="w-5 h-5 rounded-md bg-gray-50 text-gray-400 flex items-center justify-center ring-1 ring-gray-100">
+                                                                            <Users className="w-2.5 h-2.5" />
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                                return (
+                                                                    <div className="w-5 h-5 rounded-md bg-gray-50 text-gray-400 flex items-center justify-center ring-1 ring-gray-100">
+                                                                        <Ticket className="w-2.5 h-2.5" />
+                                                                    </div>
+                                                                );
+                                                            })()}
 
-                                                <span className="text-[11px] font-bold text-gray-600 truncate max-w-[140px]" title={ticketName}>
-                                                    {ticketName}
-                                                </span>
+                                                            <span className="text-[11px] font-bold text-gray-600 truncate max-w-[140px]" title={ticketName}>
+                                                                {ticketName}
+                                                            </span>
 
-                                                {isPrimary && groupSize > 1 && (
-                                                    <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-1.5 rounded-md border border-blue-100">
-                                                        {usedSlots}/{groupSize}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        {questions.map(q => {
-                                            const response = (attendee as any).responses?.[q.id] || "-";
-                                            return (
-                                                <td key={q.id} className="px-4 py-3 max-w-[200px]">
-                                                    <div className="text-[11px] font-medium text-gray-500 truncate" title={response}>
-                                                        {response}
-                                                    </div>
-                                                </td>
-                                            );
+                                                            {isPrimary && groupSize > 1 && (
+                                                                <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-1.5 rounded-md border border-blue-100">
+                                                                    {usedSlots}/{groupSize}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                );
+                                            } else if (col.id === 'ref') {
+                                                return (
+                                                    <td key={col.id} className="px-4 py-3">
+                                                        <span className="text-[10px] font-mono font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
+                                                            {attendee.ref}
+                                                        </span>
+                                                    </td>
+                                                );
+                                            } else if (col.id === 'created_at') {
+                                                return (
+                                                    <td key={col.id} className="px-4 py-3">
+                                                        <div className="flex items-center gap-1.5 text-gray-400">
+                                                            <span className="text-[11px] font-medium">
+                                                                {attendee.created_at ? formatDistanceToNow(new Date(attendee.created_at.endsWith("Z") ? attendee.created_at : attendee.created_at + "Z"), { addSuffix: true }) : "-"}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                );
+                                            } else if (col.id === 'status') {
+                                                return (
+                                                    <td key={col.id} className="px-4 py-3">
+                                                        {attendee.check_in_time ? (
+                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100 text-[9px] font-black uppercase tracking-wider">
+                                                                <ShieldCheck className="w-3 h-3" /> Checked In
+                                                            </span>
+                                                        ) : attendee.email_status === 'invited' ? (
+                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-600 border border-yellow-100 text-[9px] font-black uppercase tracking-wider">
+                                                                <Clock className="w-3 h-3" /> Invited
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 border border-gray-100 text-[9px] font-black uppercase tracking-wider">
+                                                                <CheckCircle2 className="w-3 h-3" /> Confirmed
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                );
+                                            } else {
+                                                // Default / Custom variable
+                                                let value = "-";
+                                                if (col.type === 'custom') {
+                                                    // automationLogic writes to properties using variable name
+                                                    value = attendee.properties?.[col.label] ||
+                                                        attendee.properties?.[col.id] || // Fallback to ID if changed
+                                                        "-";
+                                                } else {
+                                                    // Standard questions use ID in responses
+                                                    value = (attendee as any).responses?.[col.id] || "-";
+                                                }
+
+                                                return (
+                                                    <td key={col.id} className="px-4 py-3 max-w-[200px]">
+                                                        <div className="text-[11px] font-medium text-gray-500 truncate" title={String(value)}>
+                                                            {String(value)}
+                                                        </div>
+                                                    </td>
+                                                );
+                                            }
                                         })}
-                                        <td className="px-4 py-3">
-                                            <span className="text-[10px] font-mono font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
-                                                {attendee.ref}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-1.5 text-gray-400">
-                                                <span className="text-[11px] font-medium">
-                                                    {attendee.created_at ? formatDistanceToNow(new Date(attendee.created_at.endsWith("Z") ? attendee.created_at : attendee.created_at + "Z"), { addSuffix: true }) : "-"}
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {attendee.check_in_time ? (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100 text-[9px] font-black uppercase tracking-wider">
-                                                    <ShieldCheck className="w-3 h-3" /> Checked In
-                                                </span>
-                                            ) : attendee.email_status === 'invited' ? (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-600 border border-yellow-100 text-[9px] font-black uppercase tracking-wider">
-                                                    <Clock className="w-3 h-3" /> Invited
-                                                </span>
-                                            ) : (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 border border-gray-100 text-[9px] font-black uppercase tracking-wider">
-                                                    <CheckCircle2 className="w-3 h-3" /> Confirmed
-                                                </span>
-                                            )}
-                                        </td>
+
                                         <td className="px-8 py-3 text-right sticky right-0 bg-white group-hover:bg-gray-50 z-20 border-l border-gray-50/50">
                                             <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button
@@ -227,9 +277,6 @@ export function RegistryTable({
                                                 >
                                                     View
                                                 </button>
-                                                {/* <button className="p-1.5 text-gray-300 hover:text-gray-900 hover:bg-white rounded-lg transition-all">
-                                                    <MoreHorizontal className="w-4 h-4" />
-                                                </button> */}
                                             </div>
                                         </td>
                                     </motion.tr>

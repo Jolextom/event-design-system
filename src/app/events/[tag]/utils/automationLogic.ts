@@ -55,7 +55,7 @@ export async function runRandomSplit(
 
     // 3. Assign Values
     const total = shuffled.length;
-    const updatePromises: Promise<any>[] = [];
+    const updatePromises: PromiseLike<any>[] = [];
 
     // Calculate chunk size
     const optionCount = config.options.length;

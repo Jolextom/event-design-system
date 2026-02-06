@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { X, Save, Plus, Trash2, Tag, Type, List, Hash, Calendar, CheckSquare } from "lucide-react";
+import { X, Save, Plus, Trash2, Tag, Type, List, Hash, Calendar, CheckSquare, Zap, MousePointer2, Shuffle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { EventVariable } from "../types";
 
@@ -15,6 +15,7 @@ export function CreateVariableModal({ onClose, onSave, initialVariable }: Create
     const [type, setType] = useState<EventVariable['type']>(initialVariable?.type || "text");
     const [options, setOptions] = useState<string[]>(initialVariable?.options || []);
     const [newOption, setNewOption] = useState("");
+    const [assignmentMethod, setAssignmentMethod] = useState<NonNullable<NonNullable<EventVariable['settings']>['method']>>(initialVariable?.settings?.method || "manual");
 
     const handleAddOption = () => {
         if (newOption.trim()) {
@@ -32,7 +33,10 @@ export function CreateVariableModal({ onClose, onSave, initialVariable }: Create
             id: initialVariable?.id,
             name,
             type,
-            options: type === "select" ? options : undefined
+            options: type === "select" ? options : undefined,
+            settings: {
+                method: type === "select" ? assignmentMethod : "manual"
+            }
         });
         onClose();
     };
@@ -55,7 +59,7 @@ export function CreateVariableModal({ onClose, onSave, initialVariable }: Create
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={onClose}
-                className="absolute inset-0 bg-white/60 backdrop-blur-md transition-all"
+                className="absolute inset-0 bg-black/5 transition-all"
             />
             <motion.div
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -122,6 +126,48 @@ export function CreateVariableModal({ onClose, onSave, initialVariable }: Create
 
                     {/* Options (Only for Select) */}
                     {type === "select" && (
+                        <div className="pt-2 pb-4 border-b border-gray-100 space-y-2">
+                            <label className="text-[11px] font-black uppercase tracking-widest text-gray-400">Assignment Method</label>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setAssignmentMethod("manual")}
+                                    className={cn(
+                                        "flex-1 flex items-center gap-2 p-2 rounded-xl border text-left transition-all",
+                                        assignmentMethod === "manual"
+                                            ? "bg-purple-50 border-purple-200 shadow-sm"
+                                            : "bg-white border-gray-100 hover:border-gray-200 hover:bg-gray-50"
+                                    )}
+                                >
+                                    <div className={cn("p-1.5 rounded-lg w-fit", assignmentMethod === "manual" ? "bg-purple-100 text-purple-600" : "bg-gray-100 text-gray-400")}>
+                                        <MousePointer2 className="w-3.5 h-3.5" />
+                                    </div>
+                                    <div>
+                                        <h4 className={cn("text-xs font-bold leading-tight", assignmentMethod === "manual" ? "text-purple-900" : "text-gray-900")}>Manual</h4>
+                                    </div>
+                                </button>
+
+                                <button
+                                    onClick={() => setAssignmentMethod("random_equal")}
+                                    className={cn(
+                                        "flex-1 flex items-center gap-2 p-2 rounded-xl border text-left transition-all",
+                                        assignmentMethod === "random_equal"
+                                            ? "bg-purple-50 border-purple-200 shadow-sm"
+                                            : "bg-white border-gray-100 hover:border-gray-200 hover:bg-gray-50"
+                                    )}
+                                >
+                                    <div className={cn("p-1.5 rounded-lg w-fit", assignmentMethod === "random_equal" ? "bg-purple-100 text-purple-600" : "bg-gray-100 text-gray-400")}>
+                                        <Shuffle className="w-3.5 h-3.5" />
+                                    </div>
+                                    <div>
+                                        <h4 className={cn("text-xs font-bold leading-tight", assignmentMethod === "random_equal" ? "text-purple-900" : "text-gray-900")}>Distribute</h4>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Options (Only for Select) */}
+                    {type === "select" && (
                         <div className="space-y-3 pt-2">
                             <div className="flex items-center justify-between">
                                 <label className="text-[11px] font-black uppercase tracking-widest text-gray-400">Options</label>
@@ -163,6 +209,7 @@ export function CreateVariableModal({ onClose, onSave, initialVariable }: Create
                             </div>
                         </div>
                     )}
+
                 </div>
 
                 {/* Footer */}
@@ -181,7 +228,7 @@ export function CreateVariableModal({ onClose, onSave, initialVariable }: Create
                         <Save className="w-4 h-4" /> {initialVariable ? "Save Changes" : "Create Variable"}
                     </button>
                 </div>
-            </motion.div>
-        </div>
+            </motion.div >
+        </div >
     );
 }
