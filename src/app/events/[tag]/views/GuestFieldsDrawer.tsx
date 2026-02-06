@@ -1,13 +1,13 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { X, Tag, Plus, Trash2, Shuffle, Eye, EyeOff, GripVertical, ChevronUp, ChevronDown, User, Ticket, Calendar, Hash, CheckCircle2 } from "lucide-react";
+import { X, Tag, Plus, Trash2, Shuffle, Eye, EyeOff, GripVertical, ChevronUp, ChevronDown, User, Ticket, Calendar, Hash, CheckCircle2, Sparkles, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { EventVariable } from "../types";
 
 interface ColumnConfig {
     id: string;
     label: string;
-    type: 'standard' | 'custom';
+    type: 'standard' | 'question' | 'variable' | 'custom';
     visible: boolean;
 }
 
@@ -41,7 +41,10 @@ export function GuestFieldsDrawer({
     if (!isOpen) return null;
 
     const getIconForField = (type: string, id: string) => {
+        if (type === 'variable') return <Tag className="w-4 h-4" />;
+        if (type === 'question') return <MessageSquare className="w-4 h-4" />;
         if (type === 'custom') return <Tag className="w-4 h-4" />;
+
         switch (id) {
             case 'attendee': return <User className="w-4 h-4" />;
             case 'ticket': return <Ticket className="w-4 h-4" />;
@@ -105,16 +108,18 @@ export function GuestFieldsDrawer({
                         <div className="space-y-3">
                             {columnConfig.filter(c => c.id !== 'attendee').map((col, index) => {
                                 const variable = variables.find(v => v.id === col.id);
-                                const isCustom = col.type === 'custom';
+                                const isVariable = col.type === 'variable' || (col.type === 'custom' && !!variable); // Backwards compat for custom
+                                const isQuestion = col.type === 'question';
 
                                 return (
                                     <div
                                         key={col.id}
                                         className={cn(
                                             "group flex items-center gap-3 p-3 rounded-xl border transition-all bg-white relative",
-                                            col.visible ? "border-gray-100 hover:border-purple-200 hover:shadow-sm" : "border-gray-100 opacity-60 bg-gray-50"
+                                            col.visible ? "border-gray-100 hover:border-purple-200 hover:shadow-sm" : "border-gray-100 opacity-60 bg-gray-50",
+                                            isVariable ? "cursor-pointer" : "cursor-default"
                                         )}
-                                        onClick={() => isCustom && variable && onEditVariable(variable)}
+                                        onClick={() => isVariable && variable && onEditVariable(variable)}
                                     >
                                         {/* Ordering Actions */}
                                         <div className="flex flex-col gap-1 text-gray-300" onClick={(e) => e.stopPropagation()}>
@@ -127,7 +132,7 @@ export function GuestFieldsDrawer({
                                             </button>
                                             <button
                                                 onClick={() => onMoveColumn(col.id, 'down')}
-                                                disabled={index === columnConfig.length - 1}
+                                                disabled={index === columnConfig.filter(c => c.id !== 'attendee').length - 1}
                                                 className="hover:text-purple-600 disabled:opacity-20 transition-colors"
                                             >
                                                 <ChevronDown className="w-3 h-3" />
@@ -137,7 +142,9 @@ export function GuestFieldsDrawer({
                                         {/* Icon */}
                                         <div className={cn(
                                             "w-10 h-10 rounded-lg flex items-center justify-center border",
-                                            isCustom ? "bg-purple-50 text-purple-600 border-purple-100" : "bg-gray-100 text-gray-500 border-gray-200"
+                                            isVariable ? "bg-purple-50 text-purple-600 border-purple-100" :
+                                                isQuestion ? "bg-blue-50 text-blue-600 border-blue-100" :
+                                                    "bg-gray-100 text-gray-500 border-gray-200"
                                         )}>
                                             {getIconForField(col.type, col.id)}
                                         </div>
@@ -149,20 +156,23 @@ export function GuestFieldsDrawer({
                                                 {!col.visible && (
                                                     <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">Hidden</span>
                                                 )}
-                                                {isCustom && (
-                                                    <span className="text-[9px] font-bold uppercase tracking-wider text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">Custom</span>
+                                                {isVariable && (
+                                                    <span className="text-[9px] font-bold uppercase tracking-wider text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">Variable</span>
+                                                )}
+                                                {isQuestion && (
+                                                    <span className="text-[9px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">Question</span>
                                                 )}
                                             </div>
 
-                                            {/* Metadata / Badges (Only for Custom Variables) */}
-                                            {isCustom && variable && (
+                                            {/* Metadata / Badges (Only for Variables) */}
+                                            {isVariable && variable && (
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-[10px] text-gray-400 font-medium capitalize">
                                                         {variable.type}
                                                     </span>
                                                     {variable.type === 'select' && variable.settings?.method === 'random_equal' && (
                                                         <span className="text-[9px] font-bold text-purple-400 flex items-center gap-1 bg-purple-50 px-1.5 rounded">
-                                                            <Shuffle className="w-2.5 h-2.5" />
+                                                            <Sparkles className="w-2.5 h-2.5" />
                                                             Auto-Distribute
                                                         </span>
                                                     )}
@@ -185,17 +195,18 @@ export function GuestFieldsDrawer({
                                             </button>
 
                                             {/* Custom Actions: Smart Fill & Delete */}
-                                            {isCustom && variable && (
+                                            {isVariable && variable && (
                                                 <>
-                                                    {variable.type === 'select' && variable.settings?.method?.includes('random') && (
-                                                        <button
-                                                            onClick={() => onRunAutomation(variable)}
-                                                            className="p-2 text-purple-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
-                                                            title="Run Smart Fill"
-                                                        >
-                                                            <Shuffle className="w-4 h-4" />
-                                                        </button>
-                                                    )}
+                                                    {/* Smart Fill Button */}
+                                                    <button
+                                                        onClick={() => onRunAutomation(variable)}
+                                                        className="p-2 text-purple-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+                                                        title="Run Smart Fill"
+                                                    >
+                                                        <Sparkles className="w-4 h-4" />
+                                                    </button>
+
+                                                    {/* Delete Button */}
                                                     <button
                                                         onClick={(e) => onDeleteVariable(e, variable.id)}
                                                         className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"

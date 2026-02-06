@@ -51,7 +51,7 @@ export function RegistryView({
     const [editingVariable, setEditingVariable] = useState<EventVariable | null>(null);
 
     // Column Configuration
-    const [columnConfig, setColumnConfig] = useState<{ id: string; label: string; type: 'standard' | 'custom'; visible: boolean }[]>([]);
+    const [columnConfig, setColumnConfig] = useState<{ id: string; label: string; type: 'standard' | 'question' | 'variable' | 'custom'; visible: boolean }[]>([]);
 
     // Sync Config (Standard + Questions + Variables)
     React.useEffect(() => {
@@ -59,24 +59,16 @@ export function RegistryView({
             const currentIds = new Set(prev.map(c => c.id));
 
             // 1. Define Standard Columns
-            const standardCols: { id: string; label: string; type: 'standard' | 'custom'; visible: boolean }[] = [
+            const standardCols: { id: string; label: string; type: 'standard' | 'question' | 'variable' | 'custom'; visible: boolean }[] = [
                 { id: 'attendee', label: 'Attendee', type: 'standard', visible: true },
                 { id: 'ticket', label: 'Ticket', type: 'standard', visible: true },
             ];
 
-            // 2. Questions (Treat as Custom/Standard? Let's say Custom so they are movable/toggleable but maybe not deletable via this UI)
-            // Ideally we separate Questions from "Variable Fields". But for table view they are peers.
-            // Let's mark them type='custom' but maybe distinct?
-            // Drawer logic: `isCustom = col.type === 'custom'`.
-            // If I call them 'custom', drawer tries to look up `variables.find`. It won't find them in `variables` array.
-            // So drawer will show them but maybe with default icon/actions.
-            // To be safe, let's stick to what we know: Variables.
-            // Questions should probably be in the config too.
-            // Let's add them.
+            // 2. Questions
             const questionCols = questions.map(q => ({
                 id: q.id,
                 label: q.title,
-                type: 'custom' as const, // Rendered as custom (text)
+                type: 'question' as const,
                 visible: true
             }));
 
@@ -84,12 +76,12 @@ export function RegistryView({
             const variableCols = variables.map(v => ({
                 id: v.id,
                 label: v.name,
-                type: 'custom' as const,
+                type: 'variable' as const,
                 visible: true
             }));
 
             // 4. Other Standard
-            const metaCols: { id: string; label: string; type: 'standard' | 'custom'; visible: boolean }[] = [
+            const metaCols: { id: string; label: string; type: 'standard' | 'question' | 'variable' | 'custom'; visible: boolean }[] = [
                 { id: 'ref', label: 'Reference', type: 'standard', visible: true },
                 { id: 'created_at', label: 'Registered', type: 'standard', visible: true },
                 { id: 'status', label: 'Status', type: 'standard', visible: true },

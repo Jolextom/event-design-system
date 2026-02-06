@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 interface ColumnConfig {
     id: string;
     label: string;
-    type: 'standard' | 'custom';
+    type: 'standard' | 'question' | 'variable' | 'custom'; // Added specific types, kept custom for safety
     visible: boolean;
 }
 
@@ -41,13 +41,16 @@ export function RegistryTable({
     const effectiveConfig: ColumnConfig[] = columnConfig.length > 0 ? columnConfig : [
         { id: 'attendee', label: 'Attendee', type: 'standard', visible: true },
         { id: 'ticket', label: 'Ticket', type: 'standard', visible: true },
-        ...questions.map(q => ({ id: q.id, label: q.title, type: 'custom' as const, visible: true })),
+        ...questions.map(q => ({ id: q.id, label: q.title, type: 'question' as const, visible: true })), // Use 'question' type
         { id: 'ref', label: 'Reference', type: 'standard', visible: true },
         { id: 'created_at', label: 'Registered', type: 'standard', visible: true },
         { id: 'status', label: 'Status', type: 'standard', visible: true },
     ];
 
     const visibleColumns = effectiveConfig.filter(c => c.visible);
+
+    // ... (rest of logic same until render loop) ...
+    // Note: I will just replace the render logic part since I can't skip lines easily in replace_file_content without context
 
     // ... selection logic ...
     const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -247,16 +250,17 @@ export function RegistryTable({
                                                     </td>
                                                 );
                                             } else {
-                                                // Default / Custom variable
+                                                // Variable / Question / Custom
                                                 let value = "-";
-                                                if (col.type === 'custom') {
-                                                    // automationLogic writes to properties using variable name
-                                                    value = attendee.properties?.[col.label] ||
-                                                        attendee.properties?.[col.id] || // Fallback to ID if changed
-                                                        "-";
-                                                } else {
+
+                                                if (col.type === 'question') {
                                                     // Standard questions use ID in responses
                                                     value = (attendee as any).responses?.[col.id] || "-";
+                                                } else if (col.type === 'variable' || col.type === 'custom') {
+                                                    // Variables use label (name) in properties
+                                                    value = attendee.properties?.[col.label] ||
+                                                        attendee.properties?.[col.id] ||
+                                                        "-";
                                                 }
 
                                                 return (
