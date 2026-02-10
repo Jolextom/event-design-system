@@ -2,51 +2,51 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { X, Filter, Mail, Download, UserCheck, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Attendee } from "../types";
+import type { Attendee, Group } from "../types";
 import { evaluateSegment } from "../utils/segmentLogic";
-
-interface Group {
-    id: string;
-    name: string;
-    rule: string;
-    count: number;
-    color: string;
-    type: string;
-    options?: BreakdownOption[];
-    rules_config?: any;
-}
 
 interface BreakdownOption {
     label: string;
     count: number;
     pct: number;
     color: string;
-    guests: Guest[];
+    guests: any[]; // specific to UI
 }
 
-interface Guest {
-    name: string;
-    email: string;
-    status: string;
-    avatar: string;
+// Extend Group if necessary for local UI properties like 'options' for breakdown
+interface ExtendedGroup extends Group {
+    options?: BreakdownOption[];
 }
 
 interface SegmentDetailsPanelProps {
-    selectedGroup: Group;
+    selectedGroup: ExtendedGroup | Group; // Accept both
     attendees: Attendee[];
     onClose: () => void;
-    onNavigateToRegistry?: () => void;
+    onNavigateToRegistry?: (group: Group, breakdown?: string | null) => void;
     onSelectGuest: (guest: Attendee) => void;
 }
 
 export function SegmentDetailsPanel({ selectedGroup, attendees = [], onClose, onNavigateToRegistry, onSelectGuest }: SegmentDetailsPanelProps) {
     const [selectedBreakdown, setSelectedBreakdown] = useState<string | null>(null);
 
-    // Filter guests for this group
+    // Cast as ExtendedGroup to access options safely if it matches breakdown type
+    const groupWithOptions = selectedGroup as ExtendedGroup;
     const groupGuests = React.useMemo(() => {
+        if (selectedGroup.type === 'breakdown') {
+            const questionId = selectedGroup.rules_config?.questionId;
+            if (!questionId) return [];
+
+            let guests = attendees.filter(a => a.responses && a.responses[questionId]);
+
+            if (selectedBreakdown) {
+                guests = guests.filter(a => a.responses?.[questionId] === selectedBreakdown);
+            }
+            return guests;
+        }
+
         if (!selectedGroup.rules_config) return [];
         return attendees.filter(g => evaluateSegment(g, selectedGroup.rules_config));
-    }, [attendees, selectedGroup]);
+    }, [attendees, selectedGroup, selectedBreakdown]);
 
     return (
         <>
@@ -96,7 +96,7 @@ export function SegmentDetailsPanel({ selectedGroup, attendees = [], onClose, on
                     </div>
 
                     {/* Stats / Breakdown */}
-                    {selectedGroup.type === "breakdown" && selectedGroup.options ? (
+                    {selectedGroup.type === "breakdown" && groupWithOptions.options ? (
                         <div className="space-y-4">
                             <div className="p-6 bg-white border border-gray-100 rounded-3xl shadow-sm space-y-5">
                                 <div className="flex justify-between items-center mb-2">
@@ -104,14 +104,14 @@ export function SegmentDetailsPanel({ selectedGroup, attendees = [], onClose, on
                                     <span className="text-[10px] font-bold text-gray-400">Total: {selectedGroup.count}</span>
                                 </div>
                                 <div className="flex flex-col gap-1 mb-2">
-                                    {selectedGroup.options
+                                    {groupWithOptions.options
                                         .slice()
                                         .sort((a, b) => b.pct - a.pct)
                                         .slice(0, 5)
-                                        .map((opt) => (
+                                        .map((opt, index) => (
                                             <button
-                                                key={opt.label}
-                                                onClick={() => setSelectedBreakdown(opt.label)}
+                                                key={`${opt.label}-${index}`}
+                                                onClick={() => setSelectedBreakdown(selectedBreakdown === opt.label ? null : opt.label)}
                                                 className={cn(
                                                     "relative flex items-center w-full px-4 py-2 rounded-md transition-all text-left gap-3 border border-transparent overflow-hidden",
                                                     selectedBreakdown === opt.label
@@ -136,7 +136,7 @@ export function SegmentDetailsPanel({ selectedGroup, attendees = [], onClose, on
                                         ))}
                                 </div>
                                 <div className="text-[11px] text-gray-500 font-bold mt-1">
-                                    Click an option above to analyze its guests.
+                                    Click an option above to filter guests.
                                 </div>
                             </div>
                         </div>
@@ -160,7 +160,7 @@ export function SegmentDetailsPanel({ selectedGroup, attendees = [], onClose, on
                     {/* Guest List */}
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-1">Guest List</h4>
+                            <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-1">Guest List ({groupGuests.length})</h4>
                             <div className="relative group max-w-52 w-full">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300 group-focus-within:text-[var(--brand-blue)] transition-colors z-10" />
                                 <input
@@ -171,36 +171,44 @@ export function SegmentDetailsPanel({ selectedGroup, attendees = [], onClose, on
                             </div>
                         </div>
                         <div className="space-y-2">
-                            {/* Ideally, we filter real attendees here, but utilizing MOCK for simple display restoration first as requested to 'restore' the look */}
-                            {/* {MOCK_GUESTS.map((guest, i) => (
-                                <div key={i} className="p-4 bg-white border border-gray-100 rounded-2xl flex items-center justify-between group/item hover:border-[var(--brand-blue)]/20 transition-all cursor-pointer">
+                            {groupGuests.map((guest, i) => (
+                                <div
+                                    key={guest.id || i}
+                                    onClick={() => onSelectGuest(guest)}
+                                    className="p-4 bg-white border border-gray-100 rounded-2xl flex items-center justify-between group/item hover:border-[var(--brand-blue)]/20 transition-all cursor-pointer"
+                                >
                                     <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 bg-gray-900 text-white rounded-xl flex items-center justify-center text-[10px] font-black shadow-sm">
-                                            {guest.avatar}
+                                        <div className="w-9 h-9 bg-gray-900 text-white rounded-xl flex items-center justify-center text-[10px] font-black shadow-sm uppercase">
+                                            {guest.first_name[0]}{guest.last_name[0]}
                                         </div>
                                         <div>
-                                            <p className="font-black text-gray-900 text-xs tracking-tight leading-none">{guest.name}</p>
+                                            <p className="font-black text-gray-900 text-xs tracking-tight leading-none">{guest.first_name} {guest.last_name}</p>
                                             <p className="text-[10px] font-bold text-gray-400 mt-1">{guest.email}</p>
                                         </div>
                                     </div>
                                     <span className={cn(
                                         "text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg",
-                                        guest.status === "Checked In" ? "bg-green-50 text-green-600" : "bg-blue-50 text-blue-600"
+                                        guest.check_in ? "bg-green-50 text-green-600" : "bg-blue-50 text-blue-600"
                                     )}>
-                                        {guest.status}
+                                        {guest.check_in ? "Checked In" : "Registered"}
                                     </span>
                                 </div>
-                            ))} */}
+                            ))}
+                            {groupGuests.length === 0 && (
+                                <div className="text-center py-8 text-gray-400 text-xs font-bold">
+                                    No guests found in this segment.
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
 
                 <div className="p-6 border-t border-gray-100 flex items-center gap-3 bg-white mt-auto z-20">
                     <button
-                        onClick={onNavigateToRegistry}
+                        onClick={() => onNavigateToRegistry?.(selectedGroup, selectedBreakdown)}
                         className="w-full bg-[var(--brand-blue)] text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-100 hover:scale-[1.02] active:scale-[0.98] transition-all"
                     >
-                        Open in Full Registry
+                        View Full Guest List
                     </button>
                 </div>
             </motion.div>

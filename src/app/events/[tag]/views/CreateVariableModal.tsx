@@ -6,7 +6,7 @@ import type { EventVariable } from "../types";
 
 interface CreateVariableModalProps {
     onClose: () => void;
-    onSave: (variable: Omit<EventVariable, "id" | "event_id"> & { id?: string }) => void;
+    onSave: (variable: Omit<EventVariable, "id" | "event_id"> & { id?: string }, autoCreateSegments?: boolean, autoAssignNewGuests?: boolean) => void;
     initialVariable?: EventVariable;
 }
 
@@ -16,6 +16,8 @@ export function CreateVariableModal({ onClose, onSave, initialVariable }: Create
     const [options, setOptions] = useState<string[]>(initialVariable?.options || []);
     const [newOption, setNewOption] = useState("");
     const [assignmentMethod, setAssignmentMethod] = useState<NonNullable<NonNullable<EventVariable['settings']>['method']>>(initialVariable?.settings?.method || "manual");
+    const [autoCreateSegments, setAutoCreateSegments] = useState(false);
+    const [autoAssignNewGuests, setAutoAssignNewGuests] = useState(false);
 
     const handleAddOption = () => {
         if (newOption.trim()) {
@@ -37,7 +39,7 @@ export function CreateVariableModal({ onClose, onSave, initialVariable }: Create
             settings: {
                 method: type === "select" ? assignmentMethod : "manual"
             }
-        });
+        }, autoCreateSegments, autoAssignNewGuests);
         onClose();
     };
 
@@ -126,48 +128,6 @@ export function CreateVariableModal({ onClose, onSave, initialVariable }: Create
 
                     {/* Options (Only for Select) */}
                     {type === "select" && (
-                        <div className="pt-2 pb-4 border-b border-gray-100 space-y-2">
-                            <label className="text-[11px] font-black uppercase tracking-widest text-gray-400">Assignment Method</label>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => setAssignmentMethod("manual")}
-                                    className={cn(
-                                        "flex-1 flex items-center gap-2 p-2 rounded-xl border text-left transition-all",
-                                        assignmentMethod === "manual"
-                                            ? "bg-purple-50 border-purple-200 shadow-sm"
-                                            : "bg-white border-gray-100 hover:border-gray-200 hover:bg-gray-50"
-                                    )}
-                                >
-                                    <div className={cn("p-1.5 rounded-lg w-fit", assignmentMethod === "manual" ? "bg-purple-100 text-purple-600" : "bg-gray-100 text-gray-400")}>
-                                        <MousePointer2 className="w-3.5 h-3.5" />
-                                    </div>
-                                    <div>
-                                        <h4 className={cn("text-xs font-bold leading-tight", assignmentMethod === "manual" ? "text-purple-900" : "text-gray-900")}>Manual</h4>
-                                    </div>
-                                </button>
-
-                                <button
-                                    onClick={() => setAssignmentMethod("random_equal")}
-                                    className={cn(
-                                        "flex-1 flex items-center gap-2 p-2 rounded-xl border text-left transition-all",
-                                        assignmentMethod === "random_equal"
-                                            ? "bg-purple-50 border-purple-200 shadow-sm"
-                                            : "bg-white border-gray-100 hover:border-gray-200 hover:bg-gray-50"
-                                    )}
-                                >
-                                    <div className={cn("p-1.5 rounded-lg w-fit", assignmentMethod === "random_equal" ? "bg-purple-100 text-purple-600" : "bg-gray-100 text-gray-400")}>
-                                        <Shuffle className="w-3.5 h-3.5" />
-                                    </div>
-                                    <div>
-                                        <h4 className={cn("text-xs font-bold leading-tight", assignmentMethod === "random_equal" ? "text-purple-900" : "text-gray-900")}>Distribute</h4>
-                                    </div>
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Options (Only for Select) */}
-                    {type === "select" && (
                         <div className="space-y-3 pt-2">
                             <div className="flex items-center justify-between">
                                 <label className="text-[11px] font-black uppercase tracking-widest text-gray-400">Options</label>
@@ -205,6 +165,48 @@ export function CreateVariableModal({ onClose, onSave, initialVariable }: Create
                                     <div className="w-full text-center py-6 text-gray-400 text-xs italic border border-dashed border-gray-200 rounded-xl">
                                         No options added yet.
                                     </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Automation Integration Options (New) */}
+                    {type === "select" && !initialVariable && (
+                        <div className="space-y-4 pt-4 border-t border-gray-100">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Zap className="w-4 h-4 text-amber-500" />
+                                    <label className="text-[11px] font-black uppercase tracking-widest text-amber-600">Smart Actions</label>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-3">
+                                <label className="flex items-start gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer transition-all">
+                                    <input
+                                        type="checkbox"
+                                        checked={autoCreateSegments}
+                                        onChange={(e) => setAutoCreateSegments(e.target.checked)}
+                                        className="mt-1 w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                    />
+                                    <div>
+                                        <span className="text-sm font-bold text-gray-900 block">Create Smart Groups</span>
+                                        <span className="text-xs text-gray-500">Automatically create a Smart Segment for each option (e.g. "Team: Red", "Team: Blue")</span>
+                                    </div>
+                                </label>
+
+                                {assignmentMethod !== 'manual' && (
+                                    <label className="flex items-start gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer transition-all">
+                                        <input
+                                            type="checkbox"
+                                            checked={autoAssignNewGuests}
+                                            onChange={(e) => setAutoAssignNewGuests(e.target.checked)}
+                                            className="mt-1 w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                        />
+                                        <div>
+                                            <span className="text-sm font-bold text-gray-900 block">Auto-Assign New Guests</span>
+                                            <span className="text-xs text-gray-500">Automatically run the distribution logic when new guests register.</span>
+                                        </div>
+                                    </label>
                                 )}
                             </div>
                         </div>

@@ -49,7 +49,13 @@ export default function DemoDashboard() {
                             <div className="text-lg font-black text-[var(--color-primary-700)]">{user?.email || "Loading..."}</div>
                             <div className="text-xs text-[var(--color-neutral-400)] font-bold mt-1">Organizer</div>
                         </div>
-                        <button className="bg-[var(--color-primary-700)] text-white px-6 py-2 rounded-xl font-black text-xs shadow hover:bg-[var(--color-primary-900)] transition-all uppercase tracking-widest">Sign Out</button>
+                        <button
+                            onClick={async () => {
+                                await supabase.auth.signOut();
+                                router.push("/");
+                            }}
+                            className="bg-[var(--color-primary-700)] text-white px-6 py-2 rounded-xl font-black text-xs shadow hover:bg-[var(--color-primary-900)] transition-all uppercase tracking-widest"
+                        >Sign Out</button>
                     </div>
 
                     {/* Event List */}

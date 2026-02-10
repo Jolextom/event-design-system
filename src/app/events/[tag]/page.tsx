@@ -14,6 +14,8 @@ import {
     Question,
     QuestionOption,
     Attendee,
+    Group,
+    EventVariable,
 } from "./types";
 import { GlobalSidebar } from "./components/Sidebar";
 import { BackbonePane } from "./components/Backbone";
@@ -168,9 +170,15 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
     const [loadingAttendees, setLoadingAttendees] = useState<boolean>(false);
     const [attendeesError, setAttendeesError] = useState<string | null>(null);
 
+    // Smart Segments & Variables
+    const [smartSegments, setSmartSegments] = useState<Group[]>([]);
+    const [eventVariables, setEventVariables] = useState<EventVariable[]>([]);
+    const [loadingSmartData, setLoadingSmartData] = useState<boolean>(false);
+
     // UX State
     const [confirmUnpublishOpen, setConfirmUnpublishOpen] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+    const [registryFilter, setRegistryFilter] = useState<{ group: Group; breakdown?: string | null } | null>(null);
 
 
     useEffect(() => {
@@ -193,6 +201,7 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
         setLoadingPasses(true);
         setLoadingQuestions(true);
         setLoadingAttendees(true);
+        setLoadingSmartData(true);
         setEventError(null);
         setPassesError(null);
         setQuestionsError(null);
@@ -289,6 +298,37 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                         }));
                         setAttendees(transformedAttendees);
                     }
+
+                    // Fetch Smart Segments
+                    const { data: segmentsData } = await supabase
+                        .from("smart_segments")
+                        .select("*")
+                        .eq("event_id", eventData.id)
+                        .order("created_at", { ascending: true });
+
+                    if (segmentsData) {
+                        const dbGroups: Group[] = segmentsData.map((seg: any) => ({
+                            id: seg.id,
+                            name: seg.name,
+                            rule: seg.rule,
+                            count: seg.count ?? 0,
+                            color: seg.color ?? "bg-blue-100 text-blue-700",
+                            type: seg.type,
+                            rules_config: seg.rules_config,
+                        }));
+                        setSmartSegments(dbGroups);
+                    }
+
+                    // Fetch Variables
+                    const { data: variablesData } = await supabase
+                        .from("event_variables")
+                        .select("*")
+                        .eq("event_id", eventData.id)
+                        .order("created_at", { ascending: true });
+
+                    if (variablesData) {
+                        setEventVariables(variablesData as EventVariable[]);
+                    }
                 }
             } catch (err: any) {
                 if (!mounted) return;
@@ -299,6 +339,7 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                     setLoadingPasses(false);
                     setLoadingQuestions(false);
                     setLoadingAttendees(false);
+                    setLoadingSmartData(false);
                 }
             }
         })();
@@ -398,6 +439,47 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
             setPassesError(null);
         }
         setLoadingPasses(false);
+    };
+
+    const refetchSmartData = async () => {
+        if (!event?.id) return;
+        setLoadingSmartData(true);
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+
+        // Fetch Segments
+        const { data: segmentsData } = await supabase
+            .from("smart_segments")
+            .select("*")
+            .eq("event_id", event.id)
+            .order("created_at", { ascending: true });
+
+        if (segmentsData) {
+            const dbGroups: Group[] = segmentsData.map((seg: any) => ({
+                id: seg.id,
+                name: seg.name,
+                rule: seg.rule,
+                count: seg.count ?? 0,
+                color: seg.color ?? "bg-blue-100 text-blue-700",
+                type: seg.type,
+                rules_config: seg.rules_config,
+            }));
+            setSmartSegments(dbGroups);
+        }
+
+        // Fetch Variables
+        const { data: variablesData } = await supabase
+            .from("event_variables")
+            .select("*")
+            .eq("event_id", event.id)
+            .order("created_at", { ascending: true });
+
+        if (variablesData) {
+            setEventVariables(variablesData as EventVariable[]);
+        }
+        setLoadingSmartData(false);
     };
 
     const handleEventUpdate = (updates: Partial<Event>) => {
@@ -668,7 +750,17 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                                 transition={{ duration: 0.1 }}
                                 className="h-full"
                             >
-                                {activeGlobal === "command" && <CommandHubView />}
+                                {activeGlobal === "command" && (
+                                    <CommandHubView
+                                        event={event}
+                                        attendees={attendees}
+                                        passes={passes}
+                                        questions={questions}
+                                        smartSegments={smartSegments}
+                                        loading={loadingAttendees || loadingPasses || loadingQuestions || loadingSmartData}
+                                        onNavigate={(view) => setActiveGlobal(view as any)}
+                                    />
+                                )}
 
                                 {activeGlobal === "studio" && (
                                     <AnimatePresence mode="wait">
@@ -710,9 +802,20 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                                             )}
                                             {activeBuilderCategory === "variables" && (
                                                 <SmartGroupsView
-                                                    onNavigateToRegistry={() => setActiveGlobal("registry")}
+                                                    onNavigateToRegistry={(group, breakdown) => {
+                                                        setRegistryFilter({ group, breakdown });
+                                                        setActiveGlobal("registry");
+                                                    }}
                                                     eventId={event?.id ?? null}
                                                     attendees={attendees}
+                                                    initialGroups={smartSegments}
+                                                    initialVariables={eventVariables}
+                                                    questions={questions}
+                                                    loading={loadingSmartData}
+                                                    onRefresh={() => {
+                                                        refetchSmartData();
+                                                        refetchAttendees(); // Refetch/Re-eval attendees if segments changed
+                                                    }}
                                                 />
                                             )}
                                         </motion.div>
@@ -727,10 +830,12 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                                         attendees={attendees}
                                         questions={questions}
                                         passes={passes}
+                                        variables={eventVariables}
                                         loading={loadingAttendees}
                                         error={attendeesError}
                                         eventId={event?.id ?? null}
                                         onRefresh={refetchAttendees}
+                                        initialFilter={registryFilter}
                                     />
                                 )}
                                 {activeGlobal === "automations" && <AutomationsView eventId={event?.id ?? ""} />}

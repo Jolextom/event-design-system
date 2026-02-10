@@ -200,6 +200,33 @@ export interface Staff {
   created_at: string;
 }
 
+// Smart Segment Logic
+export interface Group {
+  id: string;
+  name: string;
+  rule: string;
+  count: number;
+  color: string;
+  type: string;
+  options?: BreakdownOption[];
+  rules_config?: any;
+}
+
+export interface BreakdownOption {
+  label: string;
+  count: number;
+  pct: number;
+  color: string;
+  guests: Guest[];
+}
+
+export interface Guest {
+  name: string;
+  email: string;
+  status: string;
+  avatar: string;
+}
+
 export interface EventVariable {
   id: string;
   event_id: string;

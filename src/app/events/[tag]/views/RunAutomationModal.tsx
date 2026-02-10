@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { X, Play, Loader2, Sparkles, Shuffle } from "lucide-react";
+import { X, Play, Loader2, Sparkles, Shuffle, Users } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
-import { EventVariable } from "../types";
+import { EventVariable, Group } from "../types";
 import { runRandomSplit } from "../utils/automationLogic";
 import { cn } from "@/lib/utils";
 
@@ -18,27 +18,38 @@ interface RunAutomationModalProps {
 
 export function RunAutomationModal({ isOpen, onClose, eventId, targetVariable, onComplete }: RunAutomationModalProps) {
     const [variables, setVariables] = useState<EventVariable[]>([]);
+    const [segments, setSegments] = useState<Group[]>([]);
     const [selectedVariableId, setSelectedVariableId] = useState<string>("");
+    const [selectedSegmentId, setSelectedSegmentId] = useState<string>(""); // "" = All Guests
     const [onlyEmpty, setOnlyEmpty] = useState(true); // Default to safely filling gaps
     const [loading, setLoading] = useState(false);
     const [progress, setProgress] = useState<{ current: number, total: number } | null>(null);
 
-    // Fetch variables on load
+    // Fetch variables and segments on load
     useEffect(() => {
         if (isOpen && eventId) {
-            const fetchVars = async () => {
+            const fetchData = async () => {
                 const supabase = createClient(
                     process.env.NEXT_PUBLIC_SUPABASE_URL!,
                     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
                 );
-                const { data } = await supabase
+
+                // Fetch Variables
+                const { data: varData } = await supabase
                     .from("event_variables")
                     .select("*")
                     .eq("event_id", eventId)
-                    .in("type", ["select", "text"]); // Only split on select/text for now
-                if (data) setVariables(data as EventVariable[]);
+                    .in("type", ["select", "text"]);
+                if (varData) setVariables(varData as EventVariable[]);
+
+                // Fetch Segments
+                const { data: segData } = await supabase
+                    .from("smart_segments")
+                    .select("*")
+                    .eq("event_id", eventId);
+                if (segData) setSegments(segData as Group[]);
             };
-            fetchVars();
+            fetchData();
         }
     }, [isOpen, eventId]);
 
@@ -49,6 +60,7 @@ export function RunAutomationModal({ isOpen, onClose, eventId, targetVariable, o
         } else if (isOpen) {
             setSelectedVariableId("");
         }
+        setSelectedSegmentId(""); // Reset segment selection on open
     }, [isOpen, targetVariable]);
 
     const handleRun = async () => {
@@ -58,22 +70,24 @@ export function RunAutomationModal({ isOpen, onClose, eventId, targetVariable, o
         setLoading(true);
 
         let options = variable.options || [];
-        // If text and no options, we can't really random split unless we ask user. 
-        // For now assume "select" with options is the primary use case.
         if (options.length < 2) {
             alert("This variable needs at least 2 options to split.");
             setLoading(false);
             return;
         }
 
-        const result = await runRandomSplit(eventId, {
-            variableName: variable.name,
-            options: options
-        },
+        const result = await runRandomSplit(
+            eventId,
+            {
+                variableName: variable.name,
+                options: options
+            },
             onlyEmpty,
+            selectedSegmentId, // Pass segment filter
             (curr, total) => {
                 setProgress({ current: curr, total });
-            });
+            }
+        );
 
         setLoading(false);
         setProgress(null);
@@ -95,13 +109,14 @@ export function RunAutomationModal({ isOpen, onClose, eventId, targetVariable, o
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={onClose}
-                className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50"
+                className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[11000]"
             />
+            {/* z-index ensuring it's above the drawer */}
             <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
-                className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-3xl shadow-2xl z-50 overflow-hidden"
+                className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-3xl shadow-2xl z-[11001] overflow-hidden"
             >
                 <div className="p-8">
                     <div className="flex items-center justify-between mb-6">
@@ -119,7 +134,8 @@ export function RunAutomationModal({ isOpen, onClose, eventId, targetVariable, o
                         </button>
                     </div>
 
-                    <div className="space-y-6">
+                    <div className="space-y-5">
+                        {/* Target Variable Display/Select */}
                         <div className="space-y-2">
                             {targetVariable ? (
                                 <div className="p-4 bg-purple-50 border border-purple-100 rounded-xl">
@@ -145,13 +161,31 @@ export function RunAutomationModal({ isOpen, onClose, eventId, targetVariable, o
                                             <option key={v.id} value={v.id}>{v.name} ({v.options?.length || 0} options)</option>
                                         ))}
                                     </select>
-                                    {selectedVariableId && (
-                                        <p className="text-xs text-gray-400 font-medium px-1">
-                                            Guests will be assigned one of: <span className="text-gray-600">{variables.find(v => v.id === selectedVariableId)?.options?.join(", ")}</span>
-                                        </p>
-                                    )}
                                 </>
                             )}
+                        </div>
+
+                        {/* Target Audience Dropdown (NEW) */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-gray-900">Target Audience</label>
+                            <div className="relative">
+                                <select
+                                    value={selectedSegmentId}
+                                    onChange={(e) => setSelectedSegmentId(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all appearance-none"
+                                >
+                                    <option value="">All Guests</option>
+                                    {segments.map(s => (
+                                        <option key={s.id} value={s.id}>{s.name} ({s.count || '?'} guests)</option>
+                                    ))}
+                                </select>
+                                <Users className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            </div>
+                            <p className="text-[10px] text-gray-400 font-medium px-1">
+                                {selectedSegmentId
+                                    ? "Only guests in this group will be assigned a value."
+                                    : "Randomly assign to everyone in the event."}
+                            </p>
                         </div>
 
                         {/* Smart Fill Options */}
@@ -195,7 +229,7 @@ export function RunAutomationModal({ isOpen, onClose, eventId, targetVariable, o
                             )}
                         >
                             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-                            {loading ? "Assigning..." : "Run Split"}
+                            {loading ? "Assigning..." : "RUN AUTOMATION"}
                         </button>
                     </div>
                 </div>

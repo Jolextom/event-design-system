@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@supabase/supabase-js";
 import { evaluateSegment } from "../utils/segmentLogic";
-import type { Attendee, EventVariable } from "../types";
+import type { Attendee, EventVariable, Group, Question } from "../types";
 
 // Components
 import { CreateSmartGroupModal } from "./CreateSmartGroupModal";
@@ -20,39 +20,29 @@ import { SegmentDetailsPanel } from "./SegmentDetailsPanel";
 import { GuestDetailsSidePanel } from "./registry/GuestDetailsSidePanel";
 
 // Interfaces
-interface Group {
-    id: string;
-    name: string;
-    rule: string;
-    count: number;
-    color: string;
-    type: string;
-    options?: BreakdownOption[];
-    rules_config?: any;
-}
-
-interface BreakdownOption {
-    label: string;
-    count: number;
-    pct: number;
-    color: string;
-    guests: Guest[];
-}
-
-interface Guest {
-    name: string;
-    email: string;
-    status: string;
-    avatar: string;
-}
+// Interfaces removed (imported from types)
 
 interface SmartGroupsViewProps {
-    onNavigateToRegistry?: () => void;
+    onNavigateToRegistry?: (group: Group, breakdown?: string | null) => void;
     eventId: string | null;
     attendees?: Attendee[];
+    initialGroups: Group[];
+    initialVariables: EventVariable[];
+    questions?: Question[];
+    loading?: boolean;
+    onRefresh?: () => void;
 }
 
-export function SmartGroupsView({ onNavigateToRegistry, eventId, attendees = [] }: SmartGroupsViewProps) {
+export function SmartGroupsView({
+    onNavigateToRegistry,
+    eventId,
+    attendees = [],
+    initialGroups = [],
+    initialVariables = [],
+    questions = [],
+    loading: parentLoading = false,
+    onRefresh
+}: SmartGroupsViewProps) {
     const [mounted, setMounted] = useState(false);
 
     // Supabase client
@@ -62,11 +52,11 @@ export function SmartGroupsView({ onNavigateToRegistry, eventId, attendees = [] 
     );
 
     // Data State
-    const [groups, setGroups] = useState<Group[]>([]);
-    const [variables, setVariables] = useState<EventVariable[]>([]);
+    const [groups, setGroups] = useState<Group[]>(initialGroups);
+    const [variables, setVariables] = useState<EventVariable[]>(initialVariables);
 
     // UI State
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(parentLoading);
 
     // Modal State
     const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
@@ -85,50 +75,60 @@ export function SmartGroupsView({ onNavigateToRegistry, eventId, attendees = [] 
         setMounted(true);
     }, []);
 
-    // Fetch Data
+    // Sync props to state
     useEffect(() => {
-        const fetchData = async () => {
-            if (!eventId) return;
-            setLoading(true);
+        setGroups(initialGroups);
+    }, [initialGroups]);
 
-            // Fetch Segments
-            const { data: segData } = await supabase
-                .from("smart_segments")
-                .select("*")
-                .eq("event_id", eventId)
-                .order("created_at", { ascending: true });
+    useEffect(() => {
+        setVariables(initialVariables);
+    }, [initialVariables]);
 
-            if (segData) {
-                const dbGroups: Group[] = segData.map((seg: any) => ({
-                    id: seg.id,
-                    name: seg.name,
-                    rule: seg.rule,
-                    count: seg.count ?? 0,
-                    color: seg.color ?? "bg-blue-100 text-blue-700",
-                    type: seg.type,
-                    rules_config: seg.rules_config,
-                }));
-                setGroups(dbGroups);
-            }
+    useEffect(() => {
+        setLoading(parentLoading);
+    }, [parentLoading]);
 
-            // Fetch Variables
-            const { data: varData } = await supabase
-                .from("event_variables")
-                .select("*")
-                .eq("event_id", eventId)
-                .order("created_at", { ascending: true });
+    // Generate Question Groups (Breakdown Type)
+    const questionGroups = React.useMemo(() => {
+        if (!questions.length) return [];
 
-            if (varData) {
-                setVariables(varData as EventVariable[]);
-            }
+        return questions
+            .filter(q => q.question_type === 'select' || q.question_type === 'text') // Text can also be broken down potentially, but select is main one
+            .map(q => {
+                // Calculate breakdown
+                const totalAnswers = attendees.filter(a => a.responses && a.responses[q.id]).length;
 
-            setLoading(false);
-        };
+                // Get unique options or all answers
+                // For select, use defined options. For text, maybe group by value (though dangerous for cardinality)
+                // Let's stick to SELECT for now as per user request
+                if (q.question_type !== 'select') return null;
 
-        fetchData();
-    }, [eventId]);
+                const optionsBreakdown = (q.options || []).map(opt => {
+                    const count = attendees.filter(a => a.responses?.[q.id] === opt.option_text).length;
+                    return {
+                        label: opt.option_text,
+                        count,
+                        pct: totalAnswers > 0 ? Math.round((count / totalAnswers) * 100) : 0,
+                        color: "bg-blue-500", // Default or random
+                        guests: [] // We don't need to populate this fully unless used
+                    };
+                });
 
-    // Recalculate counts
+                return {
+                    id: `q-${q.id}`,
+                    name: q.title,
+                    type: 'breakdown',
+                    rule: 'Question Group',
+                    color: 'bg-indigo-100 text-indigo-700',
+                    count: totalAnswers,
+                    options: optionsBreakdown,
+                    rules_config: { type: 'question', questionId: q.id } // Custom config for details panel to know what to do
+                } as Group;
+            })
+            .filter(Boolean) as Group[];
+    }, [questions, attendees]);
+
+    // Recalculate counts for standard groups
     useEffect(() => {
         if (!attendees.length) return;
 
@@ -147,7 +147,7 @@ export function SmartGroupsView({ onNavigateToRegistry, eventId, attendees = [] 
             if (JSON.stringify(updated) !== JSON.stringify(prevGroups)) return updated;
             return prevGroups;
         });
-    }, [attendees, groups.length, isCreateGroupModalOpen]);
+    }, [attendees, isCreateGroupModalOpen]); // Removed groups.length to avoid loops with initialGroups sync logic if not careful
 
     // --- Handlers ---
 
@@ -173,6 +173,8 @@ export function SmartGroupsView({ onNavigateToRegistry, eventId, attendees = [] 
                 color: newGroup.color,
                 count: newGroup.count
             });
+
+            if (onRefresh) onRefresh();
         }
     };
 
@@ -183,6 +185,7 @@ export function SmartGroupsView({ onNavigateToRegistry, eventId, attendees = [] 
         if (selectedGroup?.id === id) setSelectedGroup(null);
         if (eventId && !id.startsWith('g-')) {
             await supabase.from("smart_segments").delete().eq("id", id);
+            if (onRefresh) onRefresh();
         }
     };
 
@@ -205,10 +208,9 @@ export function SmartGroupsView({ onNavigateToRegistry, eventId, attendees = [] 
                 options: variable.options
             }).select().single();
 
-            if (data && !variable.id) {
-                setVariables(prev => prev.map(v => v.id.startsWith('temp-') && v.name === data.name ? (data as EventVariable) : v));
-            }
+            setVariables(prev => prev.map(v => v.id.startsWith('temp-') && v.name === data.name ? (data as EventVariable) : v));
         }
+        if (onRefresh) onRefresh();
     };
 
     const handleDeleteVariable = async (e: React.MouseEvent, id: string) => {
@@ -217,6 +219,7 @@ export function SmartGroupsView({ onNavigateToRegistry, eventId, attendees = [] 
         setVariables(prev => prev.filter(v => v.id !== id));
         if (eventId && !id.startsWith('temp-')) {
             await supabase.from("event_variables").delete().eq("id", id);
+            if (onRefresh) onRefresh();
         }
     };
 
@@ -277,11 +280,12 @@ export function SmartGroupsView({ onNavigateToRegistry, eventId, attendees = [] 
 
 
                     <SmartGroupsList
-                        groups={groups}
+                        groups={[...questionGroups, ...groups]}
                         onOpenCreateModal={() => setIsCreateGroupModalOpen(true)}
                         onSelectGroup={setSelectedGroup}
                         onEditGroup={(g) => { setEditingGroup(g); setIsCreateGroupModalOpen(true); }}
                         onDeleteGroup={handleDeleteGroup}
+                        loading={loading}
                     />
 
                     {/* VariableManager was here - now hidden */}

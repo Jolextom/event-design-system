@@ -18,6 +18,7 @@ interface SmartGroupsListProps {
     onSelectGroup: (group: Group) => void;
     onEditGroup: (group: Group) => void;
     onDeleteGroup: (e: React.MouseEvent, id: string) => void;
+    loading?: boolean;
 }
 
 export function SmartGroupsList({
@@ -25,7 +26,8 @@ export function SmartGroupsList({
     onOpenCreateModal,
     onSelectGroup,
     onEditGroup,
-    onDeleteGroup
+    onDeleteGroup,
+    loading = false
 }: SmartGroupsListProps) {
     return (
         <>
@@ -43,77 +45,84 @@ export function SmartGroupsList({
             </header>
 
             <div className="grid grid-cols-1 gap-4">
-                {groups.map((group) => (
-                    <div
-                        key={group.id}
-                        onClick={() => onSelectGroup(group)}
-                        className="p-7 border border-gray-100 rounded-3xl bg-white hover:border-[var(--brand-blue)]/40 transition-all group shadow-sm hover:shadow-md cursor-pointer relative overflow-hidden"
-                    >
-                        {group.type === "auto-segment" && (
-                            <div className="absolute top-0 right-10 bg-[var(--brand-blue)] text-white text-[7px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-b-lg shadow-sm">
-                                Auto-Generated
-                            </div>
-                        )}
-                        <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-5">
-                                <div className={cn(
-                                    "w-12 h-12 rounded-2xl flex items-center justify-center border transition-all",
-                                    group.color
-                                )}>
-                                    <Filter className="w-5 h-5" />
+                {loading ? (
+                    // Skeleton Loader
+                    [1, 2].map((i) => (
+                        <div key={i} className="h-24 bg-gray-50 border border-gray-100 rounded-[24px] animate-pulse" />
+                    ))
+                ) : (
+                    groups.map((group, index) => (
+                        <div
+                            key={group.id || index}
+                            onClick={() => onSelectGroup(group)}
+                            className="p-7 border border-gray-100 rounded-3xl bg-white hover:border-[var(--brand-blue)]/40 transition-all group shadow-sm hover:shadow-md cursor-pointer relative overflow-hidden"
+                        >
+                            {group.type === "auto-segment" && (
+                                <div className="absolute top-0 right-10 bg-[var(--brand-blue)] text-white text-[7px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-b-lg shadow-sm">
+                                    Auto-Generated
                                 </div>
-                                <div>
-                                    <h3 className="text-lg font-black text-gray-900 tracking-tight">{group.name}</h3>
-                                    <div className="flex items-center gap-3 mt-1">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                                            <Layers className="w-3 h-3" /> {group.rule}
-                                        </p>
-                                        {group.type === "automation" && (
-                                            <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest bg-blue-50 px-1.5 py-0.5 rounded">Logic Driven</span>
-                                        )}
+                            )}
+                            <div className="flex justify-between items-center">
+                                <div className="flex items-center gap-5">
+                                    <div className={cn(
+                                        "w-12 h-12 rounded-2xl flex items-center justify-center border transition-all",
+                                        group.color
+                                    )}>
+                                        <Filter className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-black text-gray-900 tracking-tight">{group.name}</h3>
+                                        <div className="flex items-center gap-3 mt-1">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                                                <Layers className="w-3 h-3" /> {group.rule}
+                                            </p>
+                                            {group.type === "automation" && (
+                                                <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest bg-blue-50 px-1.5 py-0.5 rounded">Logic Driven</span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div className="flex items-center gap-6">
-                                <div className="text-right">
-                                    <div className="text-xl font-black text-gray-900 tracking-tighter">{group.count}</div>
-                                    <div className="text-[9px] font-black uppercase tracking-widest text-gray-400">Guests</div>
-                                </div>
+                                <div className="flex items-center gap-6">
+                                    <div className="text-right">
+                                        <div className="text-xl font-black text-gray-900 tracking-tighter">{group.count}</div>
+                                        <div className="text-[9px] font-black uppercase tracking-widest text-gray-400">Guests</div>
+                                    </div>
 
-                                <div className="flex items-center gap-3">
-                                    {/* Edit/Action Buttons */}
-                                    {group.type !== 'breakdown' && (
-                                        <div className="flex items-center gap-2 p-1.5 bg-gray-50 rounded-xl border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onEditGroup(group);
-                                                }}
-                                                title="Edit segment"
-                                                className="p-1.5 text-gray-300 hover:text-gray-900 transition-colors"
-                                            >
-                                                <Settings className="w-3.5 h-3.5" />
-                                            </button>
-                                            <div className="w-px h-3.5 bg-gray-200" />
-                                            <button
-                                                onClick={(e) => onDeleteGroup(e, group.id)}
-                                                title="Delete segment"
-                                                className="p-1.5 text-gray-300 hover:text-red-500 transition-colors"
-                                            >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                            </button>
+                                    <div className="flex items-center gap-3">
+                                        {/* Edit/Action Buttons */}
+                                        {group.type !== 'breakdown' && (
+                                            <div className="flex items-center gap-2 p-1.5 bg-gray-50 rounded-xl border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onEditGroup(group);
+                                                    }}
+                                                    title="Edit segment"
+                                                    className="p-1.5 text-gray-300 hover:text-gray-900 transition-colors"
+                                                >
+                                                    <Settings className="w-3.5 h-3.5" />
+                                                </button>
+                                                <div className="w-px h-3.5 bg-gray-200" />
+                                                <button
+                                                    onClick={(e) => onDeleteGroup(e, group.id)}
+                                                    title="Delete segment"
+                                                    className="p-1.5 text-gray-300 hover:text-red-500 transition-colors"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        <div className="p-2 text-gray-300 group-hover:text-gray-900 transition-colors">
+                                            <ChevronRight className="w-5 h-5" />
                                         </div>
-                                    )}
-
-                                    <div className="p-2 text-gray-300 group-hover:text-gray-900 transition-colors">
-                                        <ChevronRight className="w-5 h-5" />
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    ))
+                )}
             </div>
         </>
     );

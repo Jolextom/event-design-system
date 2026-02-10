@@ -148,7 +148,7 @@ export function RegistryTable({
                                         exit={{ opacity: 0 }}
                                         className="group hover:bg-gray-50/50 transition-all cursor-default"
                                     >
-                                        <td className="pl-8 py-3 text-center sticky left-0 bg-white group-hover:bg-gray-50 z-20">
+                                        <td className="pl-8 py-4 text-center sticky left-0 bg-white group-hover:bg-gray-50 z-20">
                                             <input
                                                 type="checkbox"
                                                 className="w-4 h-4 rounded border-gray-200 accent-(--brand-blue)"
@@ -160,13 +160,13 @@ export function RegistryTable({
                                         {visibleColumns.map((col) => {
                                             if (col.id === 'attendee') {
                                                 return (
-                                                    <td key={col.id} className="px-4 py-3 sticky left-12 bg-white group-hover:bg-gray-50 z-20 border-r border-gray-50/50">
-                                                        <div className="flex items-center gap-3 pr-4">
-                                                            <div className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center font-black text-[10px] text-gray-500 group-hover:bg-gray-900 group-hover:text-white transition-all border border-gray-100">
+                                                    <td key={col.id} className="px-4 py-4 sticky left-12 bg-white group-hover:bg-gray-50 z-20 border-r border-gray-50/50">
+                                                        <div className="flex items-center gap-3.5 pr-4">
+                                                            <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center font-black text-[11px] text-gray-500 group-hover:bg-gray-900 group-hover:text-white transition-all border border-gray-100">
                                                                 {attendee.first_name.charAt(0)}{attendee.last_name.charAt(0)}
                                                             </div>
                                                             <div>
-                                                                <p className="text-[13px] font-bold text-gray-900 tracking-tight leading-none mb-0.5">
+                                                                <p className="text-[13px] font-black text-gray-900 tracking-tight leading-none mb-1">
                                                                     {attendee.first_name} {attendee.last_name}
                                                                 </p>
                                                                 <p className="text-[10px] font-bold text-gray-400">{attendee.email}</p>
@@ -176,7 +176,7 @@ export function RegistryTable({
                                                 );
                                             } else if (col.id === 'ticket') {
                                                 return (
-                                                    <td key={col.id} className="px-4 py-3">
+                                                    <td key={col.id} className="px-4 py-4">
                                                         <div className="flex items-center gap-2">
                                                             {/* ICON RENDER LOGIC */}
                                                             {(() => {
@@ -215,7 +215,7 @@ export function RegistryTable({
                                                 );
                                             } else if (col.id === 'ref') {
                                                 return (
-                                                    <td key={col.id} className="px-4 py-3">
+                                                    <td key={col.id} className="px-4 py-4">
                                                         <span className="text-[10px] font-mono font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
                                                             {attendee.ref}
                                                         </span>
@@ -223,7 +223,7 @@ export function RegistryTable({
                                                 );
                                             } else if (col.id === 'created_at') {
                                                 return (
-                                                    <td key={col.id} className="px-4 py-3">
+                                                    <td key={col.id} className="px-4 py-4">
                                                         <div className="flex items-center gap-1.5 text-gray-400">
                                                             <span className="text-[11px] font-medium">
                                                                 {attendee.created_at ? formatDistanceToNow(new Date(attendee.created_at.endsWith("Z") ? attendee.created_at : attendee.created_at + "Z"), { addSuffix: true }) : "-"}
@@ -233,7 +233,7 @@ export function RegistryTable({
                                                 );
                                             } else if (col.id === 'status') {
                                                 return (
-                                                    <td key={col.id} className="px-4 py-3">
+                                                    <td key={col.id} className="px-4 py-4">
                                                         {attendee.check_in_time ? (
                                                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100 text-[9px] font-black uppercase tracking-wider">
                                                                 <ShieldCheck className="w-3 h-3" /> Checked In

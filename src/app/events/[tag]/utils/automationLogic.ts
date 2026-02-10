@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { Attendee, EventVariable } from "../types";
+import { evaluateSegment, RuleConfig } from "./segmentLogic";
 
 export interface RandomSplitConfig {
     variableName: string;
@@ -10,6 +11,7 @@ export async function runRandomSplit(
     eventId: string,
     config: RandomSplitConfig,
     onlyEmpty: boolean = true, // Default to true for safety
+    segmentId?: string,
     onProgress?: (progress: number, total: number) => void
 ): Promise<{ success: boolean; count: number; error?: string }> {
     const supabase = createClient(
@@ -20,7 +22,7 @@ export async function runRandomSplit(
     // 1. Fetch Attendees
     let query = supabase
         .from("attendees")
-        .select("id, properties")
+        .select("id, properties, first_name, last_name, email, check_in")
         .eq("event_id", eventId);
 
     // If onlyEmpty, we ideally filter in DB, but for JSONB reliability with "missing key" vs "null value",
@@ -34,9 +36,29 @@ export async function runRandomSplit(
     }
 
     // 2. Filter if needed
-    let targets = attendees;
+    let targets = attendees as Attendee[];
+
+    // 2a. Filter by Segment if provided
+    if (segmentId) {
+        const { data: segment, error: segError } = await supabase
+            .from("event_segments")
+            .select("rules_config")
+            .eq("id", segmentId)
+            .single();
+
+        if (segError) {
+            console.error("Error fetching segment:", segError);
+            return { success: false, count: 0, error: "Failed to fetch segment rules" };
+        }
+
+        if (segment && segment.rules_config) {
+            targets = targets.filter(a => evaluateSegment(a, segment.rules_config as RuleConfig));
+        }
+    }
+
+    // 2b. Filter by onlyEmpty
     if (onlyEmpty) {
-        targets = attendees.filter(a => {
+        targets = targets.filter(a => {
             const val = a.properties?.[config.variableName];
             return val === undefined || val === null || val === "";
         });
