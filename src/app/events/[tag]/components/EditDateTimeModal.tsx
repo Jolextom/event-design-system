@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Loader2, ArrowRight, Calendar as CalendarIcon, Clock, AlertCircle, Save } from "lucide-react";
+import { Loader2, AlertCircle, Save } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { Modal, ModalButton } from "@/app/components/ui/Modal";
+import { DateTimeStepper } from "@/app/components/ui/DateTimeStepper";
 
 interface EditDateTimeModalProps {
     isOpen: boolean;
@@ -40,6 +41,8 @@ export function EditDateTimeModal({ isOpen, onClose, eventId, initialData, onUpd
             setError(null);
         }
     }, [isOpen, initialData]);
+
+    useEffect(() => { validateTime(); }, [startDate, startTime, endDate, endTime, isMultiDay]);
 
     const validateTime = () => {
         if (!startDate || !startTime || !endTime) return true;
@@ -101,89 +104,23 @@ export function EditDateTimeModal({ isOpen, onClose, eventId, initialData, onUpd
             }
         >
             <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="bg-gray-50 rounded-2xl p-5 border border-gray-200 space-y-3">
-                    {/* Timeline visual */}
-                    <div className="relative pl-8">
-                        {/* Vertical Line */}
-                        <div className="absolute left-[11px] top-4 bottom-4 w-[2px] bg-gray-200" />
-
-                        {/* Start Group */}
-                        <div className="relative mb-5">
-                            <div className="absolute -left-8 top-1/2 -translate-y-1/2 w-6 h-6 bg-gray-900 rounded-full border-4 border-gray-50 shadow-sm z-10" />
-                            <div className="space-y-3">
-                                <div className="group relative bg-white border border-gray-200 hover:border-gray-300 transition-colors rounded-xl px-4 py-3 flex items-center shadow-sm">
-                                    <input
-                                        required
-                                        type="date"
-                                        className="w-full bg-transparent border-none p-0 text-sm font-bold text-gray-900 focus:ring-0 outline-none appearance-none font-mono tracking-tight [&::-webkit-calendar-picker-indicator]:hidden cursor-pointer"
-                                        value={startDate}
-                                        onChange={(e) => setStartDate(e.target.value)}
-                                        onClick={(e) => e.currentTarget.showPicker()}
-                                    />
-                                    <CalendarIcon className="w-4 h-4 text-gray-400 pointer-events-none absolute right-4" />
-                                </div>
-                                <div className="group relative bg-white border border-gray-200 hover:border-gray-300 transition-colors rounded-xl px-4 py-3 flex items-center shadow-sm">
-                                    <input
-                                        required
-                                        type="time"
-                                        className="w-full bg-transparent border-none p-0 text-sm font-bold text-gray-900 focus:ring-0 outline-none font-mono tracking-tight [&::-webkit-calendar-picker-indicator]:hidden cursor-pointer"
-                                        value={startTime}
-                                        onChange={(e) => setStartTime(e.target.value)}
-                                        onClick={(e) => e.currentTarget.showPicker()}
-                                    />
-                                    <Clock className="w-4 h-4 text-gray-400 pointer-events-none absolute right-4" />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* End Group */}
-                        <div className="relative">
-                            <div className="absolute -left-8 top-1/2 -translate-y-1/2 w-6 h-6 bg-white border-[3px] border-gray-900 rounded-full z-10 box-border" />
-                            <div className="space-y-3">
-                                {isMultiDay && (
-                                    <div className="group relative bg-white border border-gray-200 hover:border-gray-300 transition-colors rounded-xl px-4 py-3 flex items-center shadow-sm">
-                                        <input
-                                            required
-                                            title="End Date"
-                                            type="date"
-                                            className="w-full bg-transparent border-none p-0 text-sm font-bold text-gray-900 focus:ring-0 outline-none appearance-none font-mono tracking-tight [&::-webkit-calendar-picker-indicator]:hidden cursor-pointer"
-                                            value={endDate}
-                                            min={startDate}
-                                            onChange={(e) => setEndDate(e.target.value)}
-                                            onClick={(e) => e.currentTarget.showPicker()}
-                                        />
-                                        <CalendarIcon className="w-4 h-4 text-gray-400 pointer-events-none absolute right-4" />
-                                    </div>
-                                )}
-                                <div className="group relative bg-white border border-gray-200 hover:border-gray-300 transition-colors rounded-xl px-4 py-3 flex items-center shadow-sm">
-                                    <div className="flex items-center gap-2 relative w-full">
-                                        <input
-                                            required
-                                            type="time"
-                                            className="w-full bg-transparent border-none p-0 text-sm font-bold text-gray-900 focus:ring-0 outline-none font-mono tracking-tight [&::-webkit-calendar-picker-indicator]:hidden cursor-pointer"
-                                            value={endTime}
-                                            onChange={(e) => setEndTime(e.target.value)}
-                                            onClick={(e) => e.currentTarget.showPicker()}
-                                        />
-                                        {!isMultiDay && (
-                                            <button
-                                                type="button"
-                                                onClick={(e) => { e.stopPropagation(); setIsMultiDay(true); if (!endDate) setEndDate(startDate); }}
-                                                className="absolute right-8 z-20 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-black transition-colors whitespace-nowrap bg-white/80 backdrop-blur-sm px-1"
-                                            >
-                                                + End Date
-                                            </button>
-                                        )}
-                                        <Clock className="w-4 h-4 text-gray-400 pointer-events-none absolute right-0" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+                    <DateTimeStepper
+                        startDate={startDate}
+                        startTime={startTime}
+                        endTime={endTime}
+                        endDate={endDate}
+                        isMultiDay={isMultiDay}
+                        onStartDateChange={setStartDate}
+                        onStartTimeChange={setStartTime}
+                        onEndTimeChange={setEndTime}
+                        onEndDateChange={setEndDate}
+                        onToggleMultiDay={() => { setIsMultiDay(p => !p); if (!endDate) setEndDate(startDate); }}
+                    />
                 </div>
 
                 {error && (
-                    <div className="flex items-center gap-2 text-red-600">
+                    <div className="flex items-center gap-2 text-red-600 animate-in fade-in slide-in-from-top-1">
                         <AlertCircle className="w-4 h-4 shrink-0" />
                         <span className="text-xs font-bold">{error}</span>
                     </div>

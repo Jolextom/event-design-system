@@ -8,8 +8,13 @@ import type { Event } from "../types";
 import { supabase } from "@/lib/supabaseClient";
 import { EditDateTimeModal } from "../components/EditDateTimeModal";
 import { EditSimpleModal } from "../components/EditSimpleModal";
-import { EditDescriptionModal } from "../components/EditDescriptionModal";
 import { useRouter } from "next/navigation";
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Placeholder from '@tiptap/extension-placeholder';
+import { Bold, Italic, List, ListOrdered } from "lucide-react";
+import * as Popover from "@radix-ui/react-popover";
+import { DateTimeStepper } from "@/app/components/ui/DateTimeStepper";
 
 interface BasicInfoViewProps {
     event?: Event | null;
@@ -299,36 +304,26 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
                                 </div>
                             </div>
 
-                            {/* Description Section (Modal Trigger) */}
-                            <div className="space-y-3">
+                            {/* Description Section (Inline Editor) */}
+                            <div className="space-y-3 relative z-0">
                                 <label className="text-[9px] font-black uppercase tracking-[0.25em] text-gray-400 block ml-1">About Event</label>
-                                <div
-                                    onClick={() => setDescModalOpen(true)}
-                                    className="w-full min-h-[160px] bg-gray-50/50 border border-gray-100 rounded-3xl p-6 cursor-pointer group hover:bg-gray-100/50 hover:border-gray-200 transition-all relative overflow-hidden shadow-inner"
-                                >
-                                    {formData.description ? (
-                                        <div
-                                            className="prose prose-sm max-w-none text-gray-600 group-hover:text-gray-900 transition-colors line-clamp-4"
-                                            dangerouslySetInnerHTML={{ __html: formData.description }}
+                                <div className="relative group/editor">
+                                    <div className="bg-gray-50/50 rounded-3xl border border-gray-100 p-6 focus-within:bg-white focus-within:border-[var(--brand-blue)] focus-within:ring-4 focus-within:ring-[var(--brand-blue)]/10 transition-all shadow-inner focus-within:shadow-md">
+                                        <InlineEditor
+                                            initialContent={formData.description}
+                                            onSave={async (html) => {
+                                                handleDescriptionUpdate(html);
+                                                try {
+                                                    await supabase.from("events").update({ description: html }).eq("id", event.id);
+                                                } catch (err) {
+                                                    console.error("Failed to save description", err);
+                                                }
+                                            }}
                                         />
-                                    ) : (
-                                        <div className="flex flex-col items-center justify-center h-full py-8 text-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                <Plus className="w-4 h-4 text-gray-400 group-hover:text-[var(--brand-blue)]" />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-gray-900">Add Description</p>
-                                                <p className="text-xs text-gray-400 mt-1">Tell people what's happening.</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                    {formData.description && (
-                                        <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-gray-50 to-transparent" />
-                                    )}
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Logistics Grid (Modal Triggers) */}
                             <div className="grid grid-cols-2 gap-6">
                                 <div
                                     onClick={() => setDateModalOpen(true)}
@@ -443,17 +438,11 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
                 initialValue={formData.location || ""}
                 onUpdate={handleLocationUpdate}
             />
-
-            <EditDescriptionModal
-                isOpen={isDescModalOpen}
-                onClose={() => setDescModalOpen(false)}
-                eventId={event.id}
-                initialValue={formData.description || ""}
-                onUpdate={handleDescriptionUpdate}
-            />
         </div>
     );
 }
+
+// ── Cards ────────────────────────────────────────────────────────────────
 
 function ChecklistCard({ title, description, isCompleted, isLocked, lockedMessage = "Publish to Access", onClick }: { title: string, description: string, isCompleted?: boolean, isLocked?: boolean, lockedMessage?: string, onClick: () => void }) {
     return (
@@ -522,5 +511,117 @@ function ActionCard({ icon: Icon, title, description, isLocked, onClick }: { ico
             </div>
             <p className="text-[10px] text-gray-400 font-bold pl-[34px]">{description}</p>
         </button>
+    );
+}
+
+// ── Inline TipTap Editor ──────────────────────────────────────────────────
+
+function MenuButton({ onClick, isActive, icon: Icon, label }: { onClick: () => void, isActive: boolean, icon: any, label: string }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            title={label}
+            className={cn(
+                "p-2 rounded-lg transition-all",
+                isActive ? 'bg-gray-900 text-white shadow-sm' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-900'
+            )}
+        >
+            <Icon className="w-4 h-4" />
+        </button>
+    );
+}
+
+function Toolbar({ editor }: { editor: any }) {
+    if (!editor) return null;
+
+    return (
+        <div className="flex items-center gap-1 pb-3 mb-3 border-b border-gray-100">
+            <MenuButton
+                onClick={() => editor.chain().focus().toggleBold().run()}
+                isActive={editor.isActive('bold')}
+                icon={Bold}
+                label="Bold"
+            />
+            <MenuButton
+                onClick={() => editor.chain().focus().toggleItalic().run()}
+                isActive={editor.isActive('italic')}
+                icon={Italic}
+                label="Italic"
+            />
+            <div className="w-[1px] h-4 bg-gray-200 mx-2" />
+            <MenuButton
+                onClick={() => editor.chain().focus().toggleBulletList().run()}
+                isActive={editor.isActive('bulletList')}
+                icon={List}
+                label="Bullet List"
+            />
+            <MenuButton
+                onClick={() => editor.chain().focus().toggleOrderedList().run()}
+                isActive={editor.isActive('orderedList')}
+                icon={ListOrdered}
+                label="Numbered List"
+            />
+        </div>
+    );
+}
+
+function InlineEditor({ initialContent, onSave }: { initialContent: string, onSave: (html: string) => void }) {
+    const [isFocused, setIsFocused] = useState(false);
+
+    const editor = useEditor({
+        extensions: [
+            StarterKit,
+            Placeholder.configure({ placeholder: 'Describe your event...' }),
+        ],
+        content: initialContent,
+        editorProps: {
+            attributes: {
+                class: 'prose prose-sm focus:outline-none min-h-[100px] text-gray-600 prose-p:my-2 prose-p:leading-relaxed prose-headings:font-black prose-headings:tracking-tight prose-ul:list-disc prose-ol:list-decimal prose-li:ml-4',
+            },
+        },
+        onFocus: () => setIsFocused(true),
+        onBlur: ({ editor }) => {
+            const html = editor.getHTML();
+            const isEmpty = editor.getText().trim() === "" && !html.includes("<img");
+            onSave(isEmpty ? "" : html);
+
+            // Give formatting buttons time to be clicked before hiding toolbar
+            setTimeout(() => {
+                if (!document.hasFocus() || !editor.isFocused) {
+                    setIsFocused(false);
+                }
+            }, 200);
+        },
+        immediatelyRender: false,
+    });
+
+    useEffect(() => {
+        if (editor && initialContent !== undefined && initialContent !== editor.getHTML()) {
+            editor.commands.setContent(initialContent);
+        }
+    }, [initialContent, editor]);
+
+    if (!editor) return null;
+
+    return (
+        <div className="relative">
+            <AnimatePresence>
+                {isFocused && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                    >
+                        <Toolbar editor={editor} />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <div className={cn("transition-colors", isFocused ? "text-gray-900" : "")}>
+                <EditorContent editor={editor} />
+            </div>
+        </div>
     );
 }

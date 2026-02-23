@@ -4,10 +4,9 @@ import React, { useState } from "react";
 import { Plus, AlertTriangle } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 import { Question } from "../../types";
-import { CreateQuestionModal } from "../../components/CreateQuestionModal";
-import { EditQuestionModal } from "../../components/EditQuestionModal";
 import { FixedFields } from "./FixedFields";
 import { CustomQuestionList } from "./CustomQuestionList";
+import { ConfirmModal } from "../../components/ConfirmModal";
 
 interface RegistrationViewProps {
     questions: Question[];
@@ -18,34 +17,28 @@ interface RegistrationViewProps {
 }
 
 export function RegistrationView({ questions, loading, error, eventId, onQuestionCreated }: RegistrationViewProps) {
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
     const [deleteQuestionId, setDeleteQuestionId] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
-    const [isReordering, setIsReordering] = useState(false);
 
+    // Batched reorder: fire all order updates in parallel, no refetch needed
     const handleReorder = async (newOrder: Question[]) => {
-        setIsReordering(true);
+        if (!eventId) return;
         try {
             const supabase = createClient(
                 process.env.NEXT_PUBLIC_SUPABASE_URL!,
                 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
             );
-            const updates = newOrder.map((q, index) => ({
-                id: q.id,
-                question_order: index
-            }));
-            for (const update of updates) {
-                await supabase
-                    .from("questions")
-                    .update({ question_order: update.question_order })
-                    .eq("id", update.id);
-            }
-            onQuestionCreated();
+            // Fire all updates concurrently — don't await so there's no skeleton reload
+            Promise.all(
+                newOrder.map((q, index) =>
+                    supabase.from("questions").update({ question_order: index }).eq("id", q.id)
+                )
+            ).then((results) => {
+                const failed = results.find(r => r.error);
+                if (failed?.error) console.error("Reorder failed:", failed.error);
+            });
         } catch (err) {
-            console.error("Reorder failed:", err);
-        } finally {
-            setIsReordering(false);
+            console.error("Reorder error:", err);
         }
     };
 
@@ -79,24 +72,31 @@ export function RegistrationView({ questions, loading, error, eventId, onQuestio
                             <h2 className="text-2xl font-black tracking-tight text-gray-900">Signup Form</h2>
                             <p className="text-sm text-gray-400 mt-1.5 font-bold">Ask the right questions to your guests.</p>
                         </div>
-                        <button
-                            onClick={() => setIsCreateModalOpen(true)}
-                            className="flex items-center gap-2 bg-gray-900 text-white px-6 py-3 rounded-2xl text-xs font-black hover:bg-black transition-all shadow-xl shadow-gray-100 active:scale-95"
-                        >
-                            <Plus className="w-4 h-4" /> Add Question
-                        </button>
                     </header>
 
                     <div className="space-y-4">
                         <FixedFields />
 
-                        {!loading && !error && (
+                        {!loading && !error && eventId && (
                             <CustomQuestionList
                                 questions={questions}
+                                eventId={eventId}
                                 onReorder={handleReorder}
-                                onEdit={setEditingQuestion}
                                 onDelete={setDeleteQuestionId}
+                                onUpdated={onQuestionCreated}
                             />
+                        )}
+
+                        {!loading && !error && eventId && questions.length === 0 && (
+                            <div className="py-10 flex flex-col items-center gap-4 text-center">
+                                <div className="w-14 h-14 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center">
+                                    <Plus className="w-6 h-6 text-gray-300" />
+                                </div>
+                                <p className="text-sm font-bold text-gray-400">
+                                    No custom questions yet.<br />
+                                    <span className="text-[var(--brand-blue)]">Use the + button above</span> to add your first one.
+                                </p>
+                            </div>
                         )}
 
                         {loading && (
@@ -116,43 +116,17 @@ export function RegistrationView({ questions, loading, error, eventId, onQuestio
                 </div>
             </div>
 
-            {editingQuestion && (
-                <EditQuestionModal
-                    isOpen={!!editingQuestion}
-                    onClose={() => setEditingQuestion(null)}
-                    question={editingQuestion}
-                    onQuestionUpdated={onQuestionCreated}
-                />
-            )}
-
-            {isCreateModalOpen && eventId && (
-                <CreateQuestionModal
-                    isOpen={isCreateModalOpen}
-                    onClose={() => setIsCreateModalOpen(false)}
-                    eventId={eventId}
-                    onQuestionCreated={onQuestionCreated}
-                    nextOrder={questions.length}
-                />
-            )}
-
-            {deleteQuestionId && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDeleteQuestionId(null)} />
-                    <div className="relative bg-white rounded-[32px] p-8 max-w-sm w-full shadow-2xl">
-                        <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mb-6">
-                            <AlertTriangle className="w-7 h-7 text-red-600" />
-                        </div>
-                        <h3 className="text-lg font-black text-gray-900 mb-2">Delete Question?</h3>
-                        <p className="text-sm text-gray-500 font-bold mb-8">Permanently remove this question and all data.</p>
-                        <div className="flex gap-3">
-                            <button onClick={() => setDeleteQuestionId(null)} className="flex-1 py-3 text-sm font-black text-gray-500 hover:bg-gray-50 rounded-xl transition-all">Cancel</button>
-                            <button onClick={handleDeleteQuestion} disabled={isDeleting} className="flex-1 py-3 bg-red-600 text-white text-sm font-black rounded-xl hover:bg-red-700 transition-all disabled:opacity-50">
-                                {isDeleting ? "Deleting..." : "Delete"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Delete Confirm */}
+            <ConfirmModal
+                isOpen={!!deleteQuestionId}
+                onClose={() => setDeleteQuestionId(null)}
+                onConfirm={handleDeleteQuestion}
+                title="Delete Question?"
+                description="This will permanently remove the question and all existing responses."
+                confirmLabel={isDeleting ? "Deleting…" : "Delete"}
+                cancelLabel="Cancel"
+                isDestructive
+            />
         </div>
     );
 }

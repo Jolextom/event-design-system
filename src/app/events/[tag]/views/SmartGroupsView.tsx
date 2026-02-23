@@ -310,6 +310,7 @@ export function SmartGroupsView({
             {mounted && createPortal(
                 <AnimatePresence>
                     <GuestFieldsDrawer
+                        key="guest-fields-drawer"
                         isOpen={isGuestFieldsDrawerOpen}
                         onClose={() => setIsGuestFieldsDrawerOpen(false)}
                         variables={variables}
@@ -328,6 +329,7 @@ export function SmartGroupsView({
                     {/* Side Panel */}
                     {selectedGroup && (
                         <SegmentDetailsPanel
+                            key="segment-details-panel"
                             selectedGroup={selectedGroup}
                             attendees={attendees}
                             onClose={() => setSelectedGroup(null)}
@@ -338,13 +340,13 @@ export function SmartGroupsView({
 
                     {/* Guest Details Panel (for auditing/editing variables) */}
                     <GuestDetailsSidePanel
+                        key="guest-details-panel"
                         isOpen={!!selectedGuest}
                         onClose={() => setSelectedGuest(null)}
                         attendee={selectedGuest}
-                        questions={[]} // Pass empty if unavailable in this view, typically fetched in parent or self-fetching
-                        passes={[]} // Same
+                        questions={[]}
+                        passes={[]}
                         onUpdate={() => {
-                            // Ideally trigger a re-fetch of attendees in parent
                             console.log("Guest updated");
                         }}
                     />
@@ -352,6 +354,7 @@ export function SmartGroupsView({
                     {/* Modals - Render LAST to be on top */}
                     {(isCreateGroupModalOpen || editingGroup) && (
                         <CreateSmartGroupModal
+                            key="create-group-modal"
                             initialGroup={editingGroup || undefined}
                             onClose={() => {
                                 setIsCreateGroupModalOpen(false);
@@ -362,6 +365,7 @@ export function SmartGroupsView({
                     )}
                     {(isCreateVarModalOpen || editingVariable) && (
                         <CreateVariableModal
+                            key="create-var-modal"
                             initialVariable={editingVariable || undefined}
                             onClose={() => {
                                 setIsCreateVarModalOpen(false);
@@ -372,6 +376,7 @@ export function SmartGroupsView({
                     )}
 
                     <RunAutomationModal
+                        key="run-automation-modal"
                         isOpen={isRunAutomationModalOpen}
                         onClose={() => {
                             setIsRunAutomationModalOpen(false);
@@ -379,12 +384,8 @@ export function SmartGroupsView({
                         }}
                         eventId={eventId || ""}
                         targetVariable={targetVariable}
-                        onComplete={() => {
-                            // Optional refresh
-                        }}
+                        onComplete={() => { }}
                     />
-
-
                 </AnimatePresence>,
                 document.body
             )}
