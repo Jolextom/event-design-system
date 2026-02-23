@@ -47,8 +47,10 @@ export default function CheckInPage() {
     // Event & Attendees State
     const [event, setEvent] = useState<any>(null);
     const [searchQuery, setSearchQuery] = useState("");
+    const [selectedPassFilter, setSelectedPassFilter] = useState<string | null>(null);
     const [attendees, setAttendees] = useState<Attendee[]>([]);
     const [filteredAttendees, setFilteredAttendees] = useState<Attendee[]>([]);
+    const [uniquePasses, setUniquePasses] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [checkingIn, setCheckingIn] = useState<string | null>(null);
     const [successId, setSuccessId] = useState<string | null>(null);
@@ -184,27 +186,39 @@ export default function CheckInPage() {
             console.error("Error fetching attendees:", error);
         }
 
-        setAttendees(attendeesData || []);
-        setFilteredAttendees(attendeesData || []);
+        const data = attendeesData || [];
+
+        // Extract unique pass titles
+        const passes = Array.from(new Set(data.map(a => a.pass?.[0]?.title || "General Admission"))).sort();
+        setUniquePasses(passes);
+
+        setAttendees(data);
+        setFilteredAttendees(data);
         setLoading(false);
     };
 
-    // Search filter
+    // Search and Pass filter
     useEffect(() => {
+        let result = attendees;
+
+        // 1. Pass Filter
+        if (selectedPassFilter) {
+            result = result.filter(a => (a.pass?.[0]?.title || "General Admission") === selectedPassFilter);
+        }
+
+        // 2. Search Query
         const query = searchQuery.toLowerCase().trim();
-        if (!query) {
-            setFilteredAttendees(attendees);
-        } else {
-            setFilteredAttendees(
-                attendees.filter(
-                    (a) =>
-                        a.first_name.toLowerCase().includes(query) ||
-                        a.last_name.toLowerCase().includes(query) ||
-                        a.email.toLowerCase().includes(query)
-                )
+        if (query) {
+            result = result.filter(
+                (a) =>
+                    a.first_name.toLowerCase().includes(query) ||
+                    a.last_name.toLowerCase().includes(query) ||
+                    a.email.toLowerCase().includes(query)
             );
         }
-    }, [searchQuery, attendees]);
+
+        setFilteredAttendees(result);
+    }, [searchQuery, selectedPassFilter, attendees]);
 
     const handleCheckIn = async (attendeeId: string) => {
         setCheckingIn(attendeeId);
@@ -213,21 +227,55 @@ export default function CheckInPage() {
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
         );
 
+        const updates = {
+            check_in: true,
+            check_in_time: new Date().toISOString(),
+            checked_in_by_staff_id: staff?.id || null,
+            checked_in_by: staff ? `${staff.first_name} ${staff.last_name}` : null
+        };
+
         const { error } = await supabase
             .from("attendees")
-            .update({ check_in: true, check_in_time: new Date().toISOString() })
+            .update(updates)
             .eq("id", attendeeId);
 
         if (!error) {
             setSuccessId(attendeeId);
             setAttendees((prev) =>
                 prev.map((a) =>
-                    a.id === attendeeId
-                        ? { ...a, check_in: true, check_in_time: new Date().toISOString() }
-                        : a
+                    a.id === attendeeId ? { ...a, ...updates } : a
                 )
             );
             setTimeout(() => setSuccessId(null), 2000);
+        }
+        setCheckingIn(null);
+    };
+
+    const handleUndoCheckIn = async (attendeeId: string) => {
+        setCheckingIn(attendeeId);
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+
+        const updates = {
+            check_in: false,
+            check_in_time: null,
+            checked_in_by_staff_id: null,
+            checked_in_by: null
+        };
+
+        const { error } = await supabase
+            .from("attendees")
+            .update(updates)
+            .eq("id", attendeeId);
+
+        if (!error) {
+            setAttendees((prev) =>
+                prev.map((a) =>
+                    a.id === attendeeId ? { ...a, ...updates } : a
+                )
+            );
         }
         setCheckingIn(null);
     };
@@ -366,16 +414,49 @@ export default function CheckInPage() {
                     </p>
                 </div>
 
-                {/* Search Bar */}
-                <div className="relative">
-                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
-                    <input
-                        type="text"
-                        placeholder="Search by name or email..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-14 pr-6 py-5 bg-white rounded-[24px] border border-gray-100 shadow-lg shadow-gray-100/50 text-base font-bold text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[var(--brand-blue)] focus:border-transparent transition-all"
-                    />
+                {/* Search Bar & Filters */}
+                <div className="space-y-4">
+                    <div className="relative">
+                        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
+                        <input
+                            type="text"
+                            placeholder="Search by name or email..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-14 pr-6 py-4 bg-white rounded-2xl border border-gray-100 shadow-sm text-sm font-bold text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[var(--brand-blue)] focus:border-transparent transition-all"
+                        />
+                    </div>
+
+                    {/* Pass Type Filter Pills */}
+                    {uniquePasses.length > 1 && (
+                        <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar mask-fade-right">
+                            <button
+                                onClick={() => setSelectedPassFilter(null)}
+                                className={cn(
+                                    "px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all flex items-center gap-2",
+                                    selectedPassFilter === null
+                                        ? "bg-gray-900 text-white shadow-md shadow-gray-200"
+                                        : "bg-white text-gray-500 hover:text-gray-900 hover:bg-gray-50 border border-gray-100"
+                                )}
+                            >
+                                All Tickets
+                            </button>
+                            {uniquePasses.map(pass => (
+                                <button
+                                    key={pass}
+                                    onClick={() => setSelectedPassFilter(pass)}
+                                    className={cn(
+                                        "px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all",
+                                        selectedPassFilter === pass
+                                            ? "bg-[var(--brand-blue)] text-white shadow-md shadow-blue-200"
+                                            : "bg-white text-gray-500 hover:text-gray-900 hover:bg-gray-50 border border-gray-100"
+                                    )}
+                                >
+                                    {pass}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Guest List */}
@@ -434,9 +515,18 @@ export default function CheckInPage() {
                                     </div>
 
                                     {attendee.check_in ? (
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-green-600 bg-green-100 px-3 py-1.5 rounded-full">
-                                            Checked In
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-green-600 bg-green-100 px-3 py-1.5 rounded-full">
+                                                Checked In
+                                            </span>
+                                            <button
+                                                onClick={() => handleUndoCheckIn(attendee.id)}
+                                                disabled={checkingIn === attendee.id}
+                                                className="text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-full transition-colors flex items-center gap-1"
+                                            >
+                                                {checkingIn === attendee.id ? <Loader2 className="w-3 h-3 animate-spin mx-auto" /> : "Undo"}
+                                            </button>
+                                        </div>
                                     ) : (
                                         <button
                                             onClick={() => handleCheckIn(attendee.id)}

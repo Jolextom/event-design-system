@@ -17,6 +17,7 @@ export function OperationsView() {
     const [staff, setStaff] = useState<Staff[]>([]);
     const [checkInLogs, setCheckInLogs] = useState<any[]>([]);
     const [stats, setStats] = useState({ totalCheckedIn: 0, capacity: 0 });
+    const [usherStats, setUsherStats] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
@@ -60,7 +61,7 @@ export function OperationsView() {
         // 3. Get Attendees (for stats and feed) - Only registered guests
         const { data: attendeesData } = await supabase
             .from("attendees")
-            .select("id, first_name, last_name, check_in, check_in_time, email_status")
+            .select("id, first_name, last_name, check_in, check_in_time, email_status, checked_in_by_staff_id, checked_in_by")
             .eq("event_id", eventData.id)
             .eq("email_status", "registered");
 
@@ -72,6 +73,15 @@ export function OperationsView() {
                 capacity: attendeesData.length
             });
 
+            // Usher Stats
+            const uStats: Record<string, number> = {};
+            attendeesData.forEach(a => {
+                if (a.check_in && a.checked_in_by_staff_id) {
+                    uStats[a.checked_in_by_staff_id] = (uStats[a.checked_in_by_staff_id] || 0) + 1;
+                }
+            });
+            setUsherStats(uStats);
+
             // Live Feed (Latest 5 check-ins)
             const logs = attendeesData
                 .filter(a => a.check_in && a.check_in_time)
@@ -79,7 +89,7 @@ export function OperationsView() {
                 .slice(0, 5)
                 .map(a => ({
                     id: a.id,
-                    text: `${a.first_name} ${a.last_name} checked in`,
+                    text: `${a.first_name} ${a.last_name} checked in ${a.checked_in_by ? `by ${a.checked_in_by}` : ''}`,
                     time: getTimeAgo(a.check_in_time),
                     dot: "bg-green-500"
                 }));
@@ -178,7 +188,11 @@ export function OperationsView() {
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-6">
+                                            <div className="text-center">
+                                                <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">Checked In</div>
+                                                <div className="font-mono text-base font-black text-[var(--brand-blue)]">{usherStats[member.id] || 0}</div>
+                                            </div>
                                             <div className="text-right hidden sm:block">
                                                 <div className="text-[9px] font-black uppercase tracking-widest text-gray-300">Code</div>
                                                 <div className="font-mono text-xs font-bold text-gray-900 tracking-widest">{member.access_code}</div>
