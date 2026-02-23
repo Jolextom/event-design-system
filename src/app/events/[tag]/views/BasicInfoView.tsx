@@ -278,7 +278,7 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
                                         onChange={(e) => handleChange("event_title", e.target.value)}
                                         onBlur={handleSaveTitleTag}
                                         placeholder="Untitled Event"
-                                        className="w-full text-3xl font-black tracking-tight text-gray-900 placeholder:text-gray-200 border-none outline-none focus:ring-0 p-0 bg-transparent focus:placeholder:text-gray-300 transition-colors"
+                                        className="w-full text-3xl font-black tracking-tight text-gray-900 placeholder:text-gray-300 border-none outline-none focus:ring-0 p-0 bg-transparent transition-colors"
                                     />
                                 </div>
 
@@ -286,14 +286,14 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
                                 <div className="space-y-2">
                                     <label className="text-[9px] font-black uppercase tracking-[0.25em] text-gray-400 block ml-1">Event Identifier</label>
                                     <div className="flex items-center">
-                                        <span className="px-4 py-3 bg-gray-100/80 border border-r-0 border-gray-100/50 rounded-l-2xl text-[11px] font-black text-gray-400 uppercase tracking-tight">design.event/</span>
+                                        <span className="px-4 py-3 bg-gray-100 border border-r-0 border-gray-200 rounded-l-2xl text-[11px] font-black text-gray-500 uppercase tracking-tight">design.event/</span>
                                         <input
                                             type="text"
                                             value={formData.tag}
                                             onChange={(e) => handleChange("tag", e.target.value)}
                                             onBlur={handleSaveTitleTag}
                                             placeholder="event-slug"
-                                            className="flex-1 px-4 py-3 bg-gray-50/50 border border-gray-100/50 rounded-r-2xl text-[13px] font-bold text-gray-900 focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500/20 outline-none transition-all shadow-inner"
+                                            className="flex-1 px-4 py-3 bg-white border border-gray-200 rounded-r-2xl text-[13px] font-bold text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--brand-blue)]/20 focus:border-[var(--brand-blue)] transition-all"
                                         />
                                     </div>
                                 </div>

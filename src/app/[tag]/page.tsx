@@ -184,15 +184,28 @@ export default function RegistrationPage() {
                 throw new Error("Each attendee must have a unique email address");
             }
 
-            // === VALIDATION 4: Check if emails already registered for this event ===
-            const { data: existingAttendees } = await supabase
-                .from("attendees")
-                .select("email")
-                .eq("event_id", event.id)
-                .in("email", emailsInForm);
+            // === VALIDATION 4: Check if emails already registered for this event (attendees OR orders) ===
+            const [{ data: existingAttendees }, { data: existingOrders }] = await Promise.all([
+                supabase
+                    .from("attendees")
+                    .select("email")
+                    .eq("event_id", event.id)
+                    .in("email", emailsInForm),
+                supabase
+                    .from("orders_table")
+                    .select("email")
+                    .eq("event_id", event.id)
+                    .in("email", emailsInForm)
+            ]);
 
-            if (existingAttendees && existingAttendees.length > 0) {
-                const alreadyRegistered = existingAttendees.map(a => a.email).join(", ");
+            const allRegisteredEmails = [
+                ...(existingAttendees ?? []),
+                ...(existingOrders ?? [])
+            ].map(r => r.email);
+            const uniqueRegistered = [...new Set(allRegisteredEmails)];
+
+            if (uniqueRegistered.length > 0) {
+                const alreadyRegistered = uniqueRegistered.join(", ");
                 throw new Error(`Already registered for this event: ${alreadyRegistered}`);
             }
 
@@ -219,8 +232,9 @@ export default function RegistrationPage() {
                 throw new Error(`Only ${remaining} ticket(s) remaining for ${pass.title}`);
             }
 
-            // Generate order reference
-            const orderRef = `EF-${event.tag?.toUpperCase() || 'EV'}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+            // Generate a collision-resistant order reference
+            const uniquePart = crypto.randomUUID().replace(/-/g, '').substring(0, 10).toUpperCase();
+            const orderRef = `EF-${event.tag?.toUpperCase() || 'EV'}-${uniquePart}`;
 
             // === CREATE ORDER ===
             const { data: order, error: orderErr } = await supabase
@@ -242,14 +256,18 @@ export default function RegistrationPage() {
 
             if (orderErr) {
                 console.error("Order creation failed:", orderErr);
-                throw new Error("Failed to create order. Please try again.");
+                if (orderErr.code === "23505") {
+                    // Unique constraint violation — email already has an order for this event
+                    throw new Error("This email is already registered for this event. Please use a different email address.");
+                }
+                throw new Error(orderErr.message || "Failed to create order. Please try again.");
             }
 
             // === CREATE ATTENDEES ===
             let primaryAttendeeId: string | null = null;
             for (let i = 0; i < validGuests.length; i++) {
                 const guest = validGuests[i];
-                const attendeeRef = `EF-${event.tag?.toUpperCase() || 'EV'}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+                const attendeeRef = `EF-${event.tag?.toUpperCase() || 'EV'}-${crypto.randomUUID().replace(/-/g, '').substring(0, 8).toUpperCase()}`;
 
                 const { data: attendee, error: attendeeErr } = await supabase
                     .from("attendees")
@@ -288,7 +306,11 @@ export default function RegistrationPage() {
                     }));
 
                     const { error: answerErr } = await supabase.from("answers").insert(answerInserts);
-                    if (answerErr) console.error("Failed to save answers:", answerErr);
+                    if (answerErr) {
+                        console.error("Failed to save answers:", answerErr);
+                        // Surface this — don't silently succeed when answers are lost
+                        throw new Error("Your registration was created but we could not save your answers. Please contact the organiser.");
+                    }
                 }
             }
 
