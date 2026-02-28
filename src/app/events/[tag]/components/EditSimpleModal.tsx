@@ -11,7 +11,7 @@ interface EditSimpleModalProps {
     onClose: () => void;
     eventId: string;
     title: string;
-    field: "location" | "description";
+    field: "location" | "description" | "virtual_link";
     initialValue: string;
     onUpdate: (value: string) => void;
 }

@@ -131,18 +131,17 @@ export interface ConfirmationEmailParams {
     eventLocation: string;
     orderRef: string;
     receiptLink: string;
+    watchLink?: string;
     attendeeName: string;
 }
 
-/**
- * Render confirmation email HTML from params (for preview/re-rendering)
- */
 export function renderConfirmationEmailHtml({
     eventTitle,
     eventDate,
     eventLocation,
     orderRef,
     receiptLink,
+    watchLink,
     attendeeName,
 }: ConfirmationEmailParams): string {
     return `
@@ -214,7 +213,12 @@ export function renderConfirmationEmailHtml({
                             
                             <!-- CTA Button -->
                             <div style="text-align: center;">
-                                <a href="${receiptLink}" style="display: inline-block; background: #111827; color: white; padding: 18px 40px; border-radius: 16px; text-decoration: none; font-weight: 900; font-size: 14px; letter-spacing: 0.5px;">
+                                ${watchLink ? `
+                                <a href="${watchLink}" style="display: inline-block; background: #3b82f6; color: white; padding: 18px 40px; border-radius: 16px; text-decoration: none; font-weight: 900; font-size: 14px; letter-spacing: 0.5px; margin-bottom: 12px; width: 100%; max-width: 240px; box-sizing: border-box;">
+                                    📺 Join Stream →
+                                </a><br/>
+                                ` : ''}
+                                <a href="${receiptLink}" style="display: inline-block; background: #111827; color: white; padding: 18px 40px; border-radius: 16px; text-decoration: none; font-weight: 900; font-size: 14px; letter-spacing: 0.5px; width: 100%; max-width: 240px; box-sizing: border-box;">
                                     View Receipt →
                                 </a>
                             </div>

@@ -51,7 +51,7 @@ export function SettingsView() {
                             <div className="space-y-2">
                                 <label className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Public Domain</label>
                                 <div className="flex items-center">
-                                    <span className="px-4 py-3 bg-gray-100/80 border border-r-0 border-gray-100/50 rounded-l-2xl text-[11px] font-black text-gray-400 uppercase tracking-tight">design.event/</span>
+                                    <span className="px-4 py-3 bg-gray-100/80 border border-r-0 border-gray-100/50 rounded-l-2xl text-[11px] font-black text-gray-400 uppercase tracking-tight">{process.env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, '') || 'localhost:3000/'}</span>
                                     <input
                                         type="text"
                                         defaultValue="annual-gala"

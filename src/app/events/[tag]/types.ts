@@ -10,6 +10,9 @@ export interface Event {
   start_time: string | null;
   end_time: string | null;
   location: string;
+  event_format?: 'physical' | 'virtual' | 'hybrid';
+  virtual_link?: string | null;
+  virtual_platform?: string | null;
   has_passes: boolean;
   custom_questions_completed: boolean;
   created_by: string;

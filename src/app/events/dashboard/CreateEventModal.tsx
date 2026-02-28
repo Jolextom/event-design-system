@@ -20,6 +20,7 @@ export function CreateEventModal({ isOpen, onClose, userId, onCreated }: CreateE
     const [endTime, setEndTime] = useState("");
     const [isMultiDay, setIsMultiDay] = useState(false);
     const [endDate, setEndDate] = useState("");
+    const [eventFormat, setEventFormat] = useState<"physical" | "virtual" | "hybrid">("physical");
 
     const [error, setError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -61,6 +62,7 @@ export function CreateEventModal({ isOpen, onClose, userId, onCreated }: CreateE
                     created_by: userId,
                     event_title: title,
                     tag: slug,
+                    event_format: eventFormat,
                     start_date: new Date(`${startDate}T${startTime}`).toISOString(),
                     end_date: new Date(`${finalEndDate}T${endTime}`).toISOString(),
                     start_time: startTime,
@@ -116,6 +118,28 @@ export function CreateEventModal({ isOpen, onClose, userId, onCreated }: CreateE
                                         value={title}
                                         onChange={(e) => setTitle(e.target.value)}
                                     />
+                                </div>
+
+                                {/* Event Format */}
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Event Format</label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {[
+                                            { id: 'physical', label: 'Physical', icon: '📍' },
+                                            { id: 'virtual', label: 'Virtual', icon: '🌐' },
+                                            { id: 'hybrid', label: 'Hybrid', icon: '📍🌐' }
+                                        ].map(format => (
+                                            <button
+                                                key={format.id}
+                                                type="button"
+                                                onClick={() => setEventFormat(format.id as any)}
+                                                className={`py-3 px-4 rounded-2xl border transition-all text-sm font-bold flex flex-col items-center gap-1 ${eventFormat === format.id ? 'bg-gray-900 border-gray-900 text-white shadow-md' : 'bg-white border-gray-100 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}`}
+                                            >
+                                                <span className="text-xl mb-1">{format.icon}</span>
+                                                {format.label}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
 
                                 {/* Date & Time */}

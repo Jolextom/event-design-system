@@ -73,7 +73,11 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
     const isSetupComplete = Boolean(
         event?.event_title &&
         event?.start_date &&
-        event?.location
+        (
+            event?.location ||
+            (event?.event_format === 'virtual' && event?.virtual_link) ||
+            (event?.event_format === 'hybrid' && event?.virtual_link && event?.location)
+        )
     );
 
     const studioLocked = !isSetupComplete;
@@ -150,7 +154,17 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
 
     // Effect to enforce locking if event data updates and confirms incomplete setup
     useEffect(() => {
-        if (event && !event.location && activeBuilderCategory !== "essentials") {
+        const _isSetupComplete = Boolean(
+            event?.event_title &&
+            event?.start_date &&
+            (
+                event?.location ||
+                (event?.event_format === 'virtual' && event?.virtual_link) ||
+                (event?.event_format === 'hybrid' && event?.virtual_link && event?.location)
+            )
+        );
+
+        if (event && !_isSetupComplete && activeBuilderCategory !== "essentials") {
             setActiveBuilderCategory("essentials");
         }
     }, [event, activeBuilderCategory]);
@@ -657,6 +671,17 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
 
                     <div className="flex items-center gap-6">
                         <div className="flex items-center gap-4 bg-gray-50/50 p-1.5 rounded-2xl border border-gray-100/80">
+                            {(event?.event_format === 'virtual' || event?.event_format === 'hybrid') && (
+                                <Link
+                                    href={`/${event?.tag}/watch`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title="Open Live Venue"
+                                    className="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 rounded-xl transition-all border border-blue-100 flex items-center gap-2 font-bold text-xs whitespace-nowrap"
+                                >
+                                    <span>Live Venue</span>
+                                </Link>
+                            )}
                             <Link
                                 href={`/${event?.tag || ''}`}
                                 target="_blank"

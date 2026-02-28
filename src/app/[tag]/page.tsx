@@ -494,7 +494,7 @@ export default function RegistrationPage() {
                     {/* Pre-header Badges */}
                     <div className="flex items-center gap-3">
                         <span className="px-3.5 py-1.5 bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-[0.2em] rounded-full border border-blue-100">
-                            {event.location ? "Live Event" : "Virtual"}
+                            {event.event_format === 'virtual' ? 'Virtual Event' : event.event_format === 'hybrid' ? 'Hybrid Event' : 'Physical Event'}
                         </span>
                         <div className="flex items-center gap-2 px-3.5 py-1.5 bg-green-50 text-green-600 text-[9px] font-black uppercase tracking-[0.2em] rounded-full border border-green-100">
                             <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
@@ -574,11 +574,15 @@ export default function RegistrationPage() {
                                     <div className="flex items-center gap-2 text-[9px] font-black text-gray-300 uppercase tracking-widest">
                                         <MapPin className="w-3 h-3" /> Location
                                     </div>
-                                    <button className="text-[8px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors flex items-center gap-1.5 px-2 py-1 bg-blue-50 rounded-lg">
-                                        <Map className="w-2.5 h-2.5" /> Map
-                                    </button>
+                                    {event.event_format !== 'virtual' && (
+                                        <button className="text-[8px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors flex items-center gap-1.5 px-2 py-1 bg-blue-50 rounded-lg">
+                                            <Map className="w-2.5 h-2.5" /> Map
+                                        </button>
+                                    )}
                                 </div>
-                                <div className="text-base font-black text-gray-900">{event.location}</div>
+                                <div className="text-base font-black text-gray-900">
+                                    {event.event_format === 'virtual' ? 'Digital Venue' : event.event_format === 'hybrid' ? `${event.location} (and Online)` : event.location}
+                                </div>
                             </div>
                         </div>
 

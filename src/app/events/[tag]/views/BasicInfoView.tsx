@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Calendar, Globe, Save, Loader2, Link2, Ticket, QrCode, Check } from "lucide-react";
+import { Plus, Calendar, Globe, Save, Loader2, Link2, Ticket, QrCode, Check, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Event } from "../types";
 import { supabase } from "@/lib/supabaseClient";
@@ -38,6 +38,8 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
         start_time: "",
         end_time: "",
         end_date: "",
+        event_format: "physical",
+        virtual_link: "",
     });
 
     // Modals Control
@@ -59,6 +61,8 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
                 start_time: event.start_time || "",
                 end_time: event.end_time || "",
                 end_date: event.end_date || "",
+                event_format: event.event_format || "physical",
+                virtual_link: event.virtual_link || "",
             });
         }
     }, [event]);
@@ -122,6 +126,12 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
         router.refresh(); // Still refresh server component for consistency
     };
 
+    const handleVirtualLinkUpdate = (newLink: string) => {
+        setFormData(prev => ({ ...prev, virtual_link: newLink }));
+        onUpdate?.({ virtual_link: newLink });
+        router.refresh();
+    };
+
     const handleDescriptionUpdate = (newDescription: string) => {
         setFormData(prev => ({ ...prev, description: newDescription }));
         onUpdate?.({ description: newDescription });
@@ -156,9 +166,15 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
         { label: "Title", done: !!formData.event_title },
         { label: "Description", done: !!formData.description },
         { label: "Date", done: !!formData.start_date },
-        { label: "Location", done: !!formData.location }
+        {
+            label: "Location/Link", done: (
+                formData.location ||
+                (formData.event_format === 'virtual' && formData.virtual_link) ||
+                (formData.event_format === 'hybrid' && formData.virtual_link && formData.location)
+            )
+        }
     ];
-    const isLocalSetupComplete = !!(formData.event_title && formData.description && formData.start_date && formData.location);
+    const isLocalSetupComplete = fields.every(f => !!f.done);
 
     const completedCount = fields.filter(f => f.done).length;
     const progressPercent = (completedCount / fields.length) * 100;
@@ -291,7 +307,7 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
                                 <div className="space-y-2">
                                     <label className="text-[9px] font-black uppercase tracking-[0.25em] text-gray-400 block ml-1">Event Identifier</label>
                                     <div className="flex items-center">
-                                        <span className="px-4 py-3 bg-gray-100 border border-r-0 border-gray-200 rounded-l-2xl text-[11px] font-black text-gray-500 uppercase tracking-tight">design.event/</span>
+                                        <span className="px-4 py-3 bg-gray-100 border border-r-0 border-gray-200 rounded-l-2xl text-[11px] font-black text-gray-500 uppercase tracking-tight">{process.env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, '') || 'localhost:3000/'}</span>
                                         <input
                                             type="text"
                                             value={formData.tag}
@@ -341,24 +357,95 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
                                     </div>
                                 </div>
 
-                                <div
-                                    onClick={() => setLocModalOpen(true)}
-                                    className="space-y-3 p-8 bg-gray-50/40 rounded-4xl border border-gray-100 group hover:bg-white hover:shadow-2xl hover:shadow-gray-100/40 transition-all cursor-pointer relative"
-                                >
-                                    <label className="text-[9px] font-black uppercase tracking-[0.25em] text-gray-400 flex items-center gap-2">
-                                        <Globe className="w-3.5 h-3.5" /> Location
-                                    </label>
-                                    <div className="max-h-[80px] overflow-hidden">
-                                        {formData.location ? (
-                                            <p className="text-lg font-black text-gray-900 tracking-tight leading-snug">{formData.location}</p>
+                                {/* Conditionally Render Physical Location or Virtual Link based on format */}
+                                {(formData.event_format === 'physical' || formData.event_format === 'hybrid') && (
+                                    <div
+                                        onClick={() => setLocModalOpen(true)}
+                                        className="space-y-3 p-8 bg-gray-50/40 rounded-4xl border border-gray-100 group hover:bg-white hover:shadow-2xl hover:shadow-gray-100/40 transition-all cursor-pointer relative"
+                                    >
+                                        <label className="text-[9px] font-black uppercase tracking-[0.25em] text-gray-400 flex items-center gap-2">
+                                            <Globe className="w-3.5 h-3.5" /> Venue Location
+                                        </label>
+                                        <div className="max-h-[80px] overflow-hidden">
+                                            {formData.location ? (
+                                                <p className="text-lg font-black text-gray-900 tracking-tight leading-snug">{formData.location}</p>
+                                            ) : (
+                                                <p className="text-lg font-black text-gray-200 tracking-tight italic">Set physical venue...</p>
+                                            )}
+                                        </div>
+                                        <div className="absolute top-8 right-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">Edit</span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {(formData.event_format === 'virtual' || formData.event_format === 'hybrid') && (
+                                    <div
+                                        className="space-y-4 p-8 bg-gray-50/40 rounded-4xl border border-gray-100 transition-all relative"
+                                    >
+                                        <label className="text-[9px] font-black uppercase tracking-[0.25em] text-gray-400 flex items-center gap-2">
+                                            <Link2 className="w-3.5 h-3.5" /> Virtual Event Setup
+                                        </label>
+
+                                        {formData.virtual_link ? (
+                                            <div className="space-y-3 cursor-pointer group" onClick={() => setDescModalOpen(true)}>
+                                                {formData.virtual_link.includes('daily.co') ? (
+                                                    <div className="flex flex-col gap-2">
+                                                        <span className="flex items-center gap-2 bg-blue-50 text-blue-600 px-3 py-2 rounded-lg border border-blue-100 w-fit">
+                                                            <Sparkles className="w-4 h-4" />
+                                                            <span className="text-sm font-bold">Premium Video Provisioned</span>
+                                                        </span>
+                                                        <p className="text-[11px] font-bold text-gray-400 leading-snug pr-4">
+                                                            This secure room is locked. Attendees (and you) must join via the "Live Venue" page to get access.
+                                                        </p>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-sm font-bold text-blue-600 break-all leading-snug">
+                                                        {formData.virtual_link}
+                                                    </p>
+                                                )}
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-1 rounded-lg inline-block group-hover:bg-blue-100 transition-colors mt-2">Change Setup</span>
+                                            </div>
                                         ) : (
-                                            <p className="text-lg font-black text-gray-200 tracking-tight italic">Set location...</p>
+                                            <div className="flex flex-col gap-3">
+                                                <button
+                                                    onClick={async () => {
+                                                        try {
+                                                            setIsSaving(true);
+                                                            const res = await fetch('/api/daily/room', {
+                                                                method: 'POST',
+                                                                headers: { 'Content-Type': 'application/json' },
+                                                                body: JSON.stringify({ eventId: event.id })
+                                                            });
+                                                            const data = await res.json();
+                                                            if (data.roomUrl) {
+                                                                handleVirtualLinkUpdate(data.roomUrl);
+                                                                await supabase.from("events").update({ virtual_link: data.roomUrl }).eq("id", event.id);
+                                                            } else {
+                                                                alert("Failed to provision room: " + data.error);
+                                                            }
+                                                        } catch (error) {
+                                                            alert("Error provisioning video room.");
+                                                        } finally {
+                                                            setIsSaving(false);
+                                                        }
+                                                    }}
+                                                    className="w-full px-4 py-4 bg-[var(--color-primary-600)] hover:bg-[var(--color-primary-500)] text-white text-xs font-bold rounded-[16px] shadow-xl shadow-[var(--color-primary-600)]/20 transition-all flex justify-between items-center"
+                                                >
+                                                    <span>Provision Native Video Room</span>
+                                                    <Sparkles className="w-4 h-4 text-white/80" />
+                                                </button>
+                                                <button
+                                                    onClick={() => setDescModalOpen(true)}
+                                                    className="w-full px-4 py-3.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-900 text-xs font-bold rounded-[16px] shadow-sm transition-all text-left flex items-center justify-between"
+                                                >
+                                                    <span>Paste External Link (Meet / Zoom)</span>
+                                                    <Globe className="w-4 h-4 text-gray-400" />
+                                                </button>
+                                            </div>
                                         )}
                                     </div>
-                                    <div className="absolute top-8 right-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">Edit</span>
-                                    </div>
-                                </div>
+                                )}
                             </div>
                         </div>
 
@@ -433,10 +520,20 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
                 isOpen={isLocModalOpen}
                 onClose={() => setLocModalOpen(false)}
                 eventId={event.id}
-                title="Edit Location"
+                title="Edit Venue Location"
                 field="location"
                 initialValue={formData.location || ""}
                 onUpdate={handleLocationUpdate}
+            />
+
+            <EditSimpleModal
+                isOpen={isDescModalOpen} // Reused this boolean for virtual link to avoid creating a new one
+                onClose={() => setDescModalOpen(false)}
+                eventId={event.id}
+                title="Virtual Event Link"
+                field="virtual_link"
+                initialValue={formData.virtual_link || ""}
+                onUpdate={handleVirtualLinkUpdate}
             />
         </div>
     );

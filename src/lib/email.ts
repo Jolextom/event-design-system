@@ -74,6 +74,7 @@ export async function sendConfirmationEmail({
     eventLocation,
     orderRef,
     receiptLink,
+    watchLink,
     attendeeName,
 }: SendConfirmationEmailParams) {
     try {
@@ -83,6 +84,7 @@ export async function sendConfirmationEmail({
             eventLocation,
             orderRef,
             receiptLink,
+            watchLink,
             attendeeName,
         });
 

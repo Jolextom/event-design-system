@@ -237,6 +237,14 @@ export function useRegistryLogic({
         if (!eventId) return;
         const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
+        // 0. Fetch the order IDs associated with these attendees before deleting
+        const { data: attendeesToDelete } = await supabase
+            .from("attendees")
+            .select("id, order_id")
+            .in("id", ids);
+
+        const orderIds = [...new Set(attendeesToDelete?.map(a => a.order_id).filter(Boolean))];
+
         // 1. Delete answers
         const { error: answersErr } = await supabase.from("answers").delete().in("attendee_id", ids);
         if (answersErr) return alert("Failed to delete answers: " + answersErr.message);
@@ -249,6 +257,20 @@ export function useRegistryLogic({
         if (deleteErr) {
             alert("Failed to delete: " + deleteErr.message);
         } else {
+            // 4. Clean up any orders that now have 0 attendees
+            if (orderIds.length > 0) {
+                for (const oId of orderIds) {
+                    const { count } = await supabase
+                        .from("attendees")
+                        .select("*", { count: 'exact', head: true })
+                        .eq("order_id", oId);
+
+                    if (count === 0) {
+                        await supabase.from("orders_table").delete().eq("id", oId);
+                    }
+                }
+            }
+
             onRefresh?.();
             if (selectedGuest && ids.includes(selectedGuest.id)) setSelectedGuest(null);
         }

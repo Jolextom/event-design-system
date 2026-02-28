@@ -55,6 +55,9 @@ export async function sendWelcomeEmail(attendeeId: string, eventId: string) {
         const orderRef = attendee?.order?.order_ref || "N/A";
         const receiptLink = `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/${event.tag}/receipt/${attendee?.order?.order_ref}`;
 
+        const isVirtual = event.event_format === 'virtual' || event.event_format === 'hybrid';
+        const watchLink = isVirtual ? `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/${event.tag}/watch?token=${attendeeId}` : undefined;
+
         // Prepare params for storage
         const templateParams = {
             eventTitle: event.event_title,
@@ -62,6 +65,7 @@ export async function sendWelcomeEmail(attendeeId: string, eventId: string) {
             eventLocation,
             orderRef,
             receiptLink,
+            watchLink,
             attendeeName: attendee.first_name
         };
 
