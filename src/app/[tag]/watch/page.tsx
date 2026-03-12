@@ -9,17 +9,43 @@ import {
     Users,
     ExternalLink,
     Sparkles,
-    MessageSquare,
     Zap,
     Heart,
-    ChevronRight,
-    Play,
     Share2,
-    Calendar,
     Clock,
-    CheckCircle2
+    CheckCircle2,
+    Video,
 } from "lucide-react";
 import type { Event, Attendee } from "../../events/[tag]/types";
+
+// Detect platform from link
+function detectPlatform(link: string) {
+    if (!link) return { isZoom: false, isMeet: false, isYouTube: false, isExternal: false };
+    const isYouTube = link.includes("youtube.com") || link.includes("youtu.be");
+    const isZoom = link.includes("zoom.us");
+    const isMeet = link.includes("meet.google.com");
+    return {
+        isYouTube,
+        isZoom,
+        isMeet,
+        isExternal: !isYouTube && link.length > 0,
+    };
+}
+
+function getPlatformLabel(link: string) {
+    const p = detectPlatform(link);
+    if (p.isZoom) return "Zoom";
+    if (p.isMeet) return "Google Meet";
+    if (p.isYouTube) return "YouTube";
+    return "External";
+}
+
+function getPlatformColor(link: string) {
+    const p = detectPlatform(link);
+    if (p.isZoom) return { bg: "bg-blue-50", border: "border-blue-200", icon: "text-blue-600", btn: "bg-[#2D8CFF] hover:bg-[#2576e8]", shadow: "shadow-[#2D8CFF]/20" };
+    if (p.isMeet) return { bg: "bg-green-50", border: "border-green-200", icon: "text-green-600", btn: "bg-[#00AC47] hover:bg-[#009940]", shadow: "shadow-[#00AC47]/20" };
+    return { bg: "bg-gray-50", border: "border-gray-200", icon: "text-gray-600", btn: "bg-gray-900 hover:bg-gray-800", shadow: "shadow-gray-900/10" };
+}
 
 export default function DigitalVenuePage() {
     const params = useParams();
@@ -33,19 +59,19 @@ export default function DigitalVenuePage() {
     const [event, setEvent] = useState<Event | null>(null);
     const [attendee, setAttendee] = useState<Attendee | null>(null);
     const [isHost, setIsHost] = useState(false);
+    const [joined, setJoined] = useState(false);
+    const prevLink = useRef<string | null>(null);
 
-    // Platform state
-    const [platform, setPlatform] = useState<{ isYouTube: boolean, isDaily: boolean, isExternal: boolean }>({ isYouTube: false, isDaily: false, isExternal: false });
+    // Reset joined state if host changes the meeting link
+    useEffect(() => {
+        const currentLink = event?.virtual_link ?? null;
+        if (prevLink.current !== null && prevLink.current !== currentLink) {
+            setJoined(false);
+        }
+        prevLink.current = currentLink;
+    }, [event?.virtual_link]);
 
-    // Video SDK State
-    const videoContainerRef = useRef<HTMLDivElement>(null);
-    const [videoActive, setVideoActive] = useState(false);
-    const [meetingStatus, setMeetingStatus] = useState<number | null>(null);
-
-    // Heartbeat tracking
     const heartbeatInterval = useRef<NodeJS.Timeout | null>(null);
-
-
 
     useEffect(() => {
         if (!tag) {
@@ -58,7 +84,6 @@ export default function DigitalVenuePage() {
 
         const initWatchPage = async () => {
             try {
-                // 1. Fetch Event First (so we know who the host is supposed to be)
                 const { data: eventData, error: eventErr } = await supabase
                     .from("events")
                     .select("*")
@@ -66,130 +91,91 @@ export default function DigitalVenuePage() {
                     .single();
 
                 if (eventErr || !eventData) throw new Error("This event could not be found.");
-                if (eventData.event_format === 'physical') throw new Error("This is an in-person event.");
+                if (eventData.event_format === "physical") throw new Error("This is an in-person event.");
 
                 setEvent(eventData);
 
-                // Update platform flags safely
-                const link = String(eventData.virtual_link || "");
-                const isYouTube = link.includes("youtube.com") || link.includes("youtu.be");
-                const isDaily = link.includes("daily.co");
-                setPlatform({
-                    isYouTube,
-                    isDaily,
-                    isExternal: !isYouTube && !isDaily && link.length > 0
-                });
-
-                // 2. Real-time Subscription (WOW Feature)
+                // Realtime: update event data live
                 activeChannel = supabase
-                    .channel('event_updates')
-                    .on('postgres_changes', {
-                        event: 'UPDATE',
-                        schema: 'public',
-                        table: 'events',
-                        filter: `id=eq.${eventData.id}`
+                    .channel("event_updates")
+                    .on("postgres_changes", {
+                        event: "UPDATE",
+                        schema: "public",
+                        table: "events",
+                        filter: `id=eq.${eventData.id}`,
                     }, (payload) => {
-                        console.log('Event updated in real-time:', payload.new);
                         setEvent(payload.new as Event);
-                        const newLink = String(payload.new.virtual_link || "");
-                        const isYouTube = newLink.includes("youtube.com") || newLink.includes("youtu.be");
-                        const isDaily = newLink.includes("daily.co");
-                        setPlatform({
-                            isYouTube,
-                            isDaily,
-                            isExternal: !isYouTube && !isDaily && newLink.length > 0
-                        });
-
-                        if (payload.new.virtual_link !== eventData.virtual_link) {
-                            setVideoActive(false);
-                        }
                     })
                     .subscribe();
 
-                // 3. Auth Priority Logic: Attendee Token takes precedence over Host Session
-                // This allows owners to test as an attendee if they have a link.
+                // Auth: token = attendee, no token + creator = host
                 const { data: { user } } = await supabase.auth.getUser();
                 let attendeeData: any = null;
-                let identifiedAsHost = false;
 
                 if (token) {
-                    // CHECK ATTENDEE PATH
                     const { data: guestData } = await supabase
                         .from("attendees")
-                        .select('*')
+                        .select("*")
                         .eq("id", token)
                         .eq("event_id", eventData.id)
                         .single();
 
-                    if (guestData) {
-                        attendeeData = guestData;
-                        console.log("Venue Auth: Identified as Attendee via Token");
-                    }
+                    if (guestData) attendeeData = guestData;
                 }
 
                 if (!attendeeData && user) {
-                    // CHECK HOST PATH (Only if no attendee token or token was invalid)
                     if (user.id === eventData.created_by) {
-                        identifiedAsHost = true;
                         setIsHost(true);
-
                         const { data: profileData } = await supabase
-                            .from('profiles')
-                            .select('*')
-                            .eq('id', user.id)
+                            .from("profiles")
+                            .select("*")
+                            .eq("id", user.id)
                             .single();
 
                         attendeeData = {
                             id: user.id,
-                            first_name: profileData?.first_name || user.user_metadata?.first_name || user.user_metadata?.full_name?.split(' ')[0] || "Event",
-                            last_name: profileData?.last_name || user.user_metadata?.last_name || user.user_metadata?.full_name?.split(' ')[1] || "Organizer",
+                            first_name: profileData?.first_name || user.user_metadata?.first_name || "Event",
+                            last_name: profileData?.last_name || user.user_metadata?.last_name || "Organizer",
                             email: user.email,
                             event_id: eventData.id,
-                            check_in: true
+                            check_in: true,
                         };
-                        console.log("Venue Auth: Identified as Host via Session");
                     }
                 }
 
                 if (!attendeeData) {
-                    throw new Error("We couldn't find your invitation. Please check your email for the correct Magic Link.");
+                    throw new Error("We couldn't find your invitation. Please check your email for the correct link.");
                 }
 
                 setAttendee(attendeeData);
 
-                // 4. Check-in and Heartbeat (Guests Only)
-                if (!attendeeData.check_in && !identifiedAsHost) {
+                // Check-in (guests only)
+                if (!attendeeData.check_in && token) {
                     await supabase
                         .from("attendees")
                         .update({ check_in: true, check_in_time: new Date().toISOString() })
                         .eq("id", attendeeData.id);
                 }
 
-                // Initialize Attendance
-                const { data: existingAttendance } = await supabase
+                // Virtual attendance record
+                const { data: existing } = await supabase
                     .from("virtual_attendance")
                     .select("id")
                     .eq("event_id", eventData.id)
                     .eq("guest_id", attendeeData.id)
                     .single();
 
-                if (!existingAttendance) {
-                    await supabase
-                        .from("virtual_attendance")
-                        .insert({
-                            event_id: eventData.id,
-                            guest_id: attendeeData.id,
-                            join_time: new Date().toISOString(),
-                            last_heartbeat_time: new Date().toISOString(),
-                            total_minutes_watched: 0
-                        });
+                if (!existing) {
+                    await supabase.from("virtual_attendance").insert({
+                        event_id: eventData.id,
+                        guest_id: attendeeData.id,
+                        join_time: new Date().toISOString(),
+                        last_heartbeat_time: new Date().toISOString(),
+                        total_minutes_watched: 0,
+                    });
                 }
 
-                // FIXME: Disabled heartbeat temporary per user request
-                // startHeartbeat(supabase, eventData.id, attendeeData.id);
-
             } catch (err: any) {
-                console.error("Venue Error:", err);
                 setError(err.message || "Something went wrong.");
             } finally {
                 setLoading(false);
@@ -204,147 +190,24 @@ export default function DigitalVenuePage() {
         };
     }, [tag, token]);
 
-    const startHeartbeat = (supabase: any, eventId: string, guestId: string) => {
-        heartbeatInterval.current = setInterval(async () => {
-            if (document.visibilityState === 'visible') {
-                try {
-                    const { data: current } = await supabase
-                        .from("virtual_attendance")
-                        .select("total_minutes_watched")
-                        .eq("event_id", eventId)
-                        .eq("guest_id", guestId)
-                        .single();
-
-                    if (current) {
-                        await supabase
-                            .from("virtual_attendance")
-                            .update({
-                                last_heartbeat_time: new Date().toISOString(),
-                                total_minutes_watched: (current.total_minutes_watched || 0) + 1
-                            })
-                            .eq("event_id", eventId)
-                            .eq("guest_id", guestId);
-                    }
-                } catch (e) {
-                    console.error("Heartbeat failed", e);
-                }
-            }
-        }, 60000);
-    };
-
-    const initDailyClient = async (meetingUrl: string) => {
-        console.log("initDailyClient called with:", { meetingUrl, videoActive, attendee: attendee?.id });
-        if (!meetingUrl || !attendee || videoActive) {
-            console.log("initDailyClient bailed early");
-            return;
-        }
-
-        try {
-            console.log("Venue Logic: Generating Secure Daily Token...");
-            const roomName = meetingUrl.split('/').pop() || "";
-            const tokenRes = await fetch('/api/daily/token', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    roomName: roomName,
-                    isOwner: isHost,
-                    userName: `${attendee.first_name} ${attendee.last_name}`,
-                    userId: attendee.id
-                })
-            });
-            console.log("Venue Logic: Requesting token with isOwner =", isHost);
-            const { token, error: tokenError } = await tokenRes.json();
-
-            console.log("Token response received:", { hasToken: !!token, error: tokenError });
-
-            if (tokenError || !token) throw new Error(tokenError || "Failed to generate meeting token.");
-
-            console.log("Dynamically importing @daily-co/daily-js...");
-            const DailyIframe = (await import("@daily-co/daily-js")).default;
-            console.log("Daily SDK loaded successfully.");
-
-            if (videoContainerRef.current) {
-                console.log("Creating Daily frame attached to:", videoContainerRef.current);
-                const callFrame = DailyIframe.createFrame(videoContainerRef.current, {
-                    iframeStyle: {
-                        width: '100%',
-                        height: '100%',
-                        border: '0',
-                        borderRadius: '0px'
-                    },
-                    showLeaveButton: true,
-                    showFullscreenButton: true
-                });
-
-                // Set the user name in the call
-                callFrame.setUserName(`${attendee.first_name} ${attendee.last_name}`);
-
-                // 1. Tell React to stop showing the "Connecting..." spinner
-                // IMPORTANT: We must do this *before* joining so the container doesn't have `display: none` or get obscured, 
-                // otherwise Daily.co iframe might refuse to mount or calculate zero height.
-                setVideoActive(true);
-
-                // 2. Add connection listeners
-                callFrame.on('joined-meeting', () => {
-                    console.log("Daily SDK 'joined-meeting' event fired.");
-                });
-
-                callFrame.on('left-meeting', () => {
-                    console.log("Daily SDK 'left-meeting' event fired.");
-                    setMeetingStatus(3); // Ended
-                });
-
-                callFrame.on('error', (e) => {
-                    console.error("Daily SDK Error:", e);
-                    setError("Video encountered an error. Please refresh.");
-                });
-
-                // 3. Trigger the join
-                console.log("Joining Daily call with token:", { hasToken: !!token });
-                await callFrame.join({
-                    url: meetingUrl,
-                    token: token
-                });
-                console.log("Successfully joined Daily call.");
-
-            } else {
-                console.error("videoContainerRef.current is null! Daily Iframe cannot mount.");
-                setError("Application Error: Video container is missing.");
-            }
-
-        } catch (err: any) {
-            console.error("Venue Setup Exception Block Caught:", err);
-            setError(`Venue Setup Error: ${err.message}`);
-        }
-    };
-
-    useEffect(() => {
-        if (event?.virtual_link && platform.isDaily && !videoActive && !loading && attendee) {
-            initDailyClient(event.virtual_link);
-        }
-    }, [event?.virtual_link, platform.isDaily, loading, videoActive, attendee, isHost]);
-
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center text-gray-900">
                 <Loader2 className="w-10 h-10 animate-spin mb-6 text-[var(--color-primary-500)]" />
-                <div className="flex flex-col items-center gap-1">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-gray-400">Welcome</span>
-                    <h2 className="text-base font-bold text-gray-900 tracking-tight">Opening the Venue...</h2>
-                </div>
+                <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-gray-400">Opening the Venue...</span>
             </div>
         );
     }
 
     if (error || !event || !attendee) {
         return (
-            <div className="min-h-screen bg-[var(--color-neutral-50)] flex flex-col items-center justify-center p-6 text-center text-[var(--color-neutral-900)]">
+            <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 text-center">
                 <ShieldAlert className="w-12 h-12 text-red-600 mb-8" />
-                <h1 className="text-3xl font-bold mb-4 tracking-tight">Access Restricted</h1>
-                <p className="text-[var(--color-neutral-500)] font-medium max-w-sm mb-10 leading-relaxed">{error}</p>
+                <h1 className="text-3xl font-bold mb-4 tracking-tight text-gray-900">Access Restricted</h1>
+                <p className="text-gray-500 font-medium max-w-sm mb-10 leading-relaxed">{error}</p>
                 <button
                     onClick={() => window.location.reload()}
-                    className="px-10 py-4 bg-[var(--color-neutral-900)] text-white rounded-2xl text-[13px] font-bold tracking-tight shadow-xl hover:scale-[1.02] transition-all"
+                    className="px-10 py-4 bg-gray-900 text-white rounded-2xl text-[13px] font-bold tracking-tight shadow-xl hover:scale-[1.02] transition-all"
                 >
                     Try Again
                 </button>
@@ -352,30 +215,33 @@ export default function DigitalVenuePage() {
         );
     }
 
-    // Meeting states logic
-    const now = new Date();
+    const link = event.virtual_link || "";
+    const platform = detectPlatform(link);
+    const platformLabel = getPlatformLabel(link);
+    const colors = getPlatformColor(link);
 
-    // Improved Date/Time parsing for sidebar display
-    let startTime = new Date();
+    // Date/time display
     let startTimeDisplay = "Not set";
-
+    let startTime = new Date();
     if (event.start_date) {
         const timeStr = event.start_time ? `T${event.start_time}` : "T00:00:00";
         startTime = new Date(`${event.start_date}${timeStr}`);
-        startTimeDisplay = startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        startTimeDisplay = startTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     }
 
-    const isBeforeStart = !isHost && now < new Date(startTime.getTime() - 15 * 60000);
-    const isMeetingEnded = meetingStatus === 3;
+    const isBeforeStart = !isHost && new Date() < new Date(startTime.getTime() - 15 * 60000);
 
-    let embedUrl = event.virtual_link || "";
-    if (platform.isYouTube && embedUrl) {
-        const videoId = embedUrl.split('v=')[1]?.split('&')[0] || embedUrl.split('youtu.be/')[1]?.split('?')[0];
-        if (videoId) embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+    // YouTube embed
+    let youtubeEmbedUrl = "";
+    if (platform.isYouTube && link) {
+        const videoId = link.split("v=")[1]?.split("&")[0] || link.split("youtu.be/")[1]?.split("?")[0];
+        if (videoId) youtubeEmbedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
     }
 
     return (
         <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col font-sans overflow-x-hidden">
+
+            {/* Header */}
             <header className="px-8 py-5 flex items-center justify-between border-b border-gray-200 bg-white/95 backdrop-blur-xl shrink-0 z-50">
                 <div className="flex items-center gap-5">
                     <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[var(--color-primary-500)] to-[var(--color-primary-700)] flex items-center justify-center shadow-lg shadow-[var(--color-primary-500)]/20">
@@ -395,10 +261,9 @@ export default function DigitalVenuePage() {
                     {isHost && (
                         <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-blue-50 border border-blue-100">
                             <Zap className="w-3.5 h-3.5 text-blue-600" />
-                            <span className="text-[11px] font-bold text-blue-600 uppercase tracking-widest">Organizer Control</span>
+                            <span className="text-[11px] font-bold text-blue-600 uppercase tracking-widest">Organizer</span>
                         </div>
                     )}
-
                     <div className="flex items-center gap-3 pl-6 border-l border-gray-200">
                         <div className="text-right hidden md:block">
                             <p className="text-[12px] font-bold text-gray-900 mb-0.5">{attendee.first_name} {attendee.last_name}</p>
@@ -412,85 +277,110 @@ export default function DigitalVenuePage() {
             </header>
 
             <main className="flex-1 flex flex-col lg:flex-row w-full max-w-[1800px] mx-auto p-4 md:p-8 lg:p-12 gap-10">
-                <div className="flex-1 flex flex-col min-w-0 min-h-[450px] md:min-h-[600px] lg:min-h-0 relative">
-                    <div className="w-full flex-1 bg-black rounded-2xl overflow-hidden border border-gray-200 shadow-sm relative">
 
-                        {isBeforeStart && !videoActive && (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 z-[70] text-center p-12">
+                {/* Main area */}
+                <div className="flex-1 flex flex-col min-w-0 min-h-[450px] md:min-h-[600px] lg:min-h-0">
+                    <div className="w-full flex-1 bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm relative flex flex-col items-center justify-center p-12 text-center">
+
+                        {/* Before start state */}
+                        {isBeforeStart && (
+                            <div className="flex flex-col items-center">
                                 <div className="w-20 h-20 rounded-[32px] bg-white border border-gray-100 shadow-sm flex items-center justify-center mb-8">
                                     <Clock className="w-10 h-10 text-gray-400" />
                                 </div>
                                 <h2 className="text-2xl font-bold mb-3 tracking-tight text-gray-900">Opening Soon</h2>
                                 <p className="text-gray-500 max-w-sm font-medium leading-relaxed">
-                                    The session hasn't started yet. Doors open 15 minutes before the start time.
+                                    The session hasn't started yet. You'll be able to join 15 minutes before the start time.
                                 </p>
                             </div>
                         )}
 
-                        {isMeetingEnded && (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 z-[70] text-center p-12">
-                                <CheckCircle2 className="w-16 h-16 text-green-500 mb-8" />
-                                <h2 className="text-2xl font-bold mb-3 tracking-tight text-gray-900">Session Concluded</h2>
-                                <p className="text-gray-500 max-w-sm font-medium leading-relaxed mb-8">
-                                    Thank you for attending!
-                                </p>
-                                <button
-                                    onClick={() => window.location.reload()}
-                                    className="px-8 py-4 bg-[var(--color-primary-600)] hover:bg-[var(--color-primary-500)] text-white rounded-xl font-bold tracking-tight shadow-xl shadow-[var(--color-primary-600)]/10 transition-all font-sans"
-                                >
-                                    Rejoin Meeting
-                                </button>
-                            </div>
-                        )}
-
-                        {platform.isExternal && (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 z-[70] text-center p-12">
-                                <div className="w-20 h-20 rounded-[32px] bg-blue-50 flex items-center justify-center mb-8 border border-blue-100">
-                                    <ExternalLink className="w-10 h-10 text-blue-500" />
-                                </div>
-                                <h2 className="text-2xl font-bold mb-3 tracking-tight text-gray-900">External Meeting</h2>
-                                <p className="text-gray-500 max-w-sm font-medium leading-relaxed mb-8">
-                                    This event is hosted on an external platform. Click below to join the meeting in a new tab.
-                                </p>
-                                <a
-                                    href={embedUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    onClick={() => setVideoActive(true)}
-                                    className="px-8 py-4 bg-[var(--color-primary-500)] hover:bg-[var(--color-primary-600)] text-white rounded-xl font-bold tracking-tight shadow-lg shadow-[var(--color-primary-500)]/20 transition-all text-sm"
-                                >
-                                    Join External Meeting
-                                </a>
-                            </div>
-                        )}
-
-                        <div className="absolute inset-0" ref={videoContainerRef}>
-                            {platform.isYouTube && embedUrl && (
+                        {/* YouTube embed */}
+                        {!isBeforeStart && platform.isYouTube && youtubeEmbedUrl && (
+                            <div className="absolute inset-0">
                                 <iframe
-                                    key={embedUrl}
-                                    src={embedUrl}
+                                    src={youtubeEmbedUrl}
                                     className="w-full h-full border-0"
                                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                     allowFullScreen
                                 />
-                            )}
-                        </div>
+                            </div>
+                        )}
 
-                        {!videoActive && platform.isDaily && !isBeforeStart && (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 z-[60]">
-                                <Loader2 className="w-8 h-8 animate-spin text-[var(--color-primary-500)] mb-4" />
-                                <p className="text-sm font-bold text-gray-500">Opening Venue...</p>
+                        {/* External meeting redirect (Zoom, Meet, etc.) */}
+                        {!isBeforeStart && platform.isExternal && !platform.isYouTube && (
+                            <>
+                                {!joined ? (
+                                    <div className="flex flex-col items-center">
+                                        <div className={`w-20 h-20 rounded-[32px] ${colors.bg} ${colors.border} border flex items-center justify-center mb-8 shadow-sm`}>
+                                            <Video className={`w-10 h-10 ${colors.icon}`} />
+                                        </div>
+                                        <h2 className="text-2xl font-bold mb-3 tracking-tight text-gray-900">
+                                            {platformLabel} Meeting
+                                        </h2>
+                                        <p className="text-gray-500 max-w-sm font-medium leading-relaxed mb-10">
+                                            {isHost
+                                                ? `Open ${platformLabel} to start your meeting. Your attendees are waiting!`
+                                                : `Click below to join the ${platformLabel} meeting in a new tab.`}
+                                        </p>
+                                        <a
+                                            href={link}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            onClick={() => setJoined(true)}
+                                            className={`px-10 py-4 ${colors.btn} text-white rounded-2xl font-bold tracking-tight shadow-xl ${colors.shadow} transition-all hover:scale-[1.02] flex items-center gap-3`}
+                                        >
+                                            <Video className="w-5 h-5" />
+                                            <span>{isHost ? `Start on ${platformLabel}` : `Join on ${platformLabel}`}</span>
+                                            <ExternalLink className="w-4 h-4 opacity-60" />
+                                        </a>
+                                        <p className="text-[11px] text-gray-400 mt-6 font-medium max-w-xs leading-relaxed">
+                                            Opens in a new tab. Come back here for event details.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center">
+                                        <CheckCircle2 className="w-16 h-16 text-green-500 mb-8" />
+                                        <h2 className="text-2xl font-bold mb-3 tracking-tight text-gray-900">You're In!</h2>
+                                        <p className="text-gray-500 max-w-sm font-medium leading-relaxed mb-8">
+                                            The {platformLabel} meeting should have opened in a new tab.
+                                        </p>
+                                        <a
+                                            href={link}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className={`px-8 py-4 ${colors.btn} text-white rounded-xl font-bold tracking-tight shadow-xl ${colors.shadow} transition-all flex items-center gap-3`}
+                                        >
+                                            <ExternalLink className="w-4 h-4" />
+                                            Rejoin Meeting
+                                        </a>
+                                    </div>
+                                )}
+                            </>
+                        )}
+
+                        {/* No link set */}
+                        {!isBeforeStart && !link && (
+                            <div className="flex flex-col items-center">
+                                <div className="w-20 h-20 rounded-[32px] bg-gray-100 border border-gray-200 flex items-center justify-center mb-8">
+                                    <Video className="w-10 h-10 text-gray-400" />
+                                </div>
+                                <h2 className="text-2xl font-bold mb-3 tracking-tight text-gray-900">No Meeting Link</h2>
+                                <p className="text-gray-500 max-w-sm font-medium leading-relaxed">
+                                    The organizer hasn't added a meeting link yet. Please check back closer to the event time.
+                                </p>
                             </div>
                         )}
                     </div>
 
+                    {/* Below video bar */}
                     <div className="flex items-center justify-between mt-6 px-2 shrink-0">
                         <div className="flex flex-col">
                             <h2 className="text-xl font-bold tracking-tight text-gray-900 mb-1">{event.event_title}</h2>
                             <div className="flex items-center gap-3 text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                                <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> Active Venue</span>
+                                <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> Live Venue</span>
                                 <span className="w-1 h-1 rounded-full bg-gray-300" />
-                                <span className="text-[var(--color-primary-500)]">Live Experience</span>
+                                <span className="text-[var(--color-primary-500)] capitalize">{platformLabel}</span>
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -504,11 +394,11 @@ export default function DigitalVenuePage() {
                     </div>
                 </div>
 
-                {/* Right Sidebar - Professional Tabs */}
+                {/* Right Sidebar */}
                 <div className="w-full lg:w-[420px] shrink-0 flex flex-col h-full min-h-[500px]">
                     <div className="flex-1 bg-white border border-gray-200 rounded-2xl shadow-sm flex flex-col overflow-hidden">
                         <div className="flex border-b border-gray-100">
-                            <button className="flex-1 py-4 text-[11px] font-bold uppercase tracking-widest text-[#000] border-b-2 border-gray-900">
+                            <button className="flex-1 py-4 text-[11px] font-bold uppercase tracking-widest text-gray-900 border-b-2 border-gray-900">
                                 Event Details
                             </button>
                             <button className="flex-1 py-4 text-[11px] font-bold uppercase tracking-widest text-gray-400 hover:text-gray-600 transition-colors">
@@ -524,15 +414,15 @@ export default function DigitalVenuePage() {
                                 </h3>
                                 <div
                                     className="text-sm text-gray-600 leading-relaxed font-medium prose prose-sm max-w-none"
-                                    dangerouslySetInnerHTML={{ __html: event.description || "No description provided for this event." }}
+                                    dangerouslySetInnerHTML={{ __html: event.description || "No description provided." }}
                                 />
                             </div>
 
-                            <div className="space-y-4 pt-6 border-t border-gray-50">
+                            <div className="space-y-4 pt-6 border-t border-gray-100">
                                 <div className="flex items-center justify-between text-sm">
                                     <span className="text-gray-500 font-medium">Platform</span>
                                     <span className="font-bold text-gray-900 uppercase text-[10px] tracking-widest bg-gray-100 px-2 py-1 rounded-md">
-                                        {platform.isDaily ? "Premium Native" : platform.isYouTube ? "YouTube Stream" : "External"}
+                                        {platformLabel}
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between text-sm">
@@ -546,7 +436,7 @@ export default function DigitalVenuePage() {
                                     <Zap className="w-3.5 h-3.5" /> Venue Policy
                                 </h4>
                                 <p className="text-xs text-blue-700/80 leading-relaxed font-medium">
-                                    Please be respectful to other attendees. Disruptive behavior may result in removal by the host.
+                                    Please be respectful to all attendees. Disruptive behavior may result in removal by the host.
                                 </p>
                             </div>
                         </div>

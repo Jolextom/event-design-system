@@ -673,7 +673,7 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                         <div className="flex items-center gap-4 bg-gray-50/50 p-1.5 rounded-2xl border border-gray-100/80">
                             {(event?.event_format === 'virtual' || event?.event_format === 'hybrid') && (
                                 <Link
-                                    href={`/${event?.tag}/watch`}
+                                    href={`/${event?.tag}/join`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     title="Open Live Venue"

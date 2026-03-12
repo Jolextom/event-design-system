@@ -133,6 +133,7 @@ export interface ConfirmationEmailParams {
     receiptLink: string;
     watchLink?: string;
     attendeeName: string;
+    classNotesHtml?: string;
 }
 
 export function renderConfirmationEmailHtml({
@@ -143,6 +144,7 @@ export function renderConfirmationEmailHtml({
     receiptLink,
     watchLink,
     attendeeName,
+    classNotesHtml,
 }: ConfirmationEmailParams): string {
     return `
 <!DOCTYPE html>
@@ -211,6 +213,14 @@ export function renderConfirmationEmailHtml({
                                 </table>
                             </div>
                             
+                            <!-- Class Schedule (if provided) -->
+                            ${classNotesHtml ? `
+                            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 16px; padding: 20px; margin-bottom: 28px;">
+                                <p style="margin: 0 0 12px; font-size: 10px; font-weight: 800; color: #16a34a; text-transform: uppercase; letter-spacing: 1.5px;">📅 Your Class Schedule</p>
+                                ${classNotesHtml}
+                            </div>
+                            ` : ''}
+
                             <!-- CTA Button -->
                             <div style="text-align: center;">
                                 ${watchLink ? `

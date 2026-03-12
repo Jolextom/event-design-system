@@ -27,6 +27,17 @@ export async function sendWelcomeEmail(attendeeId: string, eventId: string) {
 
         if (eventError || !event) throw new Error("Event not found");
 
+        // Fetch pass to build class-specific schedule notes
+        let passTitle = '';
+        if (attendee.pass_id) {
+            const { data: passData } = await supabase
+                .from("passes")
+                .select("title")
+                .eq("id", attendee.pass_id)
+                .single();
+            if (passData) passTitle = passData.title;
+        }
+
         // 2. Create initial delivery record
         const { data: delivery, error: deliveryError } = await supabase
             .from("email_deliveries")
@@ -56,7 +67,30 @@ export async function sendWelcomeEmail(attendeeId: string, eventId: string) {
         const receiptLink = `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/${event.tag}/receipt/${attendee?.order?.order_ref}`;
 
         const isVirtual = event.event_format === 'virtual' || event.event_format === 'hybrid';
-        const watchLink = isVirtual ? `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/${event.tag}/watch?token=${attendeeId}` : undefined;
+        const watchLink = isVirtual ? `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/${event.tag}/join?token=${attendeeId}` : undefined;
+
+        // Build class-specific schedule block (for events with multiple sessions per pass)
+        const isChildPass = /child/i.test(passTitle);
+        const isAdultPass = /adult/i.test(passTitle);
+        let classNotesHtml: string | undefined;
+
+        if (isChildPass) {
+            classNotesHtml = `
+                <table role="presentation" style="width:100%; border-collapse:collapse;">
+                    <tr><td style="padding: 6px 0; font-size: 13px; color: #166534; font-weight: 600;">🇳🇬 Ígbò Children</td><td style="padding: 6px 0; font-size: 12px; color: #15803d; text-align:right;">Friday 4–5pm GMT+1</td></tr>
+                    <tr><td colspan="2" style="padding-bottom: 8px;"><a href="https://meet.google.com/gtj-nzmw-nsf" style="font-size: 12px; color: #16a34a;">meet.google.com/gtj-nzmw-nsf</a></td></tr>
+                    <tr><td style="padding: 6px 0; font-size: 13px; color: #166534; font-weight: 600;">🇳🇬 Yorùbá Children</td><td style="padding: 6px 0; font-size: 12px; color: #15803d; text-align:right;">Friday 5–6pm GMT+1</td></tr>
+                    <tr><td colspan="2"><a href="https://meet.google.com/mha-huvk-ckd" style="font-size: 12px; color: #16a34a;">meet.google.com/mha-huvk-ckd</a></td></tr>
+                </table>`;
+        } else if (isAdultPass) {
+            classNotesHtml = `
+                <table role="presentation" style="width:100%; border-collapse:collapse;">
+                    <tr><td style="padding: 6px 0; font-size: 13px; color: #166534; font-weight: 600;">🇳🇬 Ígbò Adult</td><td style="padding: 6px 0; font-size: 12px; color: #15803d; text-align:right;">Saturday 5–6pm GMT+1</td></tr>
+                    <tr><td colspan="2" style="padding-bottom: 8px;"><a href="https://meet.google.com/mij-wnev-btb" style="font-size: 12px; color: #16a34a;">meet.google.com/mij-wnev-btb</a></td></tr>
+                    <tr><td style="padding: 6px 0; font-size: 13px; color: #166534; font-weight: 600;">🇳🇬 Yorùbá Adult</td><td style="padding: 6px 0; font-size: 12px; color: #15803d; text-align:right;">Saturday 6–7pm GMT+1</td></tr>
+                    <tr><td colspan="2"><a href="https://meet.google.com/wqh-mgfn-wgk" style="font-size: 12px; color: #16a34a;">meet.google.com/wqh-mgfn-wgk</a></td></tr>
+                </table>`;
+        }
 
         // Prepare params for storage
         const templateParams = {
@@ -66,7 +100,8 @@ export async function sendWelcomeEmail(attendeeId: string, eventId: string) {
             orderRef,
             receiptLink,
             watchLink,
-            attendeeName: attendee.first_name
+            attendeeName: attendee.first_name,
+            classNotesHtml,
         };
 
         const result = await sendConfirmationEmail({

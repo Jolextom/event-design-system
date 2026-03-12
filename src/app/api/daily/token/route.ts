@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 
-export async function POST(req: Request) {
+// Daily.co is temporarily disabled.
+export async function POST() {
+    return NextResponse.json({ error: 'Daily.co integration is currently disabled.' }, { status: 503 });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function _POST_disabled(req: Request) {
     try {
         const { roomName, isOwner, userName, userId } = await req.json();
 

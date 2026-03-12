@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Calendar, Globe, Save, Loader2, Link2, Ticket, QrCode, Check, Sparkles } from "lucide-react";
+import { Plus, Calendar, Globe, Save, Loader2, Link2, Ticket, QrCode, Check, Video } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Event } from "../types";
 import { supabase } from "@/lib/supabaseClient";
@@ -136,6 +136,29 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
         setFormData(prev => ({ ...prev, description: newDescription }));
         onUpdate?.({ description: newDescription });
         router.refresh();
+    };
+
+    const handleProvisionDaily = async () => {
+        if (!event?.id) return;
+        try {
+            setIsSaving(true);
+            const res = await fetch('/api/daily/room', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ eventId: event.id })
+            });
+            const data = await res.json();
+            if (data.roomUrl) {
+                handleVirtualLinkUpdate(data.roomUrl);
+                await supabase.from("events").update({ virtual_link: data.roomUrl }).eq("id", event.id);
+            } else {
+                alert("Failed to provision room: " + data.error);
+            }
+        } catch (error) {
+            alert("Error provisioning video room.");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleDateTimeUpdate = (data: { start_date: string, end_date: string, start_time: string, end_time: string }) => {
@@ -388,58 +411,81 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
                                         </label>
 
                                         {formData.virtual_link ? (
-                                            <div className="space-y-3 cursor-pointer group" onClick={() => setDescModalOpen(true)}>
+                                            <div className="space-y-3">
                                                 {formData.virtual_link.includes('daily.co') ? (
                                                     <div className="flex flex-col gap-2">
                                                         <span className="flex items-center gap-2 bg-blue-50 text-blue-600 px-3 py-2 rounded-lg border border-blue-100 w-fit">
-                                                            <Sparkles className="w-4 h-4" />
-                                                            <span className="text-sm font-bold">Premium Video Provisioned</span>
+                                                            <Video className="w-4 h-4" />
+                                                            <span className="text-sm font-bold">Native Video Solution Provisioned</span>
                                                         </span>
                                                         <p className="text-[11px] font-bold text-gray-400 leading-snug pr-4">
                                                             This secure room is locked. Attendees (and you) must join via the "Live Venue" page to get access.
                                                         </p>
+                                                        <button
+                                                            onClick={() => setDescModalOpen(true)}
+                                                            className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-1 rounded-lg inline-block hover:bg-blue-100 transition-colors mt-2"
+                                                        >
+                                                            Change Setup
+                                                        </button>
                                                     </div>
                                                 ) : (
-                                                    <p className="text-sm font-bold text-blue-600 break-all leading-snug">
-                                                        {formData.virtual_link}
-                                                    </p>
+                                                    <div className="flex flex-col gap-4">
+                                                        <div className="flex flex-col gap-1 pr-6 relative group/link">
+                                                            <p className="text-sm font-bold text-gray-900 break-all leading-snug">
+                                                                {formData.virtual_link}
+                                                            </p>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">External Link</span>
+                                                                <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 group-hover/link:text-blue-600 transition-all cursor-pointer" onClick={() => setDescModalOpen(true)}>Change</span>
+                                                            </div>
+                                                        </div>
+
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleProvisionDaily();
+                                                            }}
+                                                            disabled={isSaving}
+                                                            className="flex items-center gap-3 px-4 py-3 bg-[var(--color-primary-50)] hover:bg-[var(--color-primary-100)] border border-[var(--color-primary-100)] rounded-2xl transition-all group/native"
+                                                        >
+                                                            <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                                                                {isSaving ? <Loader2 className="w-4 h-4 animate-spin text-[var(--brand-blue)]" /> : <Video className="w-4 h-4 text-[var(--brand-blue)]" />}
+                                                            </div>
+                                                            <div className="flex flex-col text-left">
+                                                                <span className="text-[10px] font-black uppercase tracking-widest text-[var(--brand-blue)]">Switch to Native Video</span>
+                                                                <span className="text-[11px] font-bold text-gray-600">Secure Audio & Video Solution</span>
+                                                            </div>
+                                                        </button>
+                                                    </div>
                                                 )}
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-1 rounded-lg inline-block group-hover:bg-blue-100 transition-colors mt-2">Change Setup</span>
                                             </div>
                                         ) : (
                                             <div className="flex flex-col gap-3">
                                                 <button
-                                                    onClick={async () => {
-                                                        try {
-                                                            setIsSaving(true);
-                                                            const res = await fetch('/api/daily/room', {
-                                                                method: 'POST',
-                                                                headers: { 'Content-Type': 'application/json' },
-                                                                body: JSON.stringify({ eventId: event.id })
-                                                            });
-                                                            const data = await res.json();
-                                                            if (data.roomUrl) {
-                                                                handleVirtualLinkUpdate(data.roomUrl);
-                                                                await supabase.from("events").update({ virtual_link: data.roomUrl }).eq("id", event.id);
-                                                            } else {
-                                                                alert("Failed to provision room: " + data.error);
-                                                            }
-                                                        } catch (error) {
-                                                            alert("Error provisioning video room.");
-                                                        } finally {
-                                                            setIsSaving(false);
-                                                        }
-                                                    }}
-                                                    className="w-full px-4 py-4 bg-[var(--color-primary-600)] hover:bg-[var(--color-primary-500)] text-white text-xs font-bold rounded-[16px] shadow-xl shadow-[var(--color-primary-600)]/20 transition-all flex justify-between items-center"
+                                                    onClick={handleProvisionDaily}
+                                                    disabled={isSaving}
+                                                    className="w-full px-4 py-4 bg-[var(--color-primary-600)] hover:bg-[var(--color-primary-500)] text-white text-xs font-bold rounded-[16px] shadow-xl shadow-[var(--color-primary-600)]/20 transition-all flex justify-between items-center disabled:opacity-50"
                                                 >
-                                                    <span>Provision Native Video Room</span>
-                                                    <Sparkles className="w-4 h-4 text-white/80" />
+                                                    {isSaving ? (
+                                                        <>
+                                                            <span>Creating Room...</span>
+                                                            <Loader2 className="w-4 h-4 text-white/80 animate-spin" />
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span>Create Native Video Room</span>
+                                                            <Video className="w-4 h-4 text-white/80" />
+                                                        </>
+                                                    )}
                                                 </button>
                                                 <button
                                                     onClick={() => setDescModalOpen(true)}
                                                     className="w-full px-4 py-3.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-900 text-xs font-bold rounded-[16px] shadow-sm transition-all text-left flex items-center justify-between"
                                                 >
-                                                    <span>Paste External Link (Meet / Zoom)</span>
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span>Paste External Link (Meet / Zoom)</span>
+                                                        <span className="text-[9px] font-bold text-gray-400">Note: Google Meet cannot be embedded</span>
+                                                    </div>
                                                     <Globe className="w-4 h-4 text-gray-400" />
                                                 </button>
                                             </div>
@@ -448,8 +494,6 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
                                 )}
                             </div>
                         </div>
-
-
                     </div>
                 </div>
             </div>
@@ -685,7 +729,7 @@ function InlineEditor({ initialContent, onSave }: { initialContent: string, onSa
 
             // Give formatting buttons time to be clicked before hiding toolbar
             setTimeout(() => {
-                if (!document.hasFocus() || !editor.isFocused) {
+                if (!editor.isFocused) {
                     setIsFocused(false);
                 }
             }, 200);

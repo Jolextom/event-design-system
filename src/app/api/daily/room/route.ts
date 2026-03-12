@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 
-export async function POST(req: Request) {
+// Daily.co is temporarily disabled. 
+export async function POST() {
+    return NextResponse.json({ error: 'Daily.co integration is currently disabled.' }, { status: 503 });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function _POST_disabled(req: Request) {
     try {
         const payload = await req.json();
         const { eventId, privacy = 'private', exp } = payload;
@@ -11,9 +17,9 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Daily API Key configuration missing." }, { status: 500 });
         }
 
-        // Generate a random room name using the event ID base to keep it traceable
-        const shortId = eventId ? eventId.substring(0, 8) : "evnt";
-        const roomName = `eventflow-${shortId}-${Math.random().toString(36).substring(2, 10)}`;
+        // Generate a deterministic room name using the eventId (must be unique)
+        // Daily.co room names must be alphanumeric and can contain dashes
+        const roomName = `ef-${eventId}`;
 
         const reqBody = {
             name: roomName,
@@ -26,7 +32,7 @@ export async function POST(req: Request) {
             }
         };
 
-        const response = await fetch('https://api.daily.co/v1/rooms', {
+        let response = await fetch('https://api.daily.co/v1/rooms', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -35,11 +41,26 @@ export async function POST(req: Request) {
             body: JSON.stringify(reqBody)
         });
 
-        const roomData = await response.json();
+        let roomData = await response.json();
 
-        if (!response.ok) {
+        // If the room already exists, fetch the existing room details
+        if (!response.ok && roomData.info?.includes("already exists")) {
+            console.log(`Room ${roomName} already exists. Fetching existing room.`);
+            const getResponse = await fetch(`https://api.daily.co/v1/rooms/${roomName}`, {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${apiKey}`
+                }
+            });
+            roomData = await getResponse.json();
+
+            if (!getResponse.ok) {
+                console.error("Daily API Error (Fetch Existing Room):", roomData);
+                return NextResponse.json({ error: "Failed to retrieve existing room." }, { status: getResponse.status });
+            }
+        } else if (!response.ok) {
             console.error("Daily API Error (Rooms):", roomData);
-            return NextResponse.json({ error: roomData.info || "Failed to stringify Daily room." }, { status: response.status });
+            return NextResponse.json({ error: roomData.info || "Failed to create Daily room." }, { status: response.status });
         }
 
         return NextResponse.json({ roomUrl: roomData.url, roomName: roomData.name });
