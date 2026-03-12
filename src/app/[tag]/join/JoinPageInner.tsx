@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { ShieldAlert, Loader2, ExternalLink, Video, Clock, CheckCircle2 } from "lucide-react";
@@ -42,7 +42,7 @@ function getPlatformMeta(link: string) {
     };
 }
 
-function JoinInner() {
+export default function JoinPageInner() {
     const params = useParams();
     const searchParams = useSearchParams();
     const tag = typeof params === "object" && params?.tag ? String(params.tag) : null;
@@ -288,17 +288,5 @@ function JoinInner() {
                 </div>
             </div>
         </div>
-    );
-}
-
-export default function JoinPage() {
-    return (
-        <Suspense fallback={
-            <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-white/30" />
-            </div>
-        }>
-            <JoinInner />
-        </Suspense>
     );
 }

@@ -138,6 +138,7 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
         router.refresh();
     };
 
+
     const handleProvisionDaily = async () => {
         if (!event?.id) return;
         try {
@@ -419,7 +420,7 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
                                                             <span className="text-sm font-bold">Native Video Solution Provisioned</span>
                                                         </span>
                                                         <p className="text-[11px] font-bold text-gray-400 leading-snug pr-4">
-                                                            This secure room is locked. Attendees (and you) must join via the "Live Venue" page to get access.
+                                                            This secure room is locked. Attendees (and you) must join via the &quot;Live Venue&quot; page to get access.
                                                         </p>
                                                         <button
                                                             onClick={() => setDescModalOpen(true)}
@@ -453,7 +454,7 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
                                                             </div>
                                                             <div className="flex flex-col text-left">
                                                                 <span className="text-[10px] font-black uppercase tracking-widest text-[var(--brand-blue)]">Switch to Native Video</span>
-                                                                <span className="text-[11px] font-bold text-gray-600">Secure Audio & Video Solution</span>
+                                                                <span className="text-[11px] font-bold text-gray-600">Secure Audio &amp; Video Solution</span>
                                                             </div>
                                                         </button>
                                                     </div>
@@ -484,7 +485,7 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
                                                 >
                                                     <div className="flex flex-col gap-0.5">
                                                         <span>Paste External Link (Meet / Zoom)</span>
-                                                        <span className="text-[9px] font-bold text-gray-400">Note: Google Meet cannot be embedded</span>
+                                                        <span className="text-[9px] font-bold text-gray-400">Attendees will be redirected to this link</span>
                                                     </div>
                                                     <Globe className="w-4 h-4 text-gray-400" />
                                                 </button>
@@ -492,6 +493,7 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
                                         )}
                                     </div>
                                 )}
+
                             </div>
                         </div>
                     </div>

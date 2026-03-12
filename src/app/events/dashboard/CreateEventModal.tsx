@@ -125,19 +125,32 @@ export function CreateEventModal({ isOpen, onClose, userId, onCreated }: CreateE
                                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Event Format</label>
                                     <div className="grid grid-cols-3 gap-2">
                                         {[
-                                            { id: 'physical', label: 'Physical', icon: '📍' },
-                                            { id: 'virtual', label: 'Virtual', icon: '🌐' },
-                                            { id: 'hybrid', label: 'Hybrid', icon: '📍🌐' }
+                                            { id: 'physical', label: 'Physical', icon: '📍', locked: false },
+                                            { id: 'virtual', label: 'Virtual', icon: '🌐', locked: true },
+                                            { id: 'hybrid', label: 'Hybrid', icon: '📍🌐', locked: true },
                                         ].map(format => (
-                                            <button
-                                                key={format.id}
-                                                type="button"
-                                                onClick={() => setEventFormat(format.id as any)}
-                                                className={`py-3 px-4 rounded-2xl border transition-all text-sm font-bold flex flex-col items-center gap-1 ${eventFormat === format.id ? 'bg-gray-900 border-gray-900 text-white shadow-md' : 'bg-white border-gray-100 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}`}
-                                            >
-                                                <span className="text-xl mb-1">{format.icon}</span>
-                                                {format.label}
-                                            </button>
+                                            <div key={format.id} className="relative">
+                                                <button
+                                                    type="button"
+                                                    disabled={format.locked}
+                                                    onClick={() => !format.locked && setEventFormat(format.id as "physical" | "virtual" | "hybrid")}
+                                                    className={`w-full py-3 px-4 rounded-2xl border transition-all text-sm font-bold flex flex-col items-center gap-1 ${
+                                                        format.locked
+                                                            ? 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed opacity-60'
+                                                            : eventFormat === format.id
+                                                                ? 'bg-gray-900 border-gray-900 text-white shadow-md'
+                                                                : 'bg-white border-gray-100 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                                                    }`}
+                                                >
+                                                    <span className="text-xl mb-1">{format.icon}</span>
+                                                    {format.label}
+                                                </button>
+                                                {format.locked && (
+                                                    <span className="absolute -top-1.5 -right-1.5 text-[8px] font-black uppercase tracking-tight bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded-full">
+                                                        Soon
+                                                    </span>
+                                                )}
+                                            </div>
                                         ))}
                                     </div>
                                 </div>
