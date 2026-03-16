@@ -17,6 +17,7 @@ export interface Event {
   custom_questions_completed: boolean;
   created_by: string;
   tag?: string | null;
+  image_focus_y?: number;
 }
 
 // Pass (ticket) type for event passes

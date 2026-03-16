@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendInviteEmail, sendConfirmationEmail } from '@/lib/email';
+import { generateGoogleCalendarLink, generateOutlookLink } from '@/lib/calendar';
 
 export async function POST(request: NextRequest) {
     try {
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
         // Fetch event
         const { data: event, error: eventErr } = await supabase
             .from('events')
-            .select('event_title, start_date, location, tag')
+            .select('event_title, start_date, start_time, location, tag')
             .eq('id', attendee.event_id)
             .single();
 
@@ -58,12 +59,32 @@ export async function POST(request: NextRequest) {
             })
             : 'TBA';
 
+        // Calendar Links
+        const startDateTime = event.start_date && event.start_time 
+            ? `${event.start_date}T${event.start_time}:00` 
+            : event.start_date;
+        
+        const googleCalendarLink = startDateTime ? generateGoogleCalendarLink({
+            title: event.event_title,
+            location: event.location || 'TBA',
+            startDate: startDateTime,
+            description: `Registration Ref: ${attendee.ref}`
+        }) : undefined;
+
+        const outlookCalendarLink = startDateTime ? generateOutlookLink({
+            title: event.event_title,
+            location: event.location || 'TBA',
+            startDate: startDateTime,
+            description: `Registration Ref: ${attendee.ref}`
+        }) : undefined;
+
         // Check for confirmation status
         const isConfirmed = attendee.email_status === 'confirmed' || attendee.email_status === 'registered';
 
         if (isConfirmed) {
             // Send Confirmation Email
             const receiptLink = `${baseUrl}/${event.tag}/receipt/${attendee.ref}`;
+            const watchLink = `${baseUrl}/${event.tag}/join?token=${attendeeId}`;
 
             // Send email
             const result = await sendConfirmationEmail({
@@ -73,7 +94,10 @@ export async function POST(request: NextRequest) {
                 eventLocation: event.location || 'TBA',
                 orderRef: attendee.ref,
                 receiptLink,
+                watchLink,
                 attendeeName: `${attendee.first_name} ${attendee.last_name}`,
+                googleCalendarLink,
+                outlookCalendarLink
             });
 
             if (!result.success) {
@@ -105,8 +129,11 @@ export async function POST(request: NextRequest) {
                         eventLocation: event.location || 'TBA',
                         orderRef: attendee.ref,
                         receiptLink,
+                        watchLink,
                         attendeeName: `${attendee.first_name} ${attendee.last_name}`,
-                        recipient_email: attendee.email
+                        recipient_email: attendee.email,
+                        googleCalendarLink,
+                        outlookCalendarLink
                     },
                     created_at: new Date().toISOString()
                 });
@@ -128,6 +155,8 @@ export async function POST(request: NextRequest) {
                 inviterName,
                 passType: attendee.pass?.title || 'General Admission',
                 inviteLink,
+                googleCalendarLink,
+                outlookCalendarLink
             });
 
             if (!result.success) {
@@ -160,7 +189,9 @@ export async function POST(request: NextRequest) {
                         inviterName,
                         passType: attendee.pass?.title || 'General Admission',
                         inviteLink,
-                        recipient_email: attendee.email
+                        recipient_email: attendee.email,
+                        googleCalendarLink,
+                        outlookCalendarLink
                     },
                     created_at: new Date().toISOString()
                 });

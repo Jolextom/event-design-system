@@ -11,6 +11,8 @@ export interface InviteEmailParams {
     inviterName: string;
     passType: string;
     inviteLink: string;
+    googleCalendarLink?: string;
+    outlookCalendarLink?: string;
 }
 
 /**
@@ -23,6 +25,8 @@ export function renderInviteEmailHtml({
     inviterName,
     passType,
     inviteLink,
+    googleCalendarLink,
+    outlookCalendarLink,
 }: InviteEmailParams): string {
     return `
 <!DOCTYPE html>
@@ -101,6 +105,16 @@ export function renderInviteEmailHtml({
                             <p style="margin: 24px 0 0; font-size: 12px; color: #9ca3af; text-align: center;">
                                 Or copy this link: <a href="${inviteLink}" style="color: #3b82f6;">${inviteLink}</a>
                             </p>
+
+                            ${(googleCalendarLink || outlookCalendarLink) ? `
+                            <div style="margin-top: 32px; border-top: 1px solid #f3f4f6; pt-32px; text-align: center;">
+                                <p style="font-size: 11px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; margin-top: 24px;">Add to Calendar</p>
+                                <div style="display: flex; gap: 8px; justify-content: center;">
+                                    ${googleCalendarLink ? `<a href="${googleCalendarLink}" style="font-size: 12px; color: #3b82f6; text-decoration: none; font-weight: 600; padding: 8px 16px; background: #eff6ff; border-radius: 12px;">Google</a>` : ''}
+                                    ${outlookCalendarLink ? `<a href="${outlookCalendarLink}" style="font-size: 12px; color: #3b82f6; text-decoration: none; font-weight: 600; padding: 8px 16px; background: #eff6ff; border-radius: 12px;">Outlook</a>` : ''}
+                                </div>
+                            </div>
+                            ` : ''}
                         </td>
                     </tr>
                     
@@ -134,6 +148,8 @@ export interface ConfirmationEmailParams {
     watchLink?: string;
     attendeeName: string;
     classNotesHtml?: string;
+    googleCalendarLink?: string;
+    outlookCalendarLink?: string;
 }
 
 export function renderConfirmationEmailHtml({
@@ -145,6 +161,8 @@ export function renderConfirmationEmailHtml({
     watchLink,
     attendeeName,
     classNotesHtml,
+    googleCalendarLink,
+    outlookCalendarLink,
 }: ConfirmationEmailParams): string {
     return `
 <!DOCTYPE html>
@@ -232,6 +250,16 @@ export function renderConfirmationEmailHtml({
                                     View Receipt →
                                 </a>
                             </div>
+
+                            ${(googleCalendarLink || outlookCalendarLink) ? `
+                            <div style="margin-top: 32px; border-top: 1px solid #f3f4f6; pt-32px; text-align: center;">
+                                <p style="font-size: 11px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; margin-top: 24px;">Add to Calendar</p>
+                                <div style="display: flex; gap: 8px; justify-content: center;">
+                                    ${googleCalendarLink ? `<a href="${googleCalendarLink}" style="font-size: 12px; color: #3b82f6; text-decoration: none; font-weight: 600; padding: 8px 16px; background: #eff6ff; border-radius: 12px;">Google</a>` : ''}
+                                    ${outlookCalendarLink ? `<a href="${outlookCalendarLink}" style="font-size: 12px; color: #3b82f6; text-decoration: none; font-weight: 600; padding: 8px 16px; background: #eff6ff; border-radius: 12px;">Outlook</a>` : ''}
+                                </div>
+                            </div>
+                            ` : ''}
                         </td>
                     </tr>
                     

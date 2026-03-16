@@ -24,6 +24,7 @@ import {
     X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { verifyAndFulfillPayment } from "@/app/actions";
 
 interface Order {
     id: string;
@@ -110,10 +111,25 @@ export default function ReceiptPage() {
     const [addError, setAddError] = useState<string | null>(null);
 
     useEffect(() => {
+        if (!ref) return;
+        
+        // Proactively verify the payment immediately on landing
+        // This makes the UI feel "snappy" instead of waiting for the webhook
+        verifyAndFulfillPayment(ref).then(result => {
+            if (result.success) {
+                console.log("Immediate verification successful");
+                // The polling/fetchData will catch the updated status automatically
+            }
+        }).catch(err => {
+            console.warn("Immediate verification background check failed:", err);
+        });
+    }, [ref]);
+
+    useEffect(() => {
         if (!tag || !ref) return;
 
         const fetchData = async () => {
-            setLoading(true);
+            if (loading) setLoading(true); // Only set loading on first fetch
             setError(null);
 
             try {
@@ -199,7 +215,19 @@ export default function ReceiptPage() {
         };
 
         fetchData();
-    }, [tag, ref]);
+
+        // Polling if order is pending
+        let interval: NodeJS.Timeout;
+        if (order?.status === 'pending') {
+            interval = setInterval(() => {
+                fetchData();
+            }, 3000); // Check every 3 seconds
+        }
+
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [tag, ref, order?.status]);
 
     const handleCopyRef = () => {
         if (order?.order_ref) {
@@ -402,6 +430,33 @@ export default function ReceiptPage() {
         );
     }
 
+    if (order.status === 'pending') {
+        return (
+            <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center">
+                <div className="relative mb-8">
+                    <div className="w-20 h-20 bg-blue-600 rounded-[30px] flex items-center justify-center shadow-2xl relative z-10 mx-auto">
+                        <RefreshCw className="w-10 h-10 text-white animate-spin stroke-[3]" />
+                    </div>
+                    <div className="absolute inset-0 bg-blue-100 blur-2xl opacity-40 scale-150 animate-pulse" />
+                </div>
+                <h1 className="text-3xl font-black text-gray-900 mb-4 uppercase italic">Verifying Payment</h1>
+                <p className="text-gray-400 font-bold max-w-sm mb-10 leading-relaxed uppercase tracking-widest text-[10px]">
+                    We're confirming your transaction with Paystack. <br />
+                    This usually takes a few seconds. Don't close this page.
+                </p>
+                <div className="flex items-center justify-center gap-1.5 pt-4">
+                    {[0, 1, 2].map((i) => (
+                        <div
+                            key={i}
+                            className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-bounce"
+                            style={{ animationDelay: `${i * 0.2}s` }}
+                        />
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-white overflow-y-auto custom-scrollbar relative">
             {/* Immersive Backdrop */}
@@ -426,7 +481,7 @@ export default function ReceiptPage() {
                             <span className="text-gray-900/10 italic">{event?.event_title || "The Event"}.</span>
                         </h2>
                         <p className="text-lg md:text-xl text-gray-400 font-bold max-w-lg mx-auto leading-relaxed">
-                            You're all set for <span className="text-gray-900">{formatDate(event?.start_date || "")}</span>.
+                            You're all set for <span className="text-gray-900">{formatDate(event?.start_date || "")}</span>. (₦{(order.total_amount || 0).toLocaleString()}) <br />
                             We've sent a confirmation to <span className="text-blue-600">{order.email}</span>. <br />
                             <span className="text-sm opacity-60">(Check your spam folder if you don't see it)</span>
                         </p>
@@ -740,7 +795,7 @@ export default function ReceiptPage() {
                         >
                             <Share2 className="w-5 h-5 text-blue-500" /> Share Confirmation
                         </button>
-                        <Link href={`/${tag}`}>
+                        <Link href={`/${tag}/join`}>
                             <button className="w-full sm:w-auto px-10 py-5 bg-gray-900 text-white rounded-[24px] font-black text-sm hover:scale-[1.05] active:scale-95 transition-all shadow-xl shadow-gray-200 flex items-center justify-center gap-3">
                                 <ExternalLink className="w-5 h-5" /> View Event
                             </button>

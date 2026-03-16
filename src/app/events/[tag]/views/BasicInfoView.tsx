@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Calendar, Globe, Save, Loader2, Link2, Ticket, QrCode, Check, Video } from "lucide-react";
+import { Plus, Calendar, Globe, Save, Loader2, Link2, Ticket, QrCode, Check, Image as ImageIcon, X, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Event } from "../types";
 import { supabase } from "@/lib/supabaseClient";
@@ -40,7 +40,14 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
         end_date: "",
         event_format: "physical",
         virtual_link: "",
+        image: "",
+        image_focus_y: 50,
     });
+
+    const [isRepositioning, setIsRepositioning] = useState(false);
+
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const [isUploading, setIsUploading] = useState(false);
 
     // Modals Control
     const [isDateModalOpen, setDateModalOpen] = useState(false);
@@ -63,6 +70,8 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
                 end_date: event.end_date || "",
                 event_format: event.event_format || "physical",
                 virtual_link: event.virtual_link || "",
+                image: event.image || "",
+                image_focus_y: event.image_focus_y ?? 50,
             });
         }
     }, [event]);
@@ -139,28 +148,6 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
     };
 
 
-    const handleProvisionDaily = async () => {
-        if (!event?.id) return;
-        try {
-            setIsSaving(true);
-            const res = await fetch('/api/daily/room', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ eventId: event.id })
-            });
-            const data = await res.json();
-            if (data.roomUrl) {
-                handleVirtualLinkUpdate(data.roomUrl);
-                await supabase.from("events").update({ virtual_link: data.roomUrl }).eq("id", event.id);
-            } else {
-                alert("Failed to provision room: " + data.error);
-            }
-        } catch (error) {
-            alert("Error provisioning video room.");
-        } finally {
-            setIsSaving(false);
-        }
-    };
 
     const handleDateTimeUpdate = (data: { start_date: string, end_date: string, start_time: string, end_time: string }) => {
         setFormData(prev => ({
@@ -177,6 +164,73 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
             end_time: data.end_time
         });
         router.refresh();
+    };
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !event?.id) return;
+
+        setIsUploading(true);
+        try {
+            // 0. Ensure user is authenticated
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("You must be logged in to upload images.");
+
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${user.id}/${event.id}/image_${Math.random()}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            // 1. Upload to Supabase Storage
+            const { error: uploadError } = await supabase.storage
+                .from('event-images')
+                .upload(filePath, file, {
+                    cacheControl: '3600',
+                    upsert: false
+                });
+
+            if (uploadError) throw uploadError;
+
+            // 2. Get Public URL
+            const { data: { publicUrl } } = supabase.storage
+                .from('event-images')
+                .getPublicUrl(filePath);
+
+            // 3. Update Event Record
+            const { error: updateError } = await supabase
+                .from('events')
+                .update({ image: publicUrl })
+                .eq('id', event.id);
+
+            if (updateError) throw updateError;
+
+            setFormData(prev => ({ ...prev, image: publicUrl }));
+            onUpdate?.({ image: publicUrl });
+            router.refresh();
+        } catch (err: any) {
+            console.error("Upload failed:", err);
+            alert(err.message || "Failed to upload image. Please check your connection.");
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleFocusUpdate = async (val: number) => {
+        setFormData(prev => ({ ...prev, image_focus_y: val }));
+    };
+
+    const handleSaveFocus = async () => {
+        if (!event?.id) return;
+        try {
+            const { error } = await supabase
+                .from("events")
+                .update({ image_focus_y: formData.image_focus_y })
+                .eq("id", event.id);
+            if (error) throw error;
+            onUpdate?.({ image_focus_y: formData.image_focus_y });
+            setIsRepositioning(false);
+        } catch (err) {
+            console.error("Failed to save focus:", err);
+        }
     };
 
     if (!event) return <div className="text-center text-neutral-400 font-bold py-24 text-lg">No event data found.</div>;
@@ -302,13 +356,102 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
                     </header>
 
                     <div className="space-y-8">
-                        {/* Event Banner Placeholder */}
-                        <div className="relative h-56 bg-gray-50 rounded-4xl border-2 border-dashed border-gray-100 flex flex-col items-center justify-center group hover:border-[var(--brand-blue)]/30 transition-all overflow-hidden cursor-pointer shadow-inner">
-                            <div className="p-3.5 bg-white rounded-2xl shadow-sm mb-3 group-hover:scale-110 transition-transform">
-                                <Plus className="w-5 h-5 text-gray-400" />
+                        {/* Event Banner Section */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between px-1">
+                                <label className="text-[9px] font-black uppercase tracking-[0.25em] text-gray-400">Event Brand Banner</label>
+                                {formData.image && (
+                                    <div className="flex items-center gap-2">
+                                        <button 
+                                            onClick={() => setIsRepositioning(!isRepositioning)}
+                                            className={cn(
+                                                "text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl transition-all border",
+                                                isRepositioning ? "bg-gray-900 text-white border-gray-900 shadow-lg" : "bg-white text-gray-400 border-gray-100 hover:border-gray-200"
+                                            )}
+                                        >
+                                            {isRepositioning ? "Cancel Action" : "Drag to Reposition"}
+                                        </button>
+                                        <button 
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 bg-white text-gray-400 border border-gray-100 rounded-xl hover:border-gray-200 transition-all"
+                                        >
+                                            Swap Image
+                                        </button>
+                                    </div>
+                                )}
                             </div>
-                            <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Add Event Banner</span>
-                            <p className="text-[9px] text-gray-300 mt-1.5 font-bold uppercase tracking-[0.2em]">16:9 ratio recommended</p>
+
+                            <div 
+                                className={cn(
+                                    "relative h-72 md:h-96 bg-gray-50 rounded-[40px] border-2 border-dashed transition-all overflow-hidden shadow-inner",
+                                    isRepositioning ? "border-blue-500 ring-4 ring-blue-500/10 cursor-ns-resize shadow-2xl" : "border-gray-100",
+                                    !formData.image && "hover:border-blue-300/50 cursor-pointer"
+                                )}
+                                onClick={() => !formData.image && fileInputRef.current?.click()}
+                            >
+                                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
+                                
+                                {isUploading ? (
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 backdrop-blur-sm z-30">
+                                        <Loader2 className="w-5 h-5 animate-spin text-blue-500 mb-2" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Uploading...</span>
+                                    </div>
+                                ) : formData.image ? (
+                                    <div className="w-full h-full relative">
+                                        {/* Drag Surface */}
+                                        <motion.div 
+                                            className="absolute inset-0 w-full h-full"
+                                            drag={isRepositioning ? "y" : false}
+                                            dragConstraints={{ top: 0, bottom: 0 }}
+                                            dragMomentum={false}
+                                            dragElastic={0}
+                                            onDrag={(e, info) => {
+                                                if (!isRepositioning) return;
+                                                const delta = info.delta.y;
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    image_focus_y: Math.max(0, Math.min(100, prev.image_focus_y - (delta / 2.5)))
+                                                }));
+                                            }}
+                                            onDragEnd={handleSaveFocus}
+                                        >
+                                            <img 
+                                                src={formData.image} 
+                                                className="w-full h-full object-cover pointer-events-none" 
+                                                style={{ 
+                                                    objectPosition: `50% ${formData.image_focus_y}%`,
+                                                    transition: 'none'
+                                                }} 
+                                            />
+                                        </motion.div>
+
+                                        {isRepositioning && (
+                                            <div className="absolute inset-x-0 top-6 flex justify-center z-40">
+                                                <div className="bg-gray-900/90 text-white text-[9px] font-black uppercase tracking-widest px-4 py-2 rounded-full shadow-2xl backdrop-blur-md">
+                                                    Drag Image Vertically to Align
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {!isRepositioning && (
+                                            <div className="absolute inset-0 bg-black/5 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                                                 <div className="bg-white/90 px-4 py-2 rounded-2xl flex items-center gap-2 shadow-xl animate-in fade-in zoom-in duration-300">
+                                                    <Sparkles className="w-4 h-4 text-blue-500" />
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-900">Premium Banner Set</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="h-full flex flex-col items-center justify-center group/empty">
+                                        <div className="p-5 bg-white rounded-[32px] shadow-sm mb-4 group-hover/empty:scale-110 group-hover/empty:shadow-md transition-all">
+                                            <Plus className="w-8 h-8 text-gray-300" />
+                                        </div>
+                                        <span className="text-sm font-black text-gray-400 uppercase tracking-widest mb-1.5">Add Event Narrative Banner</span>
+                                        <p className="text-[10px] text-gray-300 font-bold uppercase tracking-[0.2em] px-10 text-center leading-relaxed">High resolution 16:9 images work best for premium results</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 gap-10">
@@ -404,92 +547,37 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
                                 )}
 
                                 {(formData.event_format === 'virtual' || formData.event_format === 'hybrid') && (
-                                    <div
-                                        className="space-y-4 p-8 bg-gray-50/40 rounded-4xl border border-gray-100 transition-all relative"
-                                    >
+                                    <div className="space-y-4 p-8 bg-gray-50/40 rounded-4xl border border-gray-100 transition-all relative">
                                         <label className="text-[9px] font-black uppercase tracking-[0.25em] text-gray-400 flex items-center gap-2">
-                                            <Link2 className="w-3.5 h-3.5" /> Virtual Event Setup
+                                            <Link2 className="w-3.5 h-3.5" /> Meeting Link
                                         </label>
 
                                         {formData.virtual_link ? (
-                                            <div className="space-y-3">
-                                                {formData.virtual_link.includes('daily.co') ? (
-                                                    <div className="flex flex-col gap-2">
-                                                        <span className="flex items-center gap-2 bg-blue-50 text-blue-600 px-3 py-2 rounded-lg border border-blue-100 w-fit">
-                                                            <Video className="w-4 h-4" />
-                                                            <span className="text-sm font-bold">Native Video Solution Provisioned</span>
-                                                        </span>
-                                                        <p className="text-[11px] font-bold text-gray-400 leading-snug pr-4">
-                                                            This secure room is locked. Attendees (and you) must join via the &quot;Live Venue&quot; page to get access.
-                                                        </p>
-                                                        <button
-                                                            onClick={() => setDescModalOpen(true)}
-                                                            className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-1 rounded-lg inline-block hover:bg-blue-100 transition-colors mt-2"
-                                                        >
-                                                            Change Setup
-                                                        </button>
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex flex-col gap-4">
-                                                        <div className="flex flex-col gap-1 pr-6 relative group/link">
-                                                            <p className="text-sm font-bold text-gray-900 break-all leading-snug">
-                                                                {formData.virtual_link}
-                                                            </p>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">External Link</span>
-                                                                <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 group-hover/link:text-blue-600 transition-all cursor-pointer" onClick={() => setDescModalOpen(true)}>Change</span>
-                                                            </div>
-                                                        </div>
-
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleProvisionDaily();
-                                                            }}
-                                                            disabled={isSaving}
-                                                            className="flex items-center gap-3 px-4 py-3 bg-[var(--color-primary-50)] hover:bg-[var(--color-primary-100)] border border-[var(--color-primary-100)] rounded-2xl transition-all group/native"
-                                                        >
-                                                            <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center shadow-sm">
-                                                                {isSaving ? <Loader2 className="w-4 h-4 animate-spin text-[var(--brand-blue)]" /> : <Video className="w-4 h-4 text-[var(--brand-blue)]" />}
-                                                            </div>
-                                                            <div className="flex flex-col text-left">
-                                                                <span className="text-[10px] font-black uppercase tracking-widest text-[var(--brand-blue)]">Switch to Native Video</span>
-                                                                <span className="text-[11px] font-bold text-gray-600">Secure Audio &amp; Video Solution</span>
-                                                            </div>
-                                                        </button>
-                                                    </div>
-                                                )}
+                                            <div className="flex flex-col gap-3 pr-6 relative group/link">
+                                                <p className="text-sm font-bold text-gray-900 break-all leading-snug">
+                                                    {formData.virtual_link}
+                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">External Link</span>
+                                                    <span
+                                                        className="text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-blue-600 transition-all cursor-pointer"
+                                                        onClick={() => setDescModalOpen(true)}
+                                                    >
+                                                        Change
+                                                    </span>
+                                                </div>
                                             </div>
                                         ) : (
-                                            <div className="flex flex-col gap-3">
-                                                <button
-                                                    onClick={handleProvisionDaily}
-                                                    disabled={isSaving}
-                                                    className="w-full px-4 py-4 bg-[var(--color-primary-600)] hover:bg-[var(--color-primary-500)] text-white text-xs font-bold rounded-[16px] shadow-xl shadow-[var(--color-primary-600)]/20 transition-all flex justify-between items-center disabled:opacity-50"
-                                                >
-                                                    {isSaving ? (
-                                                        <>
-                                                            <span>Creating Room...</span>
-                                                            <Loader2 className="w-4 h-4 text-white/80 animate-spin" />
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <span>Create Native Video Room</span>
-                                                            <Video className="w-4 h-4 text-white/80" />
-                                                        </>
-                                                    )}
-                                                </button>
-                                                <button
-                                                    onClick={() => setDescModalOpen(true)}
-                                                    className="w-full px-4 py-3.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-900 text-xs font-bold rounded-[16px] shadow-sm transition-all text-left flex items-center justify-between"
-                                                >
-                                                    <div className="flex flex-col gap-0.5">
-                                                        <span>Paste External Link (Meet / Zoom)</span>
-                                                        <span className="text-[9px] font-bold text-gray-400">Attendees will be redirected to this link</span>
-                                                    </div>
-                                                    <Globe className="w-4 h-4 text-gray-400" />
-                                                </button>
-                                            </div>
+                                            <button
+                                                onClick={() => setDescModalOpen(true)}
+                                                className="w-full px-4 py-3.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-900 text-xs font-bold rounded-[16px] shadow-sm transition-all text-left flex items-center justify-between"
+                                            >
+                                                <div className="flex flex-col gap-0.5">
+                                                    <span>Paste Meeting Link (Meet / Zoom)</span>
+                                                    <span className="text-[9px] font-bold text-gray-400">Attendees will be redirected to this link</span>
+                                                </div>
+                                                <Globe className="w-4 h-4 text-gray-400" />
+                                            </button>
                                         )}
                                     </div>
                                 )}

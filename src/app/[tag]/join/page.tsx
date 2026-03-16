@@ -1,9 +1,10 @@
 "use client";
 
 import React, { Suspense, useState, useEffect, useRef } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { ShieldAlert, Loader2, ExternalLink, Video, Clock, CheckCircle2 } from "lucide-react";
+import { ShieldAlert, Loader2, ExternalLink, Video, Clock, CheckCircle2, Sparkles, ChevronRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import type { Event, Attendee } from "../../events/[tag]/types";
 
 function detectPlatform(link: string) {
@@ -45,6 +46,7 @@ function getPlatformMeta(link: string) {
 function JoinInner() {
     const params = useParams();
     const searchParams = useSearchParams();
+    const router = useRouter();
     const tag = typeof params === "object" && params?.tag ? String(params.tag) : null;
     const token = searchParams.get("token");
 
@@ -58,6 +60,29 @@ function JoinInner() {
     const prevLink = useRef<string | null>(null);
     const heartbeatInterval = useRef<NodeJS.Timeout | null>(null);
 
+    // Derived State
+    const link = event?.virtual_link || "";
+    const meta = getPlatformMeta(link);
+    const platform = detectPlatform(link);
+
+    let startTimeDisplay = "TBC";
+    let startTime = new Date();
+    if (event?.start_date) {
+        const timeStr = event.start_time ? `T${event.start_time}` : "T00:00:00";
+        startTime = new Date(`${event.start_date}${timeStr}`);
+        startTimeDisplay = startTime.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })
+            + " · " + startTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+
+    const isBeforeStart = !isHost && new Date() < new Date(startTime.getTime() - 15 * 60000);
+
+    let youtubeEmbedUrl = "";
+    if (platform.isYouTube && link) {
+        const videoId = link.split("v=")[1]?.split("&")[0] || link.split("youtu.be/")[1]?.split("?")[0];
+        if (videoId) youtubeEmbedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+    }
+
+    // Hooks
     useEffect(() => {
         const currentLink = event?.virtual_link ?? null;
         if (prevLink.current !== null && prevLink.current !== currentLink) {
@@ -145,10 +170,19 @@ function JoinInner() {
         };
     }, [tag, token]);
 
+    useEffect(() => {
+        // If we have a token and the event is ready, redirect DIRECTLY to the meeting link
+        if (attendee && event && !isBeforeStart && event.virtual_link) {
+            window.location.href = event.virtual_link;
+        }
+    }, [attendee, event, isBeforeStart]);
+
+    // Redundant loading check removed - consolidated below
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-white/30" />
+            <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-white/20 mb-4" />
+                <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/30">Syncing with Venue...</span>
             </div>
         );
     }
@@ -156,137 +190,119 @@ function JoinInner() {
     if (error || !event || !attendee) {
         return (
             <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-6 text-center">
-                <div className="w-16 h-16 rounded-3xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-8">
-                    <ShieldAlert className="w-8 h-8 text-red-400" />
-                </div>
-                <h1 className="text-2xl font-bold text-white mb-3 tracking-tight">Access Restricted</h1>
-                <p className="text-gray-400 font-medium max-w-sm mb-10 leading-relaxed text-sm">{error}</p>
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="w-20 h-20 rounded-[32px] bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-10"
+                >
+                    <ShieldAlert className="w-10 h-10 text-red-400" />
+                </motion.div>
+                <h1 className="text-3xl font-black text-white mb-4 tracking-tight uppercase italic italic">Access <span className="text-red-500">Denied</span></h1>
+                <p className="text-gray-500 font-bold max-w-sm mb-12 leading-relaxed text-sm uppercase tracking-wide">{error}</p>
                 <button
                     onClick={() => window.location.reload()}
-                    className="px-8 py-3.5 bg-white/10 hover:bg-white/15 text-white rounded-2xl text-[13px] font-bold tracking-tight transition-all border border-white/10"
+                    className="px-10 py-4 bg-white/5 hover:bg-white/10 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all border border-white/10"
                 >
-                    Try Again
+                    System Reboot
                 </button>
             </div>
         );
     }
 
-    const link = event.virtual_link || "";
-    const meta = getPlatformMeta(link);
-    const platform = detectPlatform(link);
-
-    let startTimeDisplay = "TBC";
-    let startTime = new Date();
-    if (event.start_date) {
-        const timeStr = event.start_time ? `T${event.start_time}` : "T00:00:00";
-        startTime = new Date(`${event.start_date}${timeStr}`);
-        startTimeDisplay = startTime.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })
-            + " · " + startTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    }
-
-    const isBeforeStart = !isHost && new Date() < new Date(startTime.getTime() - 15 * 60000);
-
-    let youtubeEmbedUrl = "";
-    if (platform.isYouTube && link) {
-        const videoId = link.split("v=")[1]?.split("&")[0] || link.split("youtu.be/")[1]?.split("?")[0];
-        if (videoId) youtubeEmbedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
-    }
-
     return (
-        <div className={`min-h-screen bg-gradient-to-br ${meta.bg} bg-gray-950 flex flex-col items-center justify-center p-6`}
-            style={{ backgroundColor: "#09090b" }}>
+        <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 overflow-hidden selection:bg-blue-100">
+            {/* Background elements */}
+            <div className="fixed inset-0 pointer-events-none">
+                <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-500/[0.03] blur-[120px] rounded-full" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-500/[0.03] blur-[120px] rounded-full" />
+            </div>
 
-            {!isBeforeStart && platform.isYouTube && youtubeEmbedUrl && (
-                <div className="fixed inset-0 z-0">
-                    <iframe src={youtubeEmbedUrl} className="w-full h-full border-0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen />
+            <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8 }}
+                className="relative w-full max-w-lg bg-white/80 backdrop-blur-3xl rounded-[48px] p-12 text-center border border-white shadow-[0_32px_128px_-16px_rgba(0,0,0,0.08)]"
+            >
+                <div className="flex items-center justify-center gap-3 mb-12">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                        <Sparkles className="w-4 h-4 text-white" />
+                    </div>
+                    <span className="text-[12px] font-black text-gray-400 uppercase tracking-[0.4em] italic">EventFlow</span>
                 </div>
-            )}
 
-            <div className={`relative w-full max-w-md ring-1 ${meta.ring} bg-white/5 backdrop-blur-xl rounded-[32px] p-10 text-center border border-white/[0.08] shadow-2xl`}>
-
-                <div className="flex items-center justify-center gap-2 mb-10">
-                    <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[var(--color-primary-500)] to-[var(--color-primary-700)] flex items-center justify-center text-[10px]">✦</div>
-                    <span className="text-[11px] font-bold text-white/40 uppercase tracking-[0.2em]">EventFlow</span>
-                </div>
-
-                {isBeforeStart && (
-                    <>
-                        <div className="w-16 h-16 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-8">
-                            <Clock className="w-8 h-8 text-white/40" />
+                {isBeforeStart ? (
+                    <div className="space-y-8">
+                        <div className="relative inline-block">
+                            <div className="absolute inset-0 bg-blue-500/10 blur-2xl rounded-full scale-150 animate-pulse" />
+                            <div className="relative w-24 h-24 rounded-[40px] bg-white border border-gray-100 flex items-center justify-center mx-auto shadow-sm">
+                                <Clock className="w-10 h-10 text-blue-500" />
+                            </div>
                         </div>
-                        <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest mb-3">Opening Soon</p>
-                        <h1 className="text-2xl font-bold text-white mb-3 tracking-tight">{event.event_title}</h1>
-                        <p className="text-gray-400 text-sm font-medium mb-6">{startTimeDisplay}</p>
-                        <p className="text-gray-500 text-xs leading-relaxed">You&apos;re early! This session opens 15 minutes before the start time.</p>
-                    </>
+                        <div className="space-y-4">
+                            <p className="text-[11px] font-black text-blue-600 uppercase tracking-[0.3em]">Opening Doors Soon</p>
+                            <h1 className="text-4xl font-black text-gray-900 tracking-tighter leading-none italic uppercase">{event.event_title}</h1>
+                            <p className="text-gray-500 text-sm font-bold tracking-wide">{startTimeDisplay}</p>
+                        </div>
+                        <div className="bg-gray-50/50 border border-gray-100 rounded-3xl p-6">
+                            <p className="text-gray-400 text-[11px] font-bold uppercase tracking-widest leading-relaxed">
+                                You&apos;re early! This session opens 15 minutes before the start time. Hang tight, the venue is preparing for your arrival.
+                            </p>
+                        </div>
+                    </div>
+                ) : !link ? (
+                    <div className="space-y-8">
+                        <div className="w-24 h-24 rounded-[40px] bg-gray-50/50 border border-gray-100 flex items-center justify-center mx-auto mb-8">
+                            <Video className="w-10 h-10 text-gray-200" />
+                        </div>
+                        <div className="space-y-4">
+                            <p className="text-[11px] font-black text-gray-400 uppercase tracking-[0.3em]">Awaiting Uplink</p>
+                            <h1 className="text-4xl font-black text-gray-900 tracking-tighter leading-none italic uppercase">{event.event_title}</h1>
+                        </div>
+                        <p className="text-gray-400 text-[11px] font-bold uppercase tracking-widest leading-relaxed">
+                            The organizer hasn&apos;t added a meeting link yet. Check back closer to the event time.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="space-y-8">
+                        <div className="relative inline-block">
+                            <div className="absolute inset-0 bg-blue-500/10 blur-2xl rounded-full scale-150 animate-pulse" />
+                            <div className="relative w-24 h-24 rounded-[40px] bg-white border border-gray-100 flex items-center justify-center mx-auto text-4xl shadow-xl">
+                                {meta.icon}
+                            </div>
+                        </div>
+                        <div className="space-y-4">
+                            <p className="text-[11px] font-black text-gray-400 uppercase tracking-[0.3em]">{meta.label} Session</p>
+                            <h1 className="text-4xl font-black text-gray-900 tracking-tighter leading-none italic uppercase">{event.event_title}</h1>
+                        </div>
+                        
+                        <div className="flex flex-col gap-4">
+                            <button
+                                onClick={() => {
+                                    if (event?.virtual_link) {
+                                        window.location.href = event.virtual_link;
+                                    }
+                                }}
+                                className="group relative overflow-hidden w-full flex items-center justify-center gap-4 py-6 px-10 bg-gray-900 text-white rounded-[32px] font-black uppercase tracking-widest text-sm shadow-xl transition-all hover:scale-[1.02] active:scale-95"
+                            >
+                                <div className="absolute inset-0 bg-blue-600 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+                                <span className="relative z-10">Enter Digital Venue</span>
+                                <ChevronRight className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-all" />
+                            </button>
+                            <p className="text-gray-300 text-[10px] font-black uppercase tracking-widest font-bold">Encrypted Connection Established</p>
+                        </div>
+                    </div>
                 )}
 
-                {!isBeforeStart && !link && (
-                    <>
-                        <div className="w-16 h-16 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-8">
-                            <Video className="w-8 h-8 text-white/30" />
-                        </div>
-                        <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest mb-3">No Link Yet</p>
-                        <h1 className="text-2xl font-bold text-white mb-3 tracking-tight">{event.event_title}</h1>
-                        <p className="text-gray-500 text-sm leading-relaxed">The organizer hasn&apos;t added a meeting link yet. Check back closer to the event time.</p>
-                    </>
-                )}
-
-                {!isBeforeStart && link && !joined && (
-                    <>
-                        <div className="w-16 h-16 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-8 text-3xl">
-                            {meta.icon}
-                        </div>
-                        <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest mb-3">{meta.label}</p>
-                        <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">{event.event_title}</h1>
-                        <p className="text-gray-500 text-sm mb-10">{startTimeDisplay}</p>
-                        <a
-                            href={link}
-                            target="_blank"
-                            rel="noreferrer"
-                            onClick={() => setJoined(true)}
-                            className={`w-full flex items-center justify-center gap-3 py-4 px-8 ${meta.btn} text-white rounded-2xl font-bold tracking-tight shadow-xl ${meta.glow} transition-all hover:scale-[1.02] text-sm`}
-                        >
-                            <Video className="w-4 h-4" />
-                            {isHost ? `Start on ${meta.label}` : `Join on ${meta.label}`}
-                            <ExternalLink className="w-3.5 h-3.5 opacity-60" />
-                        </a>
-                        <p className="text-gray-600 text-xs mt-5">Opens in a new tab</p>
-                    </>
-                )}
-
-                {!isBeforeStart && link && joined && (
-                    <>
-                        <div className="w-16 h-16 rounded-3xl bg-green-500/10 border border-green-500/20 flex items-center justify-center mx-auto mb-8">
-                            <CheckCircle2 className="w-8 h-8 text-green-400" />
-                        </div>
-                        <p className="text-[11px] font-bold text-green-400/60 uppercase tracking-widest mb-3">You&apos;re In</p>
-                        <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">{event.event_title}</h1>
-                        <p className="text-gray-500 text-sm mb-10">The {meta.label} meeting opened in a new tab.</p>
-                        <a
-                            href={link}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="w-full flex items-center justify-center gap-3 py-4 px-8 bg-white/10 hover:bg-white/20 text-white rounded-2xl font-bold tracking-tight transition-all text-sm border border-white/10"
-                        >
-                            <ExternalLink className="w-4 h-4" />
-                            Rejoin {meta.label}
-                        </a>
-                    </>
-                )}
-
-                <div className="mt-10 pt-8 border-t border-white/5 flex items-center justify-center gap-2">
-                    <div className="w-7 h-7 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-[11px] font-bold text-white/50">
+                <div className="mt-16 pt-10 border-t border-gray-100 flex items-center justify-center gap-4">
+                    <div className="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-xs font-black text-gray-400 italic">
                         {attendee.first_name.charAt(0)}
                     </div>
-                    <span className="text-[12px] text-white/30 font-medium">
-                        {attendee.first_name} {attendee.last_name}
-                        <span className="text-white/20 ml-1.5">· {isHost ? "Organizer" : "Guest"}</span>
-                    </span>
+                    <div className="text-left">
+                        <p className="text-[12px] font-black text-gray-900 tracking-tighter italic uppercase">{attendee.first_name} {attendee.last_name}</p>
+                        <p className="text-[9px] font-black text-gray-300 uppercase tracking-[0.2em]">{isHost ? "Venue Controller" : "Authenticated Guest"}</p>
+                    </div>
                 </div>
-            </div>
+            </motion.div>
         </div>
     );
 }

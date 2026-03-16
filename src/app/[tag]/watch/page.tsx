@@ -16,6 +16,7 @@ import {
     CheckCircle2,
     Video,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import type { Event, Attendee } from "../../events/[tag]/types";
 
 // Detect platform from link
@@ -282,21 +283,84 @@ export default function DigitalVenuePage() {
                 <div className="flex-1 flex flex-col min-w-0 min-h-[450px] md:min-h-[600px] lg:min-h-0">
                     <div className="w-full flex-1 bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm relative flex flex-col items-center justify-center p-12 text-center">
 
-                        {/* Before start state */}
-                        {isBeforeStart && (
-                            <div className="flex flex-col items-center">
-                                <div className="w-20 h-20 rounded-[32px] bg-white border border-gray-100 shadow-sm flex items-center justify-center mb-8">
-                                    <Clock className="w-10 h-10 text-gray-400" />
+                        {/* --- PREMIUM WAITING/EMPTY STATES --- */}
+                        {!youtubeEmbedUrl && (!joined || isBeforeStart) && (
+                            <motion.div 
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="flex flex-col items-center max-w-md w-full"
+                            >
+                                <div className="relative mb-12">
+                                    <div className="absolute inset-0 bg-blue-100 blur-3xl opacity-30 scale-150 animate-pulse rounded-full" />
+                                    <div className="relative w-24 h-24 bg-white rounded-[40px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] border border-gray-50 flex items-center justify-center group overflow-hidden">
+                                        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        {isBeforeStart ? (
+                                            <Clock className="w-10 h-10 text-blue-600 relative z-10" />
+                                        ) : !link ? (
+                                            <Video className="w-10 h-10 text-gray-300 relative z-10" />
+                                        ) : (
+                                            <Video className={`w-10 h-10 ${colors.icon} relative z-10`} />
+                                        )}
+                                    </div>
+                                    <motion.div 
+                                        animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                                        transition={{ repeat: Infinity, duration: 2 }}
+                                        className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 rounded-full border-4 border-white shadow-sm"
+                                    />
                                 </div>
-                                <h2 className="text-2xl font-bold mb-3 tracking-tight text-gray-900">Opening Soon</h2>
-                                <p className="text-gray-500 max-w-sm font-medium leading-relaxed">
-                                    The session hasn't started yet. You'll be able to join 15 minutes before the start time.
-                                </p>
-                            </div>
+
+                                <div className="space-y-4 mb-10">
+                                    <h2 className="text-3xl font-black text-gray-900 tracking-tight leading-tight uppercase italic">
+                                        {isBeforeStart ? "Venue Opening" : !link ? "No Link" : platformLabel} <br />
+                                        <span className="text-blue-600">
+                                            {isBeforeStart ? "Coming Soon" : !link ? "Yet" : "Meeting"}
+                                        </span>
+                                    </h2>
+                                    <p className="text-sm font-medium text-gray-400 leading-relaxed px-4">
+                                        {isBeforeStart 
+                                            ? "The doors haven't opened yet. You'll be able to join 15 minutes before the start time." 
+                                            : !link 
+                                                ? "The organizer hasn't added a meeting link yet. Check back closer to the event time."
+                                                : platform.isExternal 
+                                                    ? `Ready to join the ${platformLabel} session? Click below to launch the digital venue.`
+                                                    : "Preparing your secure stream access..."
+                                        }
+                                    </p>
+                                </div>
+
+                                {platform.isExternal && link && !isBeforeStart && !joined && (
+                                    <button
+                                        onClick={() => setJoined(true)}
+                                        className={`group relative overflow-hidden px-10 py-5 ${colors.btn} text-white rounded-[24px] font-black text-sm uppercase tracking-widest shadow-2xl ${colors.shadow} transition-all active:scale-95 flex items-center justify-center gap-3 w-full`}
+                                    >
+                                        <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+                                        <a
+                                            href={link}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="flex items-center gap-3 relative z-10"
+                                        >
+                                            {isHost ? "Launch Venue" : "Secure Entry"}
+                                            <ExternalLink className="w-4 h-4 opacity-70 group-hover:translate-x-1 transition-transform" />
+                                        </a>
+                                    </button>
+                                )}
+
+                                {!link && !isBeforeStart && (
+                                    <div className="w-full h-px background-gradient-to-r from-transparent via-gray-100 to-transparent my-8" />
+                                )}
+
+                                {isBeforeStart && (
+                                    <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-xl border border-gray-100">
+                                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Awaiting Organizer</span>
+                                    </div>
+                                )}
+                            </motion.div>
                         )}
 
-                        {/* YouTube embed */}
-                        {!isBeforeStart && platform.isYouTube && youtubeEmbedUrl && (
+                        {/* YouTube Stream (If link exists) */}
+                        {platform.isYouTube && youtubeEmbedUrl && !isBeforeStart && (
                             <div className="absolute inset-0">
                                 <iframe
                                     src={youtubeEmbedUrl}
@@ -307,69 +371,32 @@ export default function DigitalVenuePage() {
                             </div>
                         )}
 
-                        {/* External meeting redirect (Zoom, Meet, etc.) */}
-                        {!isBeforeStart && platform.isExternal && !platform.isYouTube && (
-                            <>
-                                {!joined ? (
-                                    <div className="flex flex-col items-center">
-                                        <div className={`w-20 h-20 rounded-[32px] ${colors.bg} ${colors.border} border flex items-center justify-center mb-8 shadow-sm`}>
-                                            <Video className={`w-10 h-10 ${colors.icon}`} />
-                                        </div>
-                                        <h2 className="text-2xl font-bold mb-3 tracking-tight text-gray-900">
-                                            {platformLabel} Meeting
-                                        </h2>
-                                        <p className="text-gray-500 max-w-sm font-medium leading-relaxed mb-10">
-                                            {isHost
-                                                ? `Open ${platformLabel} to start your meeting. Your attendees are waiting!`
-                                                : `Click below to join the ${platformLabel} meeting in a new tab.`}
-                                        </p>
-                                        <a
-                                            href={link}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            onClick={() => setJoined(true)}
-                                            className={`px-10 py-4 ${colors.btn} text-white rounded-2xl font-bold tracking-tight shadow-xl ${colors.shadow} transition-all hover:scale-[1.02] flex items-center gap-3`}
-                                        >
-                                            <Video className="w-5 h-5" />
-                                            <span>{isHost ? `Start on ${platformLabel}` : `Join on ${platformLabel}`}</span>
-                                            <ExternalLink className="w-4 h-4 opacity-60" />
-                                        </a>
-                                        <p className="text-[11px] text-gray-400 mt-6 font-medium max-w-xs leading-relaxed">
-                                            Opens in a new tab. Come back here for event details.
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col items-center">
-                                        <CheckCircle2 className="w-16 h-16 text-green-500 mb-8" />
-                                        <h2 className="text-2xl font-bold mb-3 tracking-tight text-gray-900">You're In!</h2>
-                                        <p className="text-gray-500 max-w-sm font-medium leading-relaxed mb-8">
-                                            The {platformLabel} meeting should have opened in a new tab.
-                                        </p>
-                                        <a
-                                            href={link}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className={`px-8 py-4 ${colors.btn} text-white rounded-xl font-bold tracking-tight shadow-xl ${colors.shadow} transition-all flex items-center gap-3`}
-                                        >
-                                            <ExternalLink className="w-4 h-4" />
-                                            Rejoin Meeting
-                                        </a>
-                                    </div>
-                                )}
-                            </>
-                        )}
-
-                        {/* No link set */}
-                        {!isBeforeStart && !link && (
-                            <div className="flex flex-col items-center">
-                                <div className="w-20 h-20 rounded-[32px] bg-gray-100 border border-gray-200 flex items-center justify-center mb-8">
-                                    <Video className="w-10 h-10 text-gray-400" />
+                        {/* "You're In" state for external meetings */}
+                        {joined && platform.isExternal && !platform.isYouTube && !isBeforeStart && (
+                            <motion.div 
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="flex flex-col items-center"
+                            >
+                                <div className="w-24 h-24 bg-green-50 rounded-[40px] border border-green-100 flex items-center justify-center mb-10 shadow-sm">
+                                    <CheckCircle2 className="w-12 h-12 text-green-500" />
                                 </div>
-                                <h2 className="text-2xl font-bold mb-3 tracking-tight text-gray-900">No Meeting Link</h2>
-                                <p className="text-gray-500 max-w-sm font-medium leading-relaxed">
-                                    The organizer hasn't added a meeting link yet. Please check back closer to the event time.
+                                <h2 className="text-3xl font-black text-gray-900 tracking-tight leading-tight uppercase italic mb-4">
+                                    Access <span className="text-green-600">Granted</span>
+                                </h2>
+                                <p className="text-sm font-medium text-gray-400 max-w-sm mb-12">
+                                    The session has launched in a private tab. Use the control below if you need to re-enter.
                                 </p>
-                            </div>
+                                <a
+                                    href={link}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className={`px-10 py-5 ${colors.btn} text-white rounded-[24px] font-black text-sm uppercase tracking-widest shadow-2xl ${colors.shadow} transition-all active:scale-95 flex items-center justify-center gap-3`}
+                                >
+                                    <ExternalLink className="w-4 h-4" />
+                                    <span>Return to Stage</span>
+                                </a>
+                            </motion.div>
                         )}
                     </div>
 

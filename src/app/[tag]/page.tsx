@@ -31,7 +31,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Event, Pass, Question } from "../events/[tag]/types";
-import { sendWelcomeEmail } from "../actions";
+import { initializeTransaction } from "@/app/actions";
+import { fulfillOrder } from "@/lib/registrations";
+import Script from "next/script";
 
 export default function RegistrationPage() {
     const params = useParams();
@@ -184,28 +186,15 @@ export default function RegistrationPage() {
                 throw new Error("Each attendee must have a unique email address");
             }
 
-            // === VALIDATION 4: Check if emails already registered for this event (attendees OR orders) ===
-            const [{ data: existingAttendees }, { data: existingOrders }] = await Promise.all([
-                supabase
-                    .from("attendees")
-                    .select("email")
-                    .eq("event_id", event.id)
-                    .in("email", emailsInForm),
-                supabase
-                    .from("orders_table")
-                    .select("email")
-                    .eq("event_id", event.id)
-                    .in("email", emailsInForm)
-            ]);
+            // === VALIDATION 4: Check if emails already registered for this event (Attendees ONLY) ===
+            const { data: existingAttendees } = await supabase
+                .from("attendees")
+                .select("email")
+                .eq("event_id", event.id)
+                .in("email", emailsInForm);
 
-            const allRegisteredEmails = [
-                ...(existingAttendees ?? []),
-                ...(existingOrders ?? [])
-            ].map(r => r.email);
-            const uniqueRegistered = [...new Set(allRegisteredEmails)];
-
-            if (uniqueRegistered.length > 0) {
-                const alreadyRegistered = uniqueRegistered.join(", ");
+            if (existingAttendees && existingAttendees.length > 0) {
+                const alreadyRegistered = existingAttendees.map(r => r.email).join(", ");
                 throw new Error(`Already registered for this event: ${alreadyRegistered}`);
             }
 
@@ -232,130 +221,119 @@ export default function RegistrationPage() {
                 throw new Error(`Only ${remaining} ticket(s) remaining for ${pass.title}`);
             }
 
-            // Generate a collision-resistant order reference
-            const uniquePart = crypto.randomUUID().replace(/-/g, '').substring(0, 10).toUpperCase();
-            const orderRef = `EF-${event.tag?.toUpperCase() || 'EV'}-${uniquePart}`;
+            // 4. Determine if payment is needed
+            const isPaid = !currentTicket?.is_free && (currentTicket?.price ?? 0) > 0;
+            const expectedPrice = currentTicket?.price ?? 0;
 
-            // === CREATE ORDER ===
-            const { data: order, error: orderErr } = await supabase
-                .from("orders_table")
-                .insert({
-                    event_id: event.id,
-                    pass_id: pass.id,
-                    quantity: ticketQuantity,
-                    first_name: primaryGuest.firstName || "Guest",
-                    last_name: primaryGuest.lastName || "",
-                    email: primaryGuest.email,
-                    order_ref: orderRef,
-                    total_amount: 0,
-                    expected_amount_kobo: 0,
-                    status: "completed"
-                })
-                .select()
-                .single();
+            // === CHECK IF ALREADY REGISTERED (Attendee is source of truth) ===
+            const { data: existingAttendee } = await supabase
+                .from("attendees")
+                .select("id")
+                .eq("event_id", event.id)
+                .eq("email", primaryGuest.email)
+                .maybeSingle();
 
-            if (orderErr) {
-                console.error("Order creation failed:", orderErr);
-                if (orderErr.code === "23505") {
-                    // Unique constraint violation — email already has an order for this event
-                    throw new Error("This email is already registered for this event. Please use a different email address.");
-                }
-                throw new Error(orderErr.message || "Failed to create order. Please try again.");
+            if (existingAttendee) {
+                throw new Error(`Already registered for this event: ${primaryGuest.email}`);
             }
 
-            // === CREATE ATTENDEES ===
-            let primaryAttendeeId: string | null = null;
-            for (let i = 0; i < validGuests.length; i++) {
-                const guest = validGuests[i];
-                const attendeeRef = `EF-${event.tag?.toUpperCase() || 'EV'}-${crypto.randomUUID().replace(/-/g, '').substring(0, 8).toUpperCase()}`;
+            // === CHECK FOR EXISTING PENDING ORDER ===
+            const { data: existingOrder } = await supabase
+                .from("orders_table")
+                .select("id, order_ref, total_amount, pass_id")
+                .eq("event_id", event.id)
+                .eq("email", primaryGuest.email)
+                .eq("status", "pending")
+                .maybeSingle();
 
-                const { data: attendee, error: attendeeErr } = await supabase
-                    .from("attendees")
-                    .insert({
-                        event_id: event.id,
-                        order_id: order.id,
-                        pass_id: pass.id,
-                        first_name: guest.firstName || "Guest",
-                        last_name: guest.lastName || "",
-                        email: guest.email,
-                        ref: attendeeRef,
-                        email_status: guest.isInvite ? "invited" : "registered"
-                    })
+            // === IDEMPOTENCY LOGIC: Reuse order_ref if ticket and price are the same ===
+            let orderRef: string;
+            if (existingOrder && existingOrder.pass_id === pass.id && Number(existingOrder.total_amount) === expectedPrice) {
+                // Same intent, reuse the Paystack reference to prevent double payment
+                orderRef = existingOrder.order_ref;
+            } else {
+                // New intent or changed ticket/price, generate a new reference
+                const uniquePart = crypto.randomUUID().replace(/-/g, '').substring(0, 10).toUpperCase();
+                orderRef = `EF-${event.tag?.toUpperCase() || 'EV'}-${uniquePart}`;
+            }
+
+            // === UPSERT ORDER ===
+            const orderData = {
+                event_id: event.id,
+                pass_id: pass.id,
+                quantity: ticketQuantity,
+                first_name: primaryGuest.firstName || "Guest",
+                last_name: primaryGuest.lastName || "",
+                email: primaryGuest.email,
+                order_ref: orderRef,
+                total_amount: isPaid ? expectedPrice : 0,
+                expected_amount_kobo: isPaid ? Math.round(expectedPrice * 100) : 0,
+                status: isPaid ? "pending" : "completed",
+                updated_at: new Date().toISOString()
+            };
+
+            const { data: order, error: orderErr } = existingOrder 
+                ? await supabase
+                    .from("orders_table")
+                    .update(orderData)
+                    .eq("id", existingOrder.id)
+                    .select()
+                    .single()
+                : await supabase
+                    .from("orders_table")
+                    .insert(orderData)
                     .select()
                     .single();
 
-                if (i === 0 && attendee) {
-                    primaryAttendeeId = attendee.id;
-                }
-
-                if (attendeeErr) {
-                    // Handle unique constraint violation gracefully
-                    if (attendeeErr.code === "23505") {
-                        throw new Error(`${guest.email} is already registered for this event`);
-                    }
-                    console.error("Attendee creation failed:", attendeeErr);
-                    throw new Error(`Failed to register ${guest.email}. Please try again.`);
-                }
-
-                // === SAVE ANSWERS ===
-                if (attendee && Object.keys(guest.answers).length > 0) {
-                    const answerInserts = Object.entries(guest.answers).map(([qId, answer]) => ({
-                        attendee_id: attendee.id,
-                        question_id: qId,
-                        answer_text: String(answer)
-                    }));
-
-                    const { error: answerErr } = await supabase.from("answers").insert(answerInserts);
-                    if (answerErr) {
-                        console.error("Failed to save answers:", answerErr);
-                        // Surface this — don't silently succeed when answers are lost
-                        throw new Error("Your registration was created but we could not save your answers. Please contact the organiser.");
-                    }
-                }
+            if (orderErr) {
+                console.error("Order processing failed:", orderErr);
+                throw new Error(orderErr.message || "Failed to process order. Please try again.");
             }
 
-            // === UPDATE QUANTITY_SOLD ===
-            const { error: rpcErr } = await supabase.rpc('increment_quantity_sold', {
-                pass_id_param: pass.id,
-                amount: ticketQuantity
-            });
-            if (rpcErr) console.error("Failed to update quantity:", rpcErr);
+            if (isPaid) {
+                // === PAID FLOW: INITIATE PAYSTACK ===
+                const amountInKobo = Math.round((currentTicket?.price ?? 0) * 100);
+                
+                const { data: paystackData, error: paystackErr } = await initializeTransaction({
+                    email: guests[0].email,
+                    amount: amountInKobo,
+                    reference: orderRef,
+                    metadata: {
+                        orderId: order.id,
+                        eventId: event.id,
+                        passId: selectedTicket,
+                        eventTag: event.tag,
+                        validGuests: validGuests
+                    },
+                    callbackUrl: `${window.location.origin}/${event.tag}/receipt/${orderRef}`
+                });
 
-            // === SEND INVITE EMAILS (for invited guests) ===
-            // We'll send invites asynchronously - don't block the redirect
-            const invitedAttendees = await supabase
-                .from("attendees")
-                .select("id")
-                .eq("order_id", order.id)
-                .eq("email_status", "invited");
+                if (paystackErr || !paystackData) {
+                    throw new Error(paystackErr || "Failed to initialize payment");
+                }
 
-            if (invitedAttendees.data && invitedAttendees.data.length > 0) {
-                // Wait for invites to send to prevent browser collecting requests on redirect
-                await Promise.all(
-                    invitedAttendees.data.map(att =>
-                        fetch('/api/send-invite', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ attendeeId: att.id, eventTag: event.tag })
-                        }).catch(err => console.error('Failed to send invite:', err))
-                    )
-                );
+                // Redirect to Paystack
+                window.location.href = paystackData.authorization_url;
+                return;
+            } else {
+                // === FREE FLOW: FULFILL DIRECTLY ===
+                await fulfillOrder({
+                    orderId: order.id,
+                    eventId: event.id,
+                    passId: selectedTicket,
+                    eventTag: event.tag || "event",
+                    validGuests: validGuests,
+                    totalAmount: 0
+                });
+
+                // === REDIRECT TO RECEIPT ===
+                window.location.href = `/${event.tag}/receipt/${orderRef}`;
             }
-
-
-            // === SEND WELCOME EMAIL (registered primary user only) ===
-            // Trigger confirmation for the primary guest (purchaser) using the captured ID.
-            if (primaryAttendeeId) {
-                await sendWelcomeEmail(primaryAttendeeId, event.id);
-            }
-
-            // === REDIRECT TO RECEIPT ===
-            window.location.href = `/${event.tag}/receipt/${orderRef}`;
 
         } catch (err: any) {
             console.error("Registration error:", err);
             // Provide user-friendly error message
-            let errorMsg = err.message || "Failed to complete registration";
+            let errorMsg = String(err.message || "Failed to complete registration");
             // Clean up technical error messages
             if (errorMsg.includes("duplicate key") || errorMsg.includes("unique_event_email")) {
                 errorMsg = "This email is already registered for this event";
@@ -422,7 +400,7 @@ export default function RegistrationPage() {
                                     <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none">{ticket.description}</div>
                                 </div>
                                 <div className="text-right ml-4">
-                                    <div className="text-lg font-black text-gray-900 tracking-tight">{ticket.is_free ? 'FREE' : `$${ticket.price}`}</div>
+                                    <div className="text-lg font-black text-gray-900 tracking-tight">{ticket.is_free ? 'FREE' : `₦${(ticket.price ?? 0).toLocaleString()}`}</div>
                                 </div>
                             </button>
 
@@ -472,7 +450,54 @@ export default function RegistrationPage() {
     })();
 
     return (
-        <div className="min-h-screen bg-white text-[#111827] selection:bg-blue-100 pb-32">
+        <div className="min-h-screen bg-white text-[#111827] selection:bg-blue-100 pb-32 relative">
+            {/* Redirection / Submitting Overlay */}
+            <AnimatePresence>
+                {submitting && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] bg-white/90 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            className="space-y-8"
+                        >
+                            <div className="relative inline-block">
+                                <div className="w-24 h-24 bg-gray-900 rounded-[32px] flex items-center justify-center shadow-2xl relative z-10 mx-auto">
+                                    <Loader2 className="w-10 h-10 text-white animate-spin stroke-[3]" />
+                                </div>
+                                <div className="absolute inset-0 bg-blue-100 blur-3xl opacity-50 scale-150 animate-pulse" />
+                            </div>
+                            
+                            <div className="space-y-3">
+                                <h2 className="text-3xl font-black text-gray-900 tracking-tight leading-none uppercase italic">
+                                    Securely Processing<br />
+                                    <span className="text-blue-600">Your Registration</span>
+                                </h2>
+                                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">
+                                    {currentTicket && !currentTicket.is_free && (currentTicket.price ?? 0) > 0 
+                                        ? "Preparing secure payment gateway..." 
+                                        : "Finalizing your spot and ticket..."}
+                                </p>
+                            </div>
+
+                            <div className="flex items-center justify-center gap-1.5 pt-4">
+                                {[0, 1, 2].map((i) => (
+                                    <motion.div
+                                        key={i}
+                                        animate={{ scale: [1, 1.2, 1], opacity: [0.3, 1, 0.3] }}
+                                        transition={{ repeat: Infinity, duration: 1.5, delay: i * 0.2 }}
+                                        className="w-1.5 h-1.5 bg-blue-600 rounded-full"
+                                    />
+                                ))}
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Top Navigation */}
             <header className="w-full p-6 md:px-10 md:py-8 flex items-center justify-between z-50 bg-white/80 backdrop-blur-md sticky top-0 border-b border-gray-50">
@@ -532,6 +557,9 @@ export default function RegistrationPage() {
                                     src={event.image}
                                     alt="Event Cover"
                                     className="w-full h-full object-cover"
+                                    style={{
+                                        objectPosition: `50% ${event.image_focus_y ?? 50}%`
+                                    }}
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-gray-900/10 to-transparent" />
                             </div>
@@ -549,28 +577,25 @@ export default function RegistrationPage() {
                     <div className="lg:col-span-7 space-y-20">
 
                         {/* Info Tiles */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between mb-1.5">
-                                    <div className="flex items-center gap-2 text-[9px] font-black text-gray-300 uppercase tracking-widest">
-                                        <Calendar className="w-3 h-3" /> Date
-                                    </div>
-                                    <button className="text-[8px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors flex items-center gap-1.5 px-2 py-1 bg-blue-50 rounded-lg">
-                                        <CalendarPlus className="w-2.5 h-2.5" /> Save
-                                    </button>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-y-10 gap-x-6 md:gap-8">
+                            <div className="space-y-2.5">
+                                <div className="flex items-center gap-2 text-[9px] font-black text-gray-300 uppercase tracking-widest mb-1">
+                                    <Calendar className="w-3 h-3" /> Date
                                 </div>
-                                <div className="text-base font-black text-gray-900">
+                                <div className="text-[15px] font-black text-gray-900 leading-tight">
                                     {displayDate}
                                 </div>
                             </div>
-                            <div className="space-y-3 md:border-x px-0 md:px-8 border-gray-50">
-                                <div className="flex items-center gap-2 text-[9px] font-black text-gray-300 uppercase tracking-widest mb-1.5">
+                            <div className="space-y-2.5 md:border-x px-0 md:px-8 border-gray-100">
+                                <div className="flex items-center gap-2 text-[9px] font-black text-gray-300 uppercase tracking-widest mb-1">
                                     <Clock className="w-3 h-3" /> Time
                                 </div>
-                                <div className="text-base font-black text-gray-900 leading-tight">{event.start_time}</div>
+                                <div className="text-[15px] font-black text-gray-900 leading-tight">
+                                    {event.start_time}
+                                </div>
                             </div>
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between mb-1.5">
+                            <div className="space-y-2.5 col-span-2 md:col-span-1 border-t md:border-t-0 pt-8 md:pt-0 border-gray-50">
+                                <div className="flex items-center justify-between mb-1">
                                     <div className="flex items-center gap-2 text-[9px] font-black text-gray-300 uppercase tracking-widest">
                                         <MapPin className="w-3 h-3" /> Location
                                     </div>
@@ -580,7 +605,7 @@ export default function RegistrationPage() {
                                         </button>
                                     )}
                                 </div>
-                                <div className="text-base font-black text-gray-900">
+                                <div className="text-[15px] font-black text-gray-900 leading-tight">
                                     {event.event_format === 'virtual' ? 'Digital Venue' : event.event_format === 'hybrid' ? `${event.location} (and Online)` : event.location}
                                 </div>
                             </div>
@@ -600,7 +625,7 @@ export default function RegistrationPage() {
                             />
                         </div>
 
-                        {/* Footer Vibe */}
+                        {/* Footer Vibe (Commented out for now)
                         <div className="flex items-center gap-10 pt-10">
                             <div className="flex items-center gap-3 group cursor-pointer">
                                 <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center border border-gray-100 group-hover:bg-red-50 group-hover:border-red-100 transition-all">
@@ -621,6 +646,7 @@ export default function RegistrationPage() {
                                 </div>
                             </div>
                         </div>
+                        */}
                     </div>
 
                     {/* RIGHT COL: STICKY SELECTOR (Desktop) */}
@@ -631,6 +657,7 @@ export default function RegistrationPage() {
                                     {passes.length > 0 ? (
                                         <>
                                             <TicketSelector />
+                                            {/* Attendance Placeholder (Commented out for now)
                                             <div className="space-y-4 pt-2">
                                                 <button
                                                     onClick={() => setStep(2)}
@@ -648,6 +675,16 @@ export default function RegistrationPage() {
                                                     </div>
                                                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">+{Math.floor(Math.random() * 500 + 100)} attending</span>
                                                 </div>
+                                            </div>
+                                            */}
+
+                                            <div className="pt-2">
+                                                <button
+                                                    onClick={() => setStep(2)}
+                                                    className="w-full py-5 bg-gray-900 text-white rounded-[24px] font-black text-base shadow-[0_20px_40px_-12px_rgba(0,0,0,0.15)] hover:bg-gray-800 active:scale-95 transition-all flex items-center justify-center gap-3"
+                                                >
+                                                    Next step <ArrowRight className="w-5 h-5" />
+                                                </button>
                                             </div>
                                         </>
                                     ) : (
@@ -667,9 +704,11 @@ export default function RegistrationPage() {
                                         </div>
                                     )}
                                 </div>
+                                {/* Verified Badge (Commented out for now)
                                 <div className="bg-gray-50/50 p-5 flex items-center justify-center border-t border-gray-50">
                                     <span className="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em]">Verified Event — EventFlow Safe</span>
                                 </div>
+                                */}
                             </div>
                         </div>
                     </div>
@@ -683,7 +722,7 @@ export default function RegistrationPage() {
                         <div className="flex flex-col">
                             <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1">Your Pass</span>
                             <div className="flex items-baseline gap-1">
-                                <span className="text-3xl font-black text-gray-900 tracking-tight">{currentTicket?.is_free ? 'FREE' : `$${currentTicket?.price}`}</span>
+                                <span className="text-3xl font-black text-gray-900 tracking-tight">{currentTicket?.is_free ? 'FREE' : `₦${(currentTicket?.price ?? 0).toLocaleString()}`}</span>
                             </div>
                         </div>
                         <button
@@ -1013,7 +1052,7 @@ export default function RegistrationPage() {
                                                 <div className="space-y-2 md:text-right">
                                                     <div className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Pass Hierarchy</div>
                                                     <div className="text-4xl font-black text-blue-600 tracking-tight">
-                                                        {currentTicket?.title}
+                                                        {currentTicket?.title} (₦{(currentTicket?.price ?? 0).toLocaleString()})
                                                     </div>
                                                 </div>
                                             </div>
@@ -1062,8 +1101,9 @@ export default function RegistrationPage() {
 
 function PublicPageSkeleton() {
     return (
-        <div className="min-h-screen bg-white">
-            {/* Header Skeleton */}
+        <div className="min-h-screen bg-white overflow-hidden flex flex-col relative">
+
+            {/* Immersive Background */}
             <div className="w-full p-6 md:px-10 md:py-8 flex items-center justify-between border-b border-gray-50">
                 <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-lg bg-gray-100 animate-pulse" />
