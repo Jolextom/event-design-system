@@ -1004,7 +1004,7 @@ export default function RegistrationPage() {
                                                             </div>
 
                                                             {/* Custom Dynamic Questions */}
-                                                            {questions.map((q) => (
+                                                            {questions.filter(q => !q.is_selection_logic).map((q) => (
                                                                 <div key={q.id} className="space-y-3">
                                                                     <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">
                                                                         {q.title} {q.is_required && <span className="text-red-500">*</span>}
