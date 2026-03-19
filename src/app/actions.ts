@@ -63,12 +63,20 @@ export async function sendWelcomeEmail(attendeeId: string, eventId: string) {
         }
 
         // ... rest of the function (no changes to email logic itself)
-        const eventDateStr = new Date(event.start_date).toLocaleDateString("en-US", {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
+        let eventDateStr = "TBA";
+        try {
+            const d = new Date(event.start_date);
+            if (!isNaN(d.getTime())) {
+                eventDateStr = d.toLocaleDateString("en-US", {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            }
+        } catch (e) {
+            console.error("Error formatting event date:", e);
+        }
         const eventLocation = event.location || "Virtual Event";
         const orderRef = attendee?.order?.order_ref || "N/A";
         const receiptLink = `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/${event.tag}/receipt/${attendee?.order?.order_ref}`;

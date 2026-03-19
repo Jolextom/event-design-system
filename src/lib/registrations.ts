@@ -31,7 +31,12 @@ export async function fulfillOrder({
     supabaseClient
 }: FulfillOrderParams) {
     const supabase = supabaseClient || defaultSupabase;
-    console.log(`Fulfilling order ${orderId} for event ${eventTag}`);
+    console.log(`Fulfilling order ${orderId} for event ${eventTag}. Guests count: ${validGuests?.length || 0}`);
+
+    if (!validGuests || validGuests.length === 0) {
+        console.error(`No valid guests found for order ${orderId}. This might indicate truncated metadata.`);
+        // Note: For now we continue to allow status update but log the error
+    }
 
     // 0. Verify Amount (Security Check)
     if (expectedAmount !== undefined && totalAmount < expectedAmount) {

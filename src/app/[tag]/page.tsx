@@ -737,7 +737,7 @@ export default function RegistrationPage() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 md:gap-20">
                     {/* LEFT COL: LOGISTICS */}
-                    <div className="lg:col-span-7 space-y-20">
+                    <div className="lg:col-span-7 space-y-10 md:space-y-20">
                         {/* Info Tiles */}
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-y-10 gap-x-6 md:gap-8">
                             <div className="space-y-2.5">
@@ -778,7 +778,7 @@ export default function RegistrationPage() {
                         </div>
 
                         {/* UNIFIED TICKET SELECTOR */}
-                        <div id="tickets-section" className="py-10 border-y border-gray-50 space-y-6 scroll-mt-32">
+                        <div id="tickets-section" className="py-6 md:py-10 border-y border-gray-50 space-y-6 scroll-mt-32">
                             <TicketSelector isMobile={false} passes={filteredPasses} />
                             
                             {allTriggersAnswered && passes.length > 0 && (
@@ -886,13 +886,13 @@ export default function RegistrationPage() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-gray-900/40 backdrop-blur-lg"
+                        className="fixed inset-0 z-[100] flex flex-col items-center justify-start sm:justify-center p-4 md:p-6 bg-gray-900/40 backdrop-blur-lg overflow-y-auto custom-scrollbar"
                     >
                         <motion.div
                             initial={{ scale: 0.95, y: 30 }}
                             animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.95, y: 30 }}
-                            className="bg-white max-w-xl w-full rounded-[40px] md:rounded-[56px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+                            className="bg-white max-w-xl w-full rounded-[40px] md:rounded-[56px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] my-auto"
                         >
                             <div className="p-7 md:p-9 border-b border-gray-50 flex items-center justify-between bg-white sticky top-0 z-10">
                                 <button onClick={() => setStep(1)} className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-900 transition-all">
@@ -1242,14 +1242,14 @@ function PublicPageSkeleton() {
         <div className="min-h-screen bg-white overflow-hidden flex flex-col relative">
 
             {/* Immersive Background */}
-            <div className="w-full p-6 md:px-10 md:py-8 flex items-center justify-between border-b border-gray-50">
+            <div className="w-full p-4 md:px-10 md:py-8 flex items-center justify-between border-b border-gray-50">
                 <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-lg bg-gray-100 animate-pulse" />
                     <div className="w-24 h-6 rounded-lg bg-gray-100 animate-pulse" />
                 </div>
             </div>
 
-            <main className="max-w-6xl mx-auto px-6 md:px-10 pt-10 md:pt-14">
+            <main className="max-w-6xl mx-auto px-4 md:px-10 pt-10 md:pt-14">
                 {/* Header Skeleton */}
                 <div className="max-w-3xl mb-10 space-y-6">
                     <div className="flex items-center gap-3">

@@ -11,7 +11,12 @@ export interface CalendarEvent {
 }
 
 function formatGoogleDate(date: Date): string {
-    return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    try {
+        if (isNaN(date.getTime())) return "";
+        return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    } catch (e) {
+        return "";
+    }
 }
 
 /**
@@ -19,9 +24,13 @@ function formatGoogleDate(date: Date): string {
  */
 export function generateGoogleCalendarLink(event: CalendarEvent): string {
     const start = new Date(event.startDate);
+    if (isNaN(start.getTime())) return "";
+
     const end = event.endDate 
         ? new Date(event.endDate) 
         : new Date(start.getTime() + 60 * 60 * 1000); // Default 1 hour
+    
+    if (isNaN(end.getTime())) return "";
 
     const url = new URL("https://calendar.google.com/calendar/render");
     url.searchParams.append("action", "TEMPLATE");
@@ -38,9 +47,13 @@ export function generateGoogleCalendarLink(event: CalendarEvent): string {
  */
 export function generateOutlookLink(event: CalendarEvent): string {
     const start = new Date(event.startDate);
+    if (isNaN(start.getTime())) return "";
+
     const end = event.endDate 
         ? new Date(event.endDate) 
         : new Date(start.getTime() + 60 * 60 * 1000);
+    
+    if (isNaN(end.getTime())) return "";
 
     const url = new URL("https://outlook.office.com/calendar/0/deeplink/compose");
     url.searchParams.append("path", "/calendar/action/compose");
