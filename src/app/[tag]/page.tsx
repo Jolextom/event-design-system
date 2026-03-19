@@ -763,7 +763,7 @@ export default function RegistrationPage() {
                                     </div>
                                     {event.event_format !== 'virtual' && (
                                         <button className="text-[8px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors flex items-center gap-1.5 px-2 py-1 bg-blue-50 rounded-lg">
-                                            <Map className="w-2.5 h-2.5" /> Map
+                                            <MapIcon className="w-2.5 h-2.5" /> Map
                                         </button>
                                     )}
                                 </div>
