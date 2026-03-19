@@ -63,9 +63,16 @@ export async function POST(req: NextRequest) {
 
             // Create a local client to avoid singleton issues in edge/server environments
             // Use SERVICE_ROLE_KEY to bypass RLS for administrative fulfillment
+            const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+            
+            if (!serviceKey) {
+                console.error("SUPABASE_SERVICE_ROLE_KEY is missing in production environment");
+                return NextResponse.json({ error: "Configuration error" }, { status: 500 });
+            }
+
             const adminSupabase = createClient(
                 process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+                serviceKey
             );
 
             // 3. Security: Double check expected amount from database

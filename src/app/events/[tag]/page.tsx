@@ -25,6 +25,7 @@ import { CommandHubView } from "./views/CommandHubView";
 import { BasicInfoView } from "./views/BasicInfoView";
 import { RegistrationView } from "./views/RegistrationView";
 import { TicketingView } from "./views/TicketingView";
+import { SelectionLogicView } from "./views/SelectionLogicView";
 import { SmartGroupsView } from "./views/SmartGroupsView";
 import { OperationsView } from "./views/OperationsView";
 import { RegistryView } from "./views/RegistryView";
@@ -797,6 +798,7 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                                             transition={{ duration: 0.2, ease: "circOut" }}
                                             className="h-full"
                                         >
+
                                             {activeBuilderCategory === "registration" && (
                                                 <RegistrationView
                                                     questions={questions}
@@ -818,10 +820,13 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                                             {activeBuilderCategory === "ticketing" && (
                                                 <TicketingView
                                                     passes={passes}
+                                                    questions={questions}
                                                     loading={loadingPasses}
                                                     error={passesError}
                                                     eventId={event?.id ?? null}
                                                     onPassCreated={refetchPasses}
+                                                    onPassUpdated={refetchPasses}
+                                                    onQuestionCreated={refetchQuestions}
                                                     attendees={attendees}
                                                 />
                                             )}

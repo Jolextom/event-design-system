@@ -6,9 +6,14 @@ import * as PaystackLib from "@/lib/paystack";
 import { fulfillOrder } from "@/lib/registrations";
 import { generateGoogleCalendarLink, generateOutlookLink } from "@/lib/calendar";
 
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!serviceKey) {
+    console.warn("SUPABASE_SERVICE_ROLE_KEY is missing. Administrative actions may fail due to RLS.");
+}
+
 const adminSupabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    serviceKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
 export async function sendWelcomeEmail(attendeeId: string, eventId: string) {

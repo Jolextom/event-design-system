@@ -52,7 +52,14 @@ function InlineCreateForm({ eventId, insertAtOrder, onCreated, onCancel }: Inlin
 
             const { data: q, error: qErr } = await supabase
                 .from("questions")
-                .insert({ event_id: eventId, title: title.trim(), question_type: type, is_required: isRequired, question_order: insertAtOrder })
+                .insert({ 
+                    event_id: eventId, 
+                    title: title.trim(), 
+                    question_type: type, 
+                    is_required: isRequired, 
+                    question_order: insertAtOrder,
+                    is_selection_logic: false 
+                })
                 .select().single();
 
             if (qErr) throw qErr;

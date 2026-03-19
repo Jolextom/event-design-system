@@ -2,6 +2,8 @@ import { supabase as defaultSupabase } from "./supabaseClient";
 import { sendWelcomeEmail } from "@/app/actions";
 import crypto from "crypto";
 import { SupabaseClient } from "@supabase/supabase-js";
+import { sendInviteEmail } from "./email";
+import { generateGoogleCalendarLink, generateOutlookLink } from "./calendar";
 
 export interface FulfillOrderParams {
     orderId: string;
@@ -139,50 +141,104 @@ export async function fulfillOrder({
                 answer_text: String(answer)
             }));
 
-            await supabase
+            const { error: answerErr } = await supabase
                 .from("answers")
                 .upsert(answerInserts, { onConflict: 'attendee_id,question_id' });
+            
+            if (answerErr) {
+                console.error(`Failed to store answers for attendee ${attendeeId}:`, answerErr);
+            }
         }
     }
 
-    // 3. Update ticket quantity sold
-    const ticketQuantity = validGuests.length; // Simplified; usually depends on pass type but this is fine for now
+    // 3. Update ticket quantity sold (rpc)
+    const ticketQuantity = validGuests.length;
     await supabase.rpc('increment_quantity_sold', {
         pass_id_param: passId,
         amount: ticketQuantity
     });
 
-    // 4. Send Invite Emails (Asynchronous)
-    // Fetch the primary attendee email to avoid sending them an invite if they are also in a group slot
-    const { data: primaryAttendee } = primaryAttendeeId 
-        ? await supabase.from("attendees").select("email").eq("id", primaryAttendeeId).single()
-        : { data: null };
-
-    const invitedAttendees = await supabase
+    // 4. Send Emails (Directly and Parallelized)
+    const { data: attendeesWithStatus, error: attFetchErr } = await supabase
         .from("attendees")
-        .select("id, email")
-        .eq("order_id", orderId)
-        .eq("email_status", "invited");
+        .select("id, email, email_status, first_name, last_name, ref, pass:pass_id(title)")
+        .eq("order_id", orderId);
 
-    if (invitedAttendees.data && invitedAttendees.data.length > 0) {
-        invitedAttendees.data.forEach(att => {
-            // Skip sending invite if this is the primary attendee (they already get a confirmation)
-            if (primaryAttendee && att.email === primaryAttendee.email) {
-                console.log(`Skipping invite email for primary attendee: ${att.email}`);
-                return;
-            }
+    if (attFetchErr) {
+        console.error("Failed to fetch attendees for email dispatch:", attFetchErr);
+    } else if (attendeesWithStatus && attendeesWithStatus.length > 0) {
+        // Fetch event data for emails
+        const { data: event } = await supabase
+            .from("events")
+            .select("event_title, start_date, start_time, location")
+            .eq("id", eventId)
+            .single();
 
-            fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-invite`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ attendeeId: att.id, eventTag })
-            }).catch(err => console.error('Failed to send invite email:', err));
-        });
-    }
+        if (event) {
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+            const eventDate = event.start_date
+                ? new Date(event.start_date).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                })
+                : 'TBA';
+            
+            const startDateTime = event.start_date && event.start_time 
+                ? `${event.start_date}T${event.start_time}:00` 
+                : event.start_date;
 
-    // 5. Send Welcome Email (Primary Attendee)
-    if (primaryAttendeeId) {
-        await sendWelcomeEmail(primaryAttendeeId, eventId);
+            const emailPromises = attendeesWithStatus.map(async (att) => {
+                // Case A: Invited guests get an invite email
+                if (att.email_status === "invited") {
+                    const inviteLink = `${baseUrl}/${eventTag}/join/${att.ref}`;
+                    
+                    const googleCalendarLink = startDateTime ? generateGoogleCalendarLink({
+                        title: event.event_title,
+                        location: event.location || 'TBA',
+                        startDate: startDateTime,
+                        description: `Registration Ref: ${att.ref}`
+                    }) : undefined;
+            
+                    const outlookCalendarLink = startDateTime ? generateOutlookLink({
+                        title: event.event_title,
+                        location: event.location || 'TBA',
+                        startDate: startDateTime,
+                        description: `Registration Ref: ${att.ref}`
+                    }) : undefined;
+
+                    return sendInviteEmail({
+                        to: att.email,
+                        eventTitle: event.event_title,
+                        eventDate,
+                        eventLocation: event.location || 'TBA',
+                        inviterName: `${validGuests[0].firstName} ${validGuests[0].lastName}`,
+                        passType: (att.pass as any)?.title || 'General Admission',
+                        inviteLink,
+                        googleCalendarLink,
+                        outlookCalendarLink
+                    });
+                }
+                
+                // Case B: Registered guests (including the primary) get the Welcome email
+                // Note: We use the existing sendWelcomeEmail action which handles confirmation logging
+                if (att.id === primaryAttendeeId || att.email_status === "registered") {
+                    // Avoid double sending if multiple entries match (though shouldn't happen)
+                    return sendWelcomeEmail(att.id, eventId);
+                }
+                
+                return Promise.resolve({ success: true, skipped: true });
+            });
+
+            // Await all with settled to ensure one failure doesn't block others
+            const results = await Promise.allSettled(emailPromises);
+            results.forEach((res, idx) => {
+                if (res.status === 'rejected') {
+                    console.error(`Email dispatch ${idx} for order ${orderId} failed:`, res.reason);
+                }
+            });
+        }
     }
 
     return { success: true };

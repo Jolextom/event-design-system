@@ -59,7 +59,7 @@ export function CreatePassModal({ isOpen, onClose, eventId, onPassCreated }: Cre
                 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
             );
 
-            const payload: CreatePassPayload = {
+            const payload: CreatePassPayload & { show_for_option_id?: string | null } = {
                 event_id: eventId,
                 title: title.trim(),
                 description: description.trim() || undefined,
@@ -67,6 +67,7 @@ export function CreatePassModal({ isOpen, onClose, eventId, onPassCreated }: Cre
                 is_free: isFree,
                 type,
                 quantity_available: parseInt(quantity),
+                show_for_option_id: null, // Default to null for now, can add UI if needed
                 ...(type === "individual" && { max_per_person: 1 }),
                 ...(type === "group" && { group_size: parseInt(groupSize) || 2 }),
             };

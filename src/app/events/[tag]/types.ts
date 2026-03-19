@@ -38,11 +38,11 @@ export interface Pass {
   quantity_sold: number | null;
   sales_volume: number | null;
   organiser_fees_volume: number | null;
-  is_paused: boolean | null;
   is_hidden: boolean | null;
   created_at: string | null;
   updated_at: string | null;
   display_order: number | null;
+  show_for_option_id: string | null;
 }
 
 // Payload for creating a new pass
@@ -76,6 +76,7 @@ export interface Question {
   question_type: QuestionType;
   is_required: boolean;
   question_order: number;
+  is_selection_logic?: boolean;
   created_at?: string;
   options?: QuestionOption[]; // Joined data
 }

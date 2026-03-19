@@ -9,7 +9,20 @@ import {
 // Re-export for convenience if needed, though direct import preferred
 export * from './email-templates';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Initialize Resend lazily to avoid issues if this file is imported in a client component
+let resendInstance: Resend | null = null;
+const getResend = () => {
+    if (typeof window !== 'undefined') {
+        throw new Error('Resend cannot be initialized on the client side.');
+    }
+    if (!resendInstance) {
+        if (!process.env.RESEND_API_KEY) {
+            console.error('RESEND_API_KEY is missing');
+        }
+        resendInstance = new Resend(process.env.RESEND_API_KEY);
+    }
+    return resendInstance;
+};
 
 // ============================================================================
 // INVITE EMAIL
@@ -38,7 +51,7 @@ export async function sendInviteEmail({
             inviteLink,
         });
 
-        const { data, error } = await resend.emails.send({
+        const { data, error } = await getResend().emails.send({
             from: 'EventFlow <noreply@partiesandeventz.com>',
             to: [to],
             // In dev mode, we can only send to verified email. 
@@ -88,7 +101,7 @@ export async function sendConfirmationEmail({
             attendeeName,
         });
 
-        const { data, error } = await resend.emails.send({
+        const { data, error } = await getResend().emails.send({
             from: 'EventFlow <noreply@partiesandeventz.com>',
             to: [to],
             subject: `Registration Confirmed - ${eventTitle}`,

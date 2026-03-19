@@ -14,15 +14,16 @@ interface CreateQuestionModalProps {
     eventId: string;
     onQuestionCreated: () => void;
     nextOrder: number;
+    isSelectionLogic?: boolean;
 }
 
-export function CreateQuestionModal({ isOpen, onClose, eventId, onQuestionCreated, nextOrder }: CreateQuestionModalProps) {
+export function CreateQuestionModal({ isOpen, onClose, eventId, onQuestionCreated, nextOrder, isSelectionLogic }: CreateQuestionModalProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const [title, setTitle] = useState("");
-    const [type, setType] = useState<QuestionType>("text");
-    const [isRequired, setIsRequired] = useState(false);
+    const [type, setType] = useState<QuestionType>(isSelectionLogic ? "select" : "text");
+    const [isRequired, setIsRequired] = useState(isSelectionLogic ? true : false);
     const [options, setOptions] = useState<string[]>([""]);
 
     const handleAddOption = () => setOptions([...options, ""]);
@@ -62,7 +63,8 @@ export function CreateQuestionModal({ isOpen, onClose, eventId, onQuestionCreate
                     title: title.trim(),
                     question_type: type,
                     is_required: isRequired,
-                    question_order: nextOrder
+                    question_order: nextOrder,
+                    is_selection_logic: isSelectionLogic || false
                 })
                 .select()
                 .single();
@@ -101,8 +103,8 @@ export function CreateQuestionModal({ isOpen, onClose, eventId, onQuestionCreate
 
     const resetForm = () => {
         setTitle("");
-        setType("text");
-        setIsRequired(false);
+        setType(isSelectionLogic ? "select" : "text");
+        setIsRequired(isSelectionLogic ? true : false);
         setOptions([""]);
         setError(null);
     };
@@ -146,55 +148,57 @@ export function CreateQuestionModal({ isOpen, onClose, eventId, onQuestionCreate
                                 </div>
                             )}
 
-                            {/* Type Selector */}
-                            <div className="space-y-4">
-                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Question Type</label>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <button
-                                        type="button"
-                                        onClick={() => setType("text")}
-                                        className={cn(
-                                            "flex items-center gap-4 p-5 rounded-3xl border transition-all text-left group",
-                                            type === "text"
-                                                ? "bg-blue-50 border-[var(--brand-blue)] ring-2 ring-[var(--brand-blue)]/10"
-                                                : "bg-white border-gray-100 hover:border-gray-200"
-                                        )}
-                                    >
-                                        <div className={cn(
-                                            "w-10 h-10 rounded-2xl flex items-center justify-center transition-all",
-                                            type === "text" ? "bg-[var(--brand-blue)] text-white" : "bg-gray-50 text-gray-400"
-                                        )}>
-                                            <Type className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <p className={cn("text-xs font-black", type === "text" ? "text-gray-900" : "text-gray-400")}>Short Answer</p>
-                                            <p className="text-[9px] text-gray-400 font-bold mt-0.5">Simple text response</p>
-                                        </div>
-                                    </button>
+                            {/* Type Selector - Hidden for Selection Logic as it's always select */}
+                            {!isSelectionLogic && (
+                                <div className="space-y-4">
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Question Type</label>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <button
+                                            type="button"
+                                            onClick={() => setType("text")}
+                                            className={cn(
+                                                "flex items-center gap-4 p-5 rounded-3xl border transition-all text-left group",
+                                                type === "text"
+                                                    ? "bg-blue-50 border-[var(--brand-blue)] ring-2 ring-[var(--brand-blue)]/10"
+                                                    : "bg-white border-gray-100 hover:border-gray-200"
+                                            )}
+                                        >
+                                            <div className={cn(
+                                                "w-10 h-10 rounded-2xl flex items-center justify-center transition-all",
+                                                type === "text" ? "bg-[var(--brand-blue)] text-white" : "bg-gray-50 text-gray-400"
+                                            )}>
+                                                <Type className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <p className={cn("text-xs font-black", type === "text" ? "text-gray-900" : "text-gray-400")}>Short Answer</p>
+                                                <p className="text-[9px] text-gray-400 font-bold mt-0.5">Simple text response</p>
+                                            </div>
+                                        </button>
 
-                                    <button
-                                        type="button"
-                                        onClick={() => setType("select")}
-                                        className={cn(
-                                            "flex items-center gap-4 p-5 rounded-3xl border transition-all text-left group",
-                                            type === "select"
-                                                ? "bg-blue-50 border-[var(--brand-blue)] ring-2 ring-[var(--brand-blue)]/10"
-                                                : "bg-white border-gray-100 hover:border-gray-200"
-                                        )}
-                                    >
-                                        <div className={cn(
-                                            "w-10 h-10 rounded-2xl flex items-center justify-center transition-all",
-                                            type === "select" ? "bg-[var(--brand-blue)] text-white" : "bg-gray-50 text-gray-400"
-                                        )}>
-                                            <ListChecks className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <p className={cn("text-xs font-black", type === "select" ? "text-gray-900" : "text-gray-400")}>Multiple Choice</p>
-                                            <p className="text-[9px] text-gray-400 font-bold mt-0.5">Drop down list</p>
-                                        </div>
-                                    </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setType("select")}
+                                            className={cn(
+                                                "flex items-center gap-4 p-5 rounded-3xl border transition-all text-left group",
+                                                type === "select"
+                                                    ? "bg-blue-50 border-[var(--brand-blue)] ring-2 ring-[var(--brand-blue)]/10"
+                                                    : "bg-white border-gray-100 hover:border-gray-200"
+                                            )}
+                                        >
+                                            <div className={cn(
+                                                "w-10 h-10 rounded-2xl flex items-center justify-center transition-all",
+                                                type === "select" ? "bg-[var(--brand-blue)] text-white" : "bg-gray-50 text-gray-400"
+                                            )}>
+                                                <ListChecks className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <p className={cn("text-xs font-black", type === "select" ? "text-gray-900" : "text-gray-400")}>Multiple Choice</p>
+                                                <p className="text-[9px] text-gray-400 font-bold mt-0.5">Drop down list</p>
+                                            </div>
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Title Input */}
                             <div className="space-y-4">
@@ -248,22 +252,24 @@ export function CreateQuestionModal({ isOpen, onClose, eventId, onQuestionCreate
                                 </div>
                             )}
 
-                            {/* Required Toggle */}
-                            <div className="flex items-center justify-between p-6 bg-gray-50/50 rounded-[32px] border border-gray-100 border-dashed">
-                                <div>
-                                    <h4 className="text-[11px] font-black uppercase tracking-widest text-gray-900 mb-1">Mark as Required</h4>
-                                    <p className="text-[10px] text-gray-400 font-bold">Guests must answer this to register.</p>
+                            {/* Required Toggle - Hidden for selection logic as it's always required */}
+                            {!isSelectionLogic && (
+                                <div className="flex items-center justify-between p-6 bg-gray-50/50 rounded-[32px] border border-gray-100 border-dashed">
+                                    <div>
+                                        <h4 className="text-[11px] font-black uppercase tracking-widest text-gray-900 mb-1">Mark as Required</h4>
+                                        <p className="text-[10px] text-gray-400 font-bold">Guests must answer this to register.</p>
+                                    </div>
+                                    <div
+                                        onClick={() => setIsRequired(!isRequired)}
+                                        className={cn(
+                                            "w-12 h-6.5 rounded-full p-1 cursor-pointer transition-all duration-300 shadow-inner block",
+                                            isRequired ? "bg-green-500" : "bg-gray-200"
+                                        )}
+                                    >
+                                        <div className={cn("w-4.5 h-4.5 bg-white rounded-full transition-all shadow-md", isRequired ? "translate-x-5.5" : "translate-x-0")} />
+                                    </div>
                                 </div>
-                                <div
-                                    onClick={() => setIsRequired(!isRequired)}
-                                    className={cn(
-                                        "w-12 h-6.5 rounded-full p-1 cursor-pointer transition-all duration-300 shadow-inner block",
-                                        isRequired ? "bg-green-500" : "bg-gray-200"
-                                    )}
-                                >
-                                    <div className={cn("w-4.5 h-4.5 bg-white rounded-full transition-all shadow-md", isRequired ? "translate-x-5.5" : "translate-x-0")} />
-                                </div>
-                            </div>
+                            )}
                         </form>
 
                         <footer className="px-10 py-8 bg-white border-t border-gray-50 flex gap-4 mt-auto">

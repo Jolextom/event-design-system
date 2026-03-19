@@ -79,7 +79,7 @@ export function RegistrationView({ questions, loading, error, eventId, onQuestio
 
                         {!loading && !error && eventId && (
                             <CustomQuestionList
-                                questions={questions}
+                                questions={questions.filter(q => !q.is_selection_logic)}
                                 eventId={eventId}
                                 onReorder={handleReorder}
                                 onDelete={setDeleteQuestionId}

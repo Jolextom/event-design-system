@@ -23,6 +23,8 @@ export function EditPassModal({ isOpen, onClose, pass, onPassUpdated }: EditPass
     const [price, setPrice] = useState(pass.price?.toString() || "0");
     const [quantity, setQuantity] = useState(pass.quantity_available.toString());
     const [groupSize, setGroupSize] = useState(pass.group_size?.toString() || "2");
+    const [showForOptionId, setShowForOptionId] = useState(pass.show_for_option_id || "");
+    const [questions, setQuestions] = useState<any[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
@@ -40,8 +42,33 @@ export function EditPassModal({ isOpen, onClose, pass, onPassUpdated }: EditPass
         setPrice(pass.price?.toString() || "0");
         setQuantity(pass.quantity_available.toString());
         setGroupSize(pass.group_size?.toString() || "2");
+        setShowForOptionId(pass.show_for_option_id || "");
         setError(null);
     }, [pass]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const fetchQuestions = async () => {
+            try {
+                const supabase = createClient(
+                    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+                );
+                const { data } = await supabase
+                    .from("questions")
+                    .select("*, options:question_options(*)")
+                    .eq("event_id", pass.event_id)
+                    .eq("question_type", "select")
+                    .order("question_order", { ascending: true });
+                setQuestions(data || []);
+            } catch (err) {
+                console.error("Failed to fetch questions:", err);
+            }
+        };
+
+        fetchQuestions();
+    }, [isOpen, pass.event_id]);
 
     const handleClose = () => {
         setError(null);
@@ -76,6 +103,7 @@ export function EditPassModal({ isOpen, onClose, pass, onPassUpdated }: EditPass
                 quantity_available: parseInt(quantity),
                 max_per_person: type === "individual" ? 1 : null,
                 group_size: type === "group" ? parseInt(groupSize) || 2 : null,
+                show_for_option_id: showForOptionId || null,
                 updated_at: new Date().toISOString(),
             };
 
@@ -290,6 +318,38 @@ export function EditPassModal({ isOpen, onClose, pass, onPassUpdated }: EditPass
                                             </div>
                                         </div>
                                     )}
+                                </div>
+
+                                {/* Visibility Logic */}
+                                <div className="space-y-4 pt-4 border-t border-gray-100">
+                                    <div className="flex items-center gap-2">
+                                        <Info className="w-4 h-4 text-[var(--brand-blue)]" />
+                                        <label className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-900 border-b border-[var(--brand-blue)]/30">
+                                            Selection Logic
+                                        </label>
+                                    </div>
+                                    <p className="text-[10px] text-gray-400 font-bold leading-relaxed">
+                                        Optional: only show this ticket if the guest selects a specific option during registration.
+                                    </p>
+                                    
+                                    <div className="space-y-3">
+                                        <select
+                                            value={showForOptionId}
+                                            onChange={(e) => setShowForOptionId(e.target.value)}
+                                            className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--brand-blue)]/20 focus:border-[var(--brand-blue)] transition-all appearance-none cursor-pointer"
+                                        >
+                                            <option value="">Visible to Everyone</option>
+                                            {questions.map(q => (
+                                                <optgroup key={q.id} label={q.title}>
+                                                    {q.options?.map((opt: any) => (
+                                                        <option key={opt.id} value={opt.id}>
+                                                            Show for: {opt.option_text}
+                                                        </option>
+                                                    ))}
+                                                </optgroup>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
 
                                 {error && (
