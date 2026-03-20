@@ -2,8 +2,10 @@ import { Resend } from 'resend';
 import {
     renderInviteEmailHtml,
     renderConfirmationEmailHtml,
+    renderBroadcastEmailHtml,
     InviteEmailParams,
-    ConfirmationEmailParams
+    ConfirmationEmailParams,
+    BroadcastEmailParams
 } from './email-templates';
 
 // Re-export for convenience if needed, though direct import preferred
@@ -40,6 +42,7 @@ export async function sendInviteEmail({
     inviterName,
     passType,
     inviteLink,
+    eventImage
 }: SendInviteEmailParams) {
     try {
         const html = renderInviteEmailHtml({
@@ -49,6 +52,7 @@ export async function sendInviteEmail({
             inviterName,
             passType,
             inviteLink,
+            eventImage
         });
 
         const { data, error } = await getResend().emails.send({
@@ -89,6 +93,7 @@ export async function sendConfirmationEmail({
     receiptLink,
     watchLink,
     attendeeName,
+    eventImage
 }: SendConfirmationEmailParams) {
     try {
         const html = renderConfirmationEmailHtml({
@@ -99,6 +104,7 @@ export async function sendConfirmationEmail({
             receiptLink,
             watchLink,
             attendeeName,
+            eventImage
         });
 
         const { data, error } = await getResend().emails.send({
@@ -116,6 +122,53 @@ export async function sendConfirmationEmail({
         return { success: true, data };
     } catch (error) {
         console.error('Failed to send confirmation email:', error);
+        return { success: false, error };
+    }
+}
+
+// ============================================================================
+// BROADCAST EMAIL
+// ============================================================================
+
+interface SendBroadcastEmailParams extends BroadcastEmailParams {
+    to: string[];
+}
+
+export async function sendBroadcastEmail({
+    to,
+    eventTitle,
+    messageTitle,
+    messageBody,
+    eventImage,
+    actionLink,
+    actionText
+}: SendBroadcastEmailParams) {
+    try {
+        const html = renderBroadcastEmailHtml({
+            eventTitle,
+            messageTitle,
+            messageBody,
+            eventImage,
+            actionLink,
+            actionText
+        });
+
+        // Resend allows sending to multiple recipients (up to 50 per request usually)
+        const { data, error } = await getResend().emails.send({
+            from: 'EventFlow <noreply@partiesandeventz.com>',
+            to: to,
+            subject: `${messageTitle} - ${eventTitle}`,
+            html,
+        });
+
+        if (error) {
+            console.error('Failed to send broadcast email:', error);
+            return { success: false, error };
+        }
+
+        return { success: true, data };
+    } catch (error) {
+        console.error('Failed to send broadcast email:', error);
         return { success: false, error };
     }
 }

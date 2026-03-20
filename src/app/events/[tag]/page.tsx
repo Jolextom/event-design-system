@@ -869,7 +869,7 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                                     />
                                 )}
                                 {activeGlobal === "automations" && <AutomationsView eventId={event?.id ?? ""} />}
-                                {activeGlobal === "broadcast" && <BroadcastView />}
+                                {activeGlobal === "broadcast" && <BroadcastView event={event} />}
                                 {activeGlobal === "settings" && <SettingsView />}
                             </motion.div>
                         </AnimatePresence>

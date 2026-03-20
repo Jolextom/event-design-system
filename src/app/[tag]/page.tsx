@@ -663,7 +663,9 @@ export default function RegistrationPage() {
                 </div>
             </header>
 
-            <main className="max-w-6xl mx-auto px-6 md:px-10 pt-10 md:pt-14">
+            <main className="max-w-6xl mx-auto px-0 lg:px-10 pt-10 md:pt-14 overflow-x-hidden">
+                {/* Content wrapper for things that SHOULD have padding */}
+                <div className="px-6 lg:px-0">
 
                 {/* --- HEADER ARCHITECTURE (Integrated & Airy) --- */}
                 <header className="max-w-3xl mb-10 space-y-6">
@@ -698,10 +700,11 @@ export default function RegistrationPage() {
                         </div>
                     </div>
                 </header>
+            </div>
 
                 {/* --- CENTERED CARD HERO --- */}
                 <section className="mb-16">
-                    <div className="bg-gray-100 rounded-[48px] overflow-hidden relative group shadow-2xl shadow-gray-100 border border-gray-50">
+                    <div className="lg:rounded-[48px] overflow-hidden relative group shadow-2xl shadow-gray-100 border border-gray-50">
                         {event?.image ? (
                             <div className="aspect-[16/9] md:aspect-[21/9] md:max-h-[520px] w-full relative overflow-hidden">
                                 <img
@@ -722,6 +725,8 @@ export default function RegistrationPage() {
                     </div>
                 </section>
 
+                <div className="px-6 lg:px-0">
+
 
 
                 {/* --- NARRATIVE FIRST: The Story --- */}
@@ -737,7 +742,7 @@ export default function RegistrationPage() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 md:gap-20">
                     {/* LEFT COL: LOGISTICS */}
-                    <div className="lg:col-span-7 space-y-10 md:space-y-20">
+                    <div className="lg:col-span-7 space-y-6 md:space-y-20">
                         {/* Info Tiles */}
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-y-10 gap-x-6 md:gap-8">
                             <div className="space-y-2.5">
@@ -851,7 +856,8 @@ export default function RegistrationPage() {
                         </div>
                     </div>
                 </div>
-            </main>
+            </div>
+        </main>
 
             {/* --- MOBILE STICKY FOOTER --- */}
             <div className="fixed bottom-0 left-0 w-full p-6 md:hidden z-[60] bg-white/95 backdrop-blur-2xl border-t border-gray-100 shadow-[0_-20px_60px_rgba(0,0,0,0.08)]">
@@ -892,7 +898,7 @@ export default function RegistrationPage() {
                             initial={{ scale: 0.95, y: 30 }}
                             animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.95, y: 30 }}
-                            className="bg-white max-w-xl w-full rounded-[40px] md:rounded-[56px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] my-auto"
+                            className="bg-white max-w-xl w-full rounded-[40px] md:rounded-[56px] shadow-2xl overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh] my-auto mt-4 sm:mt-auto"
                         >
                             <div className="p-7 md:p-9 border-b border-gray-50 flex items-center justify-between bg-white sticky top-0 z-10">
                                 <button onClick={() => setStep(1)} className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-900 transition-all">
@@ -1249,53 +1255,57 @@ function PublicPageSkeleton() {
                 </div>
             </div>
 
-            <main className="max-w-6xl mx-auto px-4 md:px-10 pt-10 md:pt-14">
+            <main className="max-w-6xl mx-auto px-0 lg:px-10 pt-10 md:pt-14">
                 {/* Header Skeleton */}
-                <div className="max-w-3xl mb-10 space-y-6">
-                    <div className="flex items-center gap-3">
-                        <div className="w-20 h-6 rounded-full bg-gray-100 animate-pulse" />
-                        <div className="w-16 h-6 rounded-full bg-gray-100 animate-pulse" />
-                    </div>
-                    <div className="space-y-4">
-                        <div className="w-3/4 h-16 rounded-3xl bg-gray-100 animate-pulse" />
-                        <div className="w-1/2 h-8 rounded-2xl bg-gray-100 animate-pulse" />
+                <div className="px-6 lg:px-0">
+                    <div className="max-w-3xl mb-10 space-y-6">
+                        <div className="flex items-center gap-3">
+                            <div className="w-20 h-6 rounded-full bg-gray-100 animate-pulse" />
+                            <div className="w-16 h-6 rounded-full bg-gray-100 animate-pulse" />
+                        </div>
+                        <div className="space-y-4">
+                            <div className="w-3/4 h-16 rounded-3xl bg-gray-100 animate-pulse" />
+                            <div className="w-1/2 h-8 rounded-2xl bg-gray-100 animate-pulse" />
+                        </div>
                     </div>
                 </div>
 
                 {/* Cover Image Skeleton */}
                 <div className="mb-16">
-                    <div className="aspect-[16/9] md:aspect-[21/9] w-full rounded-[48px] bg-gray-100 animate-pulse" />
+                    <div className="aspect-[16/9] md:aspect-[21/9] w-full lg:rounded-[48px] bg-gray-100 animate-pulse" />
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 md:gap-20">
-                    {/* Left Col Skeleton */}
-                    <div className="lg:col-span-7 space-y-20">
-                        {/* Info Tiles */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            {[1, 2, 3].map(i => (
-                                <div key={i} className="space-y-3">
-                                    <div className="w-16 h-4 rounded bg-gray-100 animate-pulse" />
-                                    <div className="w-32 h-6 rounded bg-gray-100 animate-pulse" />
-                                </div>
-                            ))}
-                        </div>
+                <div className="px-6 lg:px-0">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 md:gap-20">
+                        {/* Left Col Skeleton */}
+                        <div className="lg:col-span-7 space-y-12 lg:space-y-20">
+                            {/* Info Tiles */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                {[1, 2, 3].map(i => (
+                                    <div key={i} className="space-y-3">
+                                        <div className="w-16 h-4 rounded bg-gray-100 animate-pulse" />
+                                        <div className="w-32 h-6 rounded bg-gray-100 animate-pulse" />
+                                    </div>
+                                ))}
+                            </div>
 
-                        {/* Description Skeleton */}
-                        <div className="space-y-6">
-                            <div className="w-32 h-4 rounded bg-gray-100 animate-pulse" />
-                            <div className="space-y-4">
-                                <div className="w-full h-4 rounded bg-gray-100 animate-pulse" />
-                                <div className="w-full h-4 rounded bg-gray-100 animate-pulse" />
-                                <div className="w-2/3 h-4 rounded bg-gray-100 animate-pulse" />
-                                <div className="w-full h-4 rounded bg-gray-100 animate-pulse" />
-                                <div className="w-1/2 h-4 rounded bg-gray-100 animate-pulse" />
+                            {/* Description Skeleton */}
+                            <div className="space-y-6">
+                                <div className="w-32 h-4 rounded bg-gray-100 animate-pulse" />
+                                <div className="space-y-4">
+                                    <div className="w-full h-4 rounded bg-gray-100 animate-pulse" />
+                                    <div className="w-full h-4 rounded bg-gray-100 animate-pulse" />
+                                    <div className="w-2/3 h-4 rounded bg-gray-100 animate-pulse" />
+                                    <div className="w-full h-4 rounded bg-gray-100 animate-pulse" />
+                                    <div className="w-1/2 h-4 rounded bg-gray-100 animate-pulse" />
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    {/* Right Col Skeleton (Sticky) */}
-                    <div className="hidden lg:block lg:col-span-5">
-                        <div className="h-96 rounded-[48px] bg-gray-100 animate-pulse" />
+                        {/* Right Col Skeleton (Sticky) */}
+                        <div className="hidden lg:block lg:col-span-5">
+                            <div className="h-96 rounded-[48px] bg-gray-100 animate-pulse" />
+                        </div>
                     </div>
                 </div>
             </main>

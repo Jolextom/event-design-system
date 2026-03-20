@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from "@supabase/supabase-js";
-import { sendConfirmationEmail } from "@/lib/email";
+import { sendConfirmationEmail, sendBroadcastEmail } from "@/lib/email";
 import * as PaystackLib from "@/lib/paystack";
 import { fulfillOrder } from "@/lib/registrations";
 import { generateGoogleCalendarLink, generateOutlookLink } from "@/lib/calendar";
@@ -134,6 +134,7 @@ export async function sendWelcomeEmail(attendeeId: string, eventId: string) {
             classNotesHtml,
             googleCalendarLink,
             outlookCalendarLink,
+            eventImage: event.image,
         };
 
         const result = await sendConfirmationEmail({
@@ -212,5 +213,79 @@ export async function verifyAndFulfillPayment(reference: string) {
     } catch (error: any) {
         console.error("verifyAndFulfillPayment error:", error);
         return { success: false, error: error.message || "Verification failed" };
+    }
+}
+
+export async function broadcastUpdate({
+    eventId,
+    messageTitle,
+    messageBody,
+    actionLink,
+    actionText
+}: {
+    eventId: string;
+    messageTitle: string;
+    messageBody: string;
+    actionLink?: string;
+    actionText?: string;
+}) {
+    try {
+        // 1. Fetch Event Details
+        const { data: event, error: eventErr } = await adminSupabase
+            .from("events")
+            .select("event_title, image, tag")
+            .eq("id", eventId)
+            .single();
+
+        if (eventErr || !event) throw new Error("Event not found");
+
+        // 2. Fetch All Registered Attendees
+        const { data: attendees, error: attErr } = await adminSupabase
+            .from("attendees")
+            .select("email")
+            .eq("event_id", eventId)
+            .neq("email_status", "invited"); // Only registered guests
+
+        if (attErr) throw new Error("Failed to fetch attendees: " + attErr.message);
+        if (!attendees || attendees.length === 0) {
+            return { success: false, error: "No registered attendees found to broadcast to." };
+        }
+
+        // Get unique emails
+        const recipientEmails = Array.from(new Set(attendees.map(a => a.email)));
+
+        // 3. Send Emails in Batches (Resend to field is an array)
+        // Note: Resend recommended batch size is ~50-100 per request
+        const batchSize = 50;
+        const totalBatches = Math.ceil(recipientEmails.length / batchSize);
+        let successCount = 0;
+
+        for (let i = 0; i < recipientEmails.length; i += batchSize) {
+            const batch = recipientEmails.slice(i, i + batchSize);
+            const result = await sendBroadcastEmail({
+                to: batch,
+                eventTitle: event.event_title,
+                messageTitle,
+                messageBody,
+                eventImage: event.image,
+                actionLink: actionLink || `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/${event.tag}`,
+                actionText: actionText || 'View Event'
+            });
+
+            if (result.success) successCount += batch.length;
+        }
+
+        // 4. Log Broadcast (Optional: we could create a table for this)
+        console.log(`Broadcast '${messageTitle}' sent to ${successCount}/${recipientEmails.length} recipients for event ${eventId}`);
+
+        return { 
+            success: true, 
+            message: `Successfully sent to ${successCount} recipients.`,
+            recipientCount: recipientEmails.length
+        };
+
+    } catch (error: any) {
+        console.error("broadcastUpdate error:", error);
+        return { success: false, error: error.message || "Failed to send broadcast." };
     }
 }
