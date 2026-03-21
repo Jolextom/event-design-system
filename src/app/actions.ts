@@ -196,16 +196,25 @@ export async function verifyAndFulfillPayment(reference: string) {
             return { success: true, alreadyCompleted: true };
         }
 
-        await fulfillOrder({
-            orderId: metadata.orderId,
-            eventId: metadata.eventId,
-            passId: metadata.passId,
-            eventTag: metadata.eventTag,
-            validGuests: metadata.validGuests,
-            totalAmount: paystackData.amount / 100,
-            expectedAmount: order.expected_amount_kobo / 100,
-            supabaseClient: adminSupabase
-        });
+        try {
+            await fulfillOrder({
+                orderId: metadata.orderId,
+                eventId: metadata.eventId,
+                passId: metadata.passId,
+                eventTag: metadata.eventTag,
+                validGuests: metadata.validGuests,
+                totalAmount: paystackData.amount / 100,
+                expectedAmount: order.expected_amount_kobo / 100,
+                supabaseClient: adminSupabase
+            });
+        } catch (fulfillErr: any) {
+            console.error("Fulfillment inner error:", fulfillErr);
+            // If it's a payment amount mismatch, it's a fatal error
+            if (fulfillErr.message && fulfillErr.message.includes("amount mismatch")) {
+                return { success: false, fatalError: "We encountered an issue verifying your payment. Please contact support." };
+            }
+            throw fulfillErr; // Re-throw other unexpected errors
+        }
 
         console.log(`Manual verification successful for reference ${reference}. Order fulfilled.`);
         return { success: true };

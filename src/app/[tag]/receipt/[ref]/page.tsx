@@ -109,6 +109,7 @@ export default function ReceiptPage() {
     const [newMemberAnswers, setNewMemberAnswers] = useState<Record<string, string>>({});
     const [newMemberMode, setNewMemberMode] = useState<"fill" | "invite">("invite");
     const [addError, setAddError] = useState<string | null>(null);
+    const [hasFatalError, setHasFatalError] = useState<boolean>(false);
 
     useEffect(() => {
         if (!ref) return;
@@ -116,7 +117,11 @@ export default function ReceiptPage() {
         // Proactively verify the payment immediately on landing
         // This makes the UI feel "snappy" instead of waiting for the webhook
         verifyAndFulfillPayment(ref).then(result => {
-            if (result.success) {
+            if (result.fatalError) {
+                console.error("Fatal verification error:", result.fatalError);
+                setError(result.fatalError);
+                setHasFatalError(true);
+            } else if (result.success) {
                 console.log("Immediate verification successful");
                 // The polling/fetchData will catch the updated status automatically
             }
@@ -126,7 +131,7 @@ export default function ReceiptPage() {
     }, [ref]);
 
     useEffect(() => {
-        if (!tag || !ref) return;
+        if (!tag || !ref || hasFatalError) return;
 
         const fetchData = async () => {
             if (loading) setLoading(true); // Only set loading on first fetch
@@ -227,7 +232,7 @@ export default function ReceiptPage() {
         return () => {
             if (interval) clearInterval(interval);
         };
-    }, [tag, ref, order?.status]);
+    }, [tag, ref, order?.status, hasFatalError]);
 
     const handleCopyRef = () => {
         if (order?.order_ref) {
@@ -399,13 +404,70 @@ export default function ReceiptPage() {
         });
     };
 
-    if (loading) {
+    if (loading || order?.status === 'pending') {
         return (
-            <div className="min-h-screen bg-white flex flex-col items-center justify-center">
-                <div className="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center mb-6">
-                    <Loader2 className="w-8 h-8 text-gray-900 animate-spin" />
+            <div className="min-h-screen bg-white overflow-y-auto custom-scrollbar relative overflow-hidden">
+                {/* Immersive Backdrop (Subtle for loading) */}
+                <div className="absolute top-0 left-0 w-full h-[40vh] bg-gradient-to-b from-gray-50 to-white -z-10" />
+                <div className="absolute top-20 right-[10%] w-64 h-64 bg-gray-100/30 blur-[100px] rounded-full -z-10" />
+                <div className="absolute top-40 left-[5%] w-96 h-96 bg-gray-50/20 blur-[120px] rounded-full -z-10" />
+
+                <div className="max-w-4xl mx-auto px-6 py-16 md:py-24">
+                    <div className="text-center space-y-12">
+                        {/* Skeleton Icon */}
+                        <div className="w-20 h-20 bg-gray-100 rounded-[30px] animate-pulse mx-auto shadow-sm" />
+
+                        {/* Skeleton Headline */}
+                        <div className="space-y-4 max-w-lg mx-auto flex flex-col items-center">
+                            <div className="w-3/4 h-16 md:h-24 bg-gray-100 rounded-[2rem] animate-pulse" />
+                            <div className="w-full h-6 bg-gray-50 rounded-full animate-pulse mt-4" />
+                            <div className="w-2/3 h-5 bg-gray-50 rounded-full animate-pulse" />
+                        </div>
+
+                        {/* Skeleton Receipt Card */}
+                        <div className="relative max-w-2xl mx-auto">
+                            <div className="bg-white rounded-[64px] border border-gray-100 shadow-[0_48px_96px_-32px_rgba(0,0,0,0.04)] overflow-hidden text-left relative">
+                                {/* Decorative Ticket Notch */}
+                                <div className="absolute top-1/2 -left-4 w-8 h-8 bg-white border border-gray-100 rounded-full -translate-y-1/2" />
+                                <div className="absolute top-1/2 -right-4 w-8 h-8 bg-white border border-gray-100 rounded-full -translate-y-1/2" />
+
+                                <div className="p-10 md:p-14 space-y-12">
+                                    {/* Top */}
+                                    <div className="flex items-center justify-between">
+                                        <div className="w-24 h-6 bg-gray-100 rounded-full animate-pulse" />
+                                        <div className="w-32 h-6 bg-gray-50 rounded-full animate-pulse" />
+                                    </div>
+
+                                    {/* Middle */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                        <div className="space-y-3">
+                                            <div className="w-24 h-3 bg-gray-100 rounded-full animate-pulse" />
+                                            <div className="w-48 h-10 bg-gray-100 rounded-xl animate-pulse" />
+                                        </div>
+                                        <div className="space-y-3 md:flex md:flex-col md:items-end">
+                                            <div className="w-20 h-3 bg-gray-100 rounded-full animate-pulse" />
+                                            <div className="w-40 h-10 bg-gray-50 rounded-xl animate-pulse" />
+                                        </div>
+                                    </div>
+
+                                    {/* Bottom Info */}
+                                    <div className="pt-10 border-t border-gray-50 flex flex-col md:flex-row gap-8 opacity-50">
+                                        <div className="w-full h-8 bg-gray-50 rounded-2xl animate-pulse" />
+                                    </div>
+                                    
+                                    {/* Sub-text indication */}
+                                    {order?.status === 'pending' && (
+                                        <div className="absolute inset-x-0 bottom-4 flex justify-center">
+                                            <span className="text-[10px] uppercase tracking-widest text-gray-400 font-bold animate-pulse">
+                                                Finalizing Registration...
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Loading Receipt...</p>
             </div>
         );
     }
@@ -426,33 +488,6 @@ export default function ReceiptPage() {
                 >
                     Back to Event
                 </Link>
-            </div>
-        );
-    }
-
-    if (order.status === 'pending') {
-        return (
-            <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center">
-                <div className="relative mb-8">
-                    <div className="w-20 h-20 bg-blue-600 rounded-[30px] flex items-center justify-center shadow-2xl relative z-10 mx-auto">
-                        <RefreshCw className="w-10 h-10 text-white animate-spin stroke-[3]" />
-                    </div>
-                    <div className="absolute inset-0 bg-blue-100 blur-2xl opacity-40 scale-150 animate-pulse" />
-                </div>
-                <h1 className="text-3xl font-black text-gray-900 mb-4 uppercase italic">Verifying Payment</h1>
-                <p className="text-gray-400 font-bold max-w-sm mb-10 leading-relaxed uppercase tracking-widest text-[10px]">
-                    We're confirming your transaction with Paystack. <br />
-                    This usually takes a few seconds. Don't close this page.
-                </p>
-                <div className="flex items-center justify-center gap-1.5 pt-4">
-                    {[0, 1, 2].map((i) => (
-                        <div
-                            key={i}
-                            className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-bounce"
-                            style={{ animationDelay: `${i * 0.2}s` }}
-                        />
-                    ))}
-                </div>
             </div>
         );
     }
