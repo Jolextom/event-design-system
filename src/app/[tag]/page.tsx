@@ -292,16 +292,12 @@ export default function RegistrationPage() {
                 .eq("status", "pending")
                 .maybeSingle();
 
-            // === IDEMPOTENCY LOGIC: Reuse order_ref if ticket and price are the same ===
-            let orderRef: string;
-            if (existingOrder && existingOrder.pass_id === pass.id && Number(existingOrder.total_amount) === expectedPrice) {
-                // Same intent, reuse the Paystack reference to prevent double payment
-                orderRef = existingOrder.order_ref;
-            } else {
-                // New intent or changed ticket/price, generate a new reference
-                const uniquePart = crypto.randomUUID().replace(/-/g, '').substring(0, 10).toUpperCase();
-                orderRef = `EF-${event.tag?.toUpperCase() || 'EV'}-${uniquePart}`;
-            }
+            // === PAYSTACK REFERENCE GENERATION ===
+            // We ALWAYS generate a new, unique reference to prevent Paystack's "Duplicate Transaction Reference" error.
+            // If the user is retrying a failed or abandoned checkout, Paystack requires a fresh reference.
+            // Our webhook relies on orderId in metadata, so changing the order_ref on the DB record is safe.
+            const uniquePart = crypto.randomUUID().replace(/-/g, '').substring(0, 10).toUpperCase();
+            const orderRef = `EF-${event.tag?.toUpperCase() || 'EV'}-${uniquePart}`;
 
             // === UPSERT ORDER ===
             const orderData = {
