@@ -11,7 +11,9 @@ interface CreateSmartGroupModalProps {
 }
 
 type LogicOperator = "AND" | "OR";
-type ConditionOperator = "equals" | "not_equals" | "contains" | "starts_with" | "is_set" | "is_not_set";
+type ConditionOperator =
+    | "equals" | "not_equals" | "contains" | "starts_with" | "is_set" | "is_not_set"
+    | "gte" | "lte" | "gt" | "lt";
 
 interface Condition {
     id: string;
@@ -35,6 +37,10 @@ const OPERATORS: { value: ConditionOperator; label: string }[] = [
     { value: "not_equals", label: "Is not equal to" },
     { value: "contains", label: "Contains" },
     { value: "starts_with", label: "Starts with" },
+    { value: "gte", label: "Is greater than or equal to" },
+    { value: "lte", label: "Is less than or equal to" },
+    { value: "gt", label: "Is greater than" },
+    { value: "lt", label: "Is less than" },
     { value: "is_set", label: "Is set (Any value)" },
     { value: "is_not_set", label: "Is empty" },
 ];
@@ -68,10 +74,14 @@ export function CreateSmartGroupModal({ onClose, onSave, initialGroup }: { onClo
 
     const handleSave = () => {
         // Construct the readable rule string
+        const OPERATOR_SYMBOLS: Partial<Record<ConditionOperator, string>> = {
+            gte: ">=", lte: "<=", gt: ">", lt: "<"
+        };
         const ruleString = conditions.map(c => {
             if (c.operator === 'is_set') return `${c.field} IS SET`;
             if (c.operator === 'is_not_set') return `${c.field} IS EMPTY`;
-            return `${c.field} ${c.operator.replace('_', ' ')} '${c.value}'`;
+            const opLabel = OPERATOR_SYMBOLS[c.operator] || c.operator.replace('_', ' ');
+            return `${c.field} ${opLabel} '${c.value}'`;
         }).join(` ${logicType} `);
 
         const newGroup = {
@@ -210,7 +220,7 @@ export function CreateSmartGroupModal({ onClose, onSave, initialGroup }: { onClo
                                             <>
                                                 <div className="w-[1px] h-6 bg-gray-100" />
                                                 <input
-                                                    type="text"
+                                                    type={["gte", "lte", "gt", "lt"].includes(condition.operator) ? "number" : "text"}
                                                     value={condition.value}
                                                     onChange={(e) => updateCondition(condition.id, "value", e.target.value)}
                                                     placeholder="Value..."

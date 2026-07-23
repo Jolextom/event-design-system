@@ -1,7 +1,9 @@
 import { Attendee } from "../types";
 
 // Types matching the modal configuration
-export type ConditionOperator = "equals" | "not_equals" | "contains" | "starts_with" | "is_set" | "is_not_set";
+export type ConditionOperator =
+    | "equals" | "not_equals" | "contains" | "starts_with" | "is_set" | "is_not_set"
+    | "gte" | "lte" | "gt" | "lt"; // numeric comparisons, e.g. for scale/rating properties
 export type LogicOperator = "AND" | "OR";
 
 export interface Condition {
@@ -60,6 +62,18 @@ export function evaluateSegment(guest: Attendee, config: RuleConfig | undefined)
                 return guestValue !== "" && guestValue !== null && guestValue !== undefined;
             case "is_not_set":
                 return guestValue === "" || guestValue === null || guestValue === undefined;
+            case "gte":
+            case "lte":
+            case "gt":
+            case "lt": {
+                const numGuest = parseFloat(String(guestValue));
+                const numTarget = parseFloat(condition.value);
+                if (Number.isNaN(numGuest) || Number.isNaN(numTarget)) return false;
+                if (condition.operator === "gte") return numGuest >= numTarget;
+                if (condition.operator === "lte") return numGuest <= numTarget;
+                if (condition.operator === "gt") return numGuest > numTarget;
+                return numGuest < numTarget;
+            }
             default:
                 return false;
         }
