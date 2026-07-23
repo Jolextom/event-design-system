@@ -59,7 +59,14 @@ export interface CreatePassPayload {
 }
 
 // Registration Form Question types
-export type QuestionType = 'text' | 'select';
+export type QuestionType =
+  | 'text'          // short answer (registration + forms)
+  | 'select'        // single choice, radio/dropdown-styled (registration + forms)
+  | 'checkbox'      // multi-select (forms only)
+  | 'dropdown'      // single choice, native <select> (forms only)
+  | 'linear_scale'  // numeric scale, e.g. 1-5 (forms only)
+  | 'star_rating'   // star rating, e.g. 1-5 stars (forms only)
+  | 'long_text';    // paragraph answer (forms only)
 
 export interface QuestionOption {
   id: string;
@@ -69,30 +76,77 @@ export interface QuestionOption {
   created_at?: string;
 }
 
+// Conditional page-routing rule attached to a question, evaluated on submit.
+// e.g. { if_equals: "Option A", go_to_page: 2 }
+export interface QuestionLogicRule {
+  if_equals: string;
+  go_to_page: number;
+}
+
 export interface Question {
   id: string;
-  event_id: string;
+  event_id: string | null;       // null for standalone campaign questions
+  campaign_id?: string | null;   // set for campaign/form questions
   title: string;
   question_type: QuestionType;
   is_required: boolean;
   question_order: number;
   is_selection_logic?: boolean;
+  page?: number;                 // 1-indexed page/section within the form
+  logic_rules?: QuestionLogicRule[] | null;
+  property_key?: string | null;  // maps answer -> attendees.properties[property_key]
   created_at?: string;
   options?: QuestionOption[]; // Joined data
 }
 
 export interface CreateQuestionPayload {
-  event_id: string;
+  event_id?: string;
+  campaign_id?: string;
   title: string;
   question_type: QuestionType;
   is_required: boolean;
   question_order: number;
+  page?: number;
+  logic_rules?: QuestionLogicRule[];
+  property_key?: string;
 }
 
 export interface CreateQuestionOptionPayload {
   question_id: string;
   option_text: string;
   display_order: number;
+}
+
+// ── Campaigns (dual mode: event-linked or standalone) ──────────────────────
+export type CampaignType = 'event' | 'standalone';
+export type CampaignTrigger = 'pre_registration' | 'post_event' | 'manual';
+export type CampaignStatus = 'draft' | 'active' | 'closed';
+
+export interface Campaign {
+  id: string;
+  event_id: string | null;
+  type: CampaignType;
+  trigger: CampaignTrigger | null;
+  name: string;
+  status: CampaignStatus;
+  created_by?: string | null;
+  created_at?: string;
+}
+
+export interface FormResponse {
+  id: string;
+  campaign_id: string;
+  attendee_id: string | null;
+  email: string | null;
+  submitted_at: string;
+}
+
+export interface FormAnswer {
+  id: string;
+  response_id: string;
+  question_id: string;
+  value: string | string[] | number;
+  created_at?: string;
 }
 import { LucideIcon } from "lucide-react";
 import {
