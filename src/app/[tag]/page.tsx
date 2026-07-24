@@ -310,7 +310,10 @@ export default function RegistrationPage() {
                 order_ref: orderRef,
                 total_amount: isPaid ? expectedPrice : 0,
                 expected_amount_kobo: isPaid ? Math.round(expectedPrice * 100) : 0,
-                status: isPaid ? "pending" : "completed",
+                // Always starts "pending" — fulfillOrder() is what flips it to "completed"
+                // once attendees are actually created and emails sent. Marking it completed
+                // here would make fulfillOrder's idempotency guard skip fulfillment entirely.
+                status: "pending",
                 updated_at: new Date().toISOString()
             };
 
