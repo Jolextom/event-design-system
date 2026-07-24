@@ -157,7 +157,6 @@ import {
   Home,
   Command,
   Users,
-  Zap,
   Check,
   Settings,
   ClipboardList,
@@ -167,7 +166,6 @@ export type GlobalSection =
   | "command"
   | "studio"
   | "registry"
-  | "automations"
   | "campaigns"
   | "broadcast"
   | "live"
@@ -217,7 +215,6 @@ export const GLOBAL_NAV = [
   { id: "command", icon: Home, label: "Dashboard" },
   { id: "studio", icon: Command, label: "Studio" },
   { id: "registry", icon: Users, label: "Guests" },
-  { id: "automations", icon: Zap, label: "Automations" },
   { id: "campaigns", icon: ClipboardList, label: "Campaigns" },
   { id: "broadcast", icon: MessageSquare, label: "Communications" },
   { id: "live", icon: Check, label: "Event Day" },

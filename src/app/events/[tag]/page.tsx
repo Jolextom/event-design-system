@@ -29,7 +29,6 @@ import { SelectionLogicView } from "./views/SelectionLogicView";
 import { SmartGroupsView } from "./views/SmartGroupsView";
 import { OperationsView } from "./views/OperationsView";
 import { RegistryView } from "./views/RegistryView";
-import { AutomationsView } from "./views/AutomationsView";
 import { CampaignsView } from "./views/CampaignsView";
 import { BroadcastView } from "./views/BroadcastView";
 import { SettingsView } from "./views/SettingsView";
@@ -55,7 +54,7 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
     // Initialize from URL or default
     const [activeGlobal, setActiveGlobal] = useState<GlobalSection>(() => {
         const view = searchParams.get("view");
-        const validViews: GlobalSection[] = ["command", "studio", "registry", "automations", "campaigns", "broadcast", "live", "settings"];
+        const validViews: GlobalSection[] = ["command", "studio", "registry", "campaigns", "broadcast", "live", "settings"];
         return (view && validViews.includes(view as GlobalSection)) ? (view as GlobalSection) : "studio";
     });
 
@@ -869,7 +868,6 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                                         initialFilter={registryFilter}
                                     />
                                 )}
-                                {activeGlobal === "automations" && <AutomationsView eventId={event?.id ?? ""} />}
                                 {activeGlobal === "campaigns" && (
                                     <CampaignsView eventId={event?.id ?? null} createdBy={event?.created_by ?? null} />
                                 )}
