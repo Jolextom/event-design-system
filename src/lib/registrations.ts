@@ -1,6 +1,5 @@
 import { supabase as defaultSupabase } from "./supabaseClient";
 import { sendWelcomeEmail } from "@/app/actions";
-import crypto from "crypto";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { sendInviteEmail } from "./email";
 import { generateGoogleCalendarLink, generateOutlookLink } from "./calendar";
