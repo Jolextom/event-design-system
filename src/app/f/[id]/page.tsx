@@ -24,6 +24,7 @@ export default function PublicFormPage() {
     const [questions, setQuestions] = useState<Question[]>([]);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
+    const [notPublished, setNotPublished] = useState(false);
 
     const [currentPage, setCurrentPage] = useState(1);
     const [answers, setAnswers] = useState<Record<string, AnswerValue>>({});
@@ -34,14 +35,25 @@ export default function PublicFormPage() {
 
     useEffect(() => {
         const load = async () => {
+            // No status filter here — RLS itself restricts what an anonymous
+            // visitor can see (only status='active' rows), while an
+            // authenticated organizer previewing their own draft can still
+            // see it. That lets us tell "doesn't exist / no access" apart
+            // from "exists but isn't published yet" below.
             const { data: campaignData, error: cErr } = await supabase
                 .from("campaigns")
                 .select("*")
                 .eq("id", campaignId)
-                .eq("status", "active")
                 .single();
 
             if (cErr || !campaignData) { setNotFound(true); setLoading(false); return; }
+
+            if (campaignData.status !== "active") {
+                setCampaign(campaignData as Campaign);
+                setNotPublished(true);
+                setLoading(false);
+                return;
+            }
 
             const { data: questionData } = await supabase
                 .from("questions")
@@ -154,6 +166,19 @@ export default function PublicFormPage() {
                 <div className="text-center">
                     <h1 className="text-lg font-black text-gray-900">Form not available</h1>
                     <p className="text-sm text-gray-400 font-bold mt-1">This form may have been closed or the link is incorrect.</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (notPublished) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+                <div className="text-center max-w-sm">
+                    <h1 className="text-lg font-black text-gray-900">This form isn't published yet</h1>
+                    <p className="text-sm text-gray-400 font-bold mt-1">
+                        "{campaign.name}" is still a draft. Go back to the builder and click <span className="text-gray-700">Publish</span> to make this link live for real respondents.
+                    </p>
                 </div>
             </div>
         );

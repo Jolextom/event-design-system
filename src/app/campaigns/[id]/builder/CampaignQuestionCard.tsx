@@ -1,15 +1,20 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
-    ChevronUp, ChevronDown, Trash2, Check, X,
-    ListChecks, Type, Loader2, ChevronRight, CheckSquare,
-    ChevronDownSquare, SlidersHorizontal, Star, AlignLeft, Zap, Tag
+    ChevronUp, ChevronDown, Trash2, Check, X, Copy,
+    ListChecks, Type, ChevronRight, CheckSquare,
+    ChevronDownSquare, SlidersHorizontal, Star, AlignLeft, Zap, Tag, Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@supabase/supabase-js";
 import type { Question, QuestionType, QuestionLogicRule } from "../../../events/[tag]/types";
 import { OptionsEditor } from "../../../events/[tag]/views/registration/OptionsEditor";
+
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 const TYPE_META: Record<QuestionType, { label: string; icon: React.ComponentType<{ className?: string }>; hasOptions: boolean }> = {
     text: { label: "Short Answer", icon: Type, hasOptions: false },
@@ -35,12 +40,14 @@ interface CampaignQuestionCardProps {
     onMoveUp: () => void;
     onMoveDown: () => void;
     onUpdated: () => void;
+    /** Patches the parent's local copy of this question without a network refetch, so the collapsed header reflects a just-autosaved edit with no flicker. */
+    onSaved: (patch: Partial<Question>) => void;
 }
 
 export function CampaignQuestionCard({
     question, index, total, pageCount, isExpanded,
     onToggleExpand, onCollapseExpand, onDelete,
-    onMoveUp, onMoveDown, onUpdated,
+    onMoveUp, onMoveDown, onUpdated, onSaved,
 }: CampaignQuestionCardProps) {
     const [title, setTitle] = useState(question.title);
     const [type, setType] = useState<QuestionType>(question.question_type);
@@ -50,8 +57,8 @@ export function CampaignQuestionCard({
     );
     const [propertyKey, setPropertyKey] = useState(question.property_key || "");
     const [logicRules, setLogicRules] = useState<QuestionLogicRule[]>(question.logic_rules || []);
-    const [isSaving, setIsSaving] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+    const [isDuplicating, setIsDuplicating] = useState(false);
 
     const meta = TYPE_META[type];
     const Icon = meta.icon;
@@ -64,11 +71,9 @@ export function CampaignQuestionCard({
             setOptions(question.options?.length ? question.options.map(o => o.option_text) : ["", ""]);
             setPropertyKey(question.property_key || "");
             setLogicRules(question.logic_rules || []);
-            setError(null);
+            setSaveState("idle");
         }
     }, [isExpanded, question]);
-
-    const canSave = !!title.trim() && (!meta.hasOptions || options.filter(o => o.trim()).length >= 2);
 
     const updateRuleForOption = (optionText: string, goToPage: number | null) => {
         setLogicRules(prev => {
@@ -78,24 +83,25 @@ export function CampaignQuestionCard({
         });
     };
 
-    const handleSave = async () => {
-        if (!canSave) return;
+    // Always-current snapshot so a flush triggered by isExpanded flipping to
+    // false (which fires in the same tick as the last keystroke's state
+    // update) reads the latest values rather than a stale closure.
+    const latestRef = useRef({ title, type, isRequired, options, propertyKey, logicRules });
+    useEffect(() => {
+        latestRef.current = { title, type, isRequired, options, propertyKey, logicRules };
+    }, [title, type, isRequired, options, propertyKey, logicRules]);
+
+    const doSave = useCallback(async () => {
+        const { title, type, isRequired, options, propertyKey, logicRules } = latestRef.current;
+        const meta = TYPE_META[type];
         const validOptions = options.filter(o => o.trim());
-        if (meta.hasOptions && validOptions.length < 2) {
-            setError(`Add at least 2 options for a ${meta.label.toLowerCase()} question`);
-            return;
-        }
 
-        setIsSaving(true);
-        setError(null);
+        // Not enough to save yet (e.g. still typing the title, or a choice
+        // question with fewer than 2 options) — stay quiet, no error shown.
+        if (!title.trim() || (meta.hasOptions && validOptions.length < 2)) return;
 
+        setSaveState("saving");
         try {
-            const supabase = createClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-            );
-
-            // Keep only logic rules whose option still exists
             const cleanedRules = meta.hasOptions
                 ? logicRules.filter(r => validOptions.includes(r.if_equals))
                 : [];
@@ -112,34 +118,96 @@ export function CampaignQuestionCard({
                 .eq("id", question.id);
             if (qErr) throw qErr;
 
+            let savedOptions: Question["options"] = question.options;
             if (meta.hasOptions) {
                 await supabase.from("question_options").delete().eq("question_id", question.id);
                 if (validOptions.length > 0) {
-                    const { error: oErr } = await supabase.from("question_options").insert(
-                        validOptions.map((o, i) => ({ question_id: question.id, option_text: o.trim(), display_order: i }))
-                    );
+                    const { data: inserted, error: oErr } = await supabase
+                        .from("question_options")
+                        .insert(validOptions.map((o, i) => ({ question_id: question.id, option_text: o.trim(), display_order: i })))
+                        .select();
                     if (oErr) throw oErr;
+                    savedOptions = inserted as Question["options"];
+                } else {
+                    savedOptions = [];
                 }
             }
 
-            onUpdated();
-            onCollapseExpand();
-        } catch (err: any) {
-            setError(err.message || "Failed to save");
-        } finally {
-            setIsSaving(false);
+            onSaved({
+                title: title.trim(),
+                question_type: type,
+                is_required: isRequired,
+                property_key: propertyKey.trim() || null,
+                logic_rules: cleanedRules.length > 0 ? cleanedRules : null,
+                options: savedOptions,
+            });
+            setSaveState("saved");
+        } catch (err) {
+            console.error("Auto-save failed:", err);
+            setSaveState("error");
         }
-    };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [question.id]);
 
-    const handleCancel = () => {
-        setTitle(question.title);
-        setType(question.question_type);
-        setIsRequired(question.is_required);
-        setOptions(question.options?.length ? question.options.map(o => o.option_text) : ["", ""]);
-        setPropertyKey(question.property_key || "");
-        setLogicRules(question.logic_rules || []);
-        setError(null);
-        onCollapseExpand();
+    // Debounced auto-save while actively editing — no button needed.
+    useEffect(() => {
+        if (!isExpanded) return;
+        setSaveState("idle");
+        const timer = setTimeout(() => { doSave(); }, 700);
+        return () => clearTimeout(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [title, type, isRequired, options, propertyKey, logicRules, isExpanded]);
+
+    // Flush immediately the moment this card collapses (e.g. because the
+    // organizer clicked "Add Question" and moved on) so nothing is lost
+    // waiting on the debounce timer.
+    const wasExpandedRef = useRef(isExpanded);
+    useEffect(() => {
+        if (wasExpandedRef.current && !isExpanded) {
+            doSave();
+        }
+        wasExpandedRef.current = isExpanded;
+    }, [isExpanded, doSave]);
+
+    const handleDuplicate = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setIsDuplicating(true);
+        try {
+            const { data: newQuestion, error: qErr } = await supabase
+                .from("questions")
+                .insert({
+                    campaign_id: question.campaign_id,
+                    event_id: null,
+                    title: `${question.title} (copy)`,
+                    question_type: question.question_type,
+                    is_required: question.is_required,
+                    question_order: question.question_order + 1,
+                    page: question.page || 1,
+                    property_key: question.property_key || null,
+                    logic_rules: null, // logic references specific option text; safer to leave unset on the copy
+                    is_selection_logic: false,
+                })
+                .select()
+                .single();
+
+            if (qErr) throw qErr;
+
+            if (question.options?.length && newQuestion) {
+                await supabase.from("question_options").insert(
+                    question.options.map((o, i) => ({
+                        question_id: newQuestion.id,
+                        option_text: o.option_text,
+                        display_order: i,
+                    }))
+                );
+            }
+
+            onUpdated();
+        } catch (err) {
+            console.error("Duplicate failed:", err);
+        } finally {
+            setIsDuplicating(false);
+        }
     };
 
     return (
@@ -181,6 +249,10 @@ export function CampaignQuestionCard({
                         <ChevronDown className="w-4 h-4" />
                     </button>
                     <div className="w-px h-4 bg-gray-100 mx-0.5" />
+                    <button type="button" onClick={handleDuplicate} disabled={isDuplicating} title="Duplicate question"
+                        className="p-1.5 rounded-lg text-gray-300 hover:text-[var(--brand-blue)] hover:bg-blue-50 transition-all disabled:opacity-40">
+                        {isDuplicating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
+                    </button>
                     <button type="button" onClick={() => onDelete(question.id)} title="Delete"
                         className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all">
                         <Trash2 className="w-4 h-4" />
@@ -195,9 +267,9 @@ export function CampaignQuestionCard({
             {/* Expanded Edit Form */}
             {isExpanded && (
                 <div className="px-5 pb-5 pt-4 space-y-5 animate-in slide-in-from-top-2 duration-200">
-                    {error && (
+                    {saveState === "error" && (
                         <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-xs text-red-600 font-bold flex items-center gap-2">
-                            <X className="w-3.5 h-3.5 shrink-0" /> {error}
+                            <X className="w-3.5 h-3.5 shrink-0" /> Couldn't save — check your connection.
                         </div>
                     )}
 
@@ -292,7 +364,7 @@ export function CampaignQuestionCard({
                         </div>
                     )}
 
-                    {/* Required + Save/Cancel */}
+                    {/* Required + autosave status */}
                     <div className="flex items-center justify-between gap-4 pt-1">
                         <button type="button" onClick={() => setIsRequired(!isRequired)}
                             className={cn(
@@ -305,16 +377,9 @@ export function CampaignQuestionCard({
                             Required
                         </button>
 
-                        <div className="flex items-center gap-2">
-                            <button type="button" onClick={handleCancel}
-                                className="px-4 py-2 rounded-xl text-xs font-black text-gray-500 hover:bg-gray-100 transition-all">Cancel</button>
-                            <button type="button" onClick={handleSave} disabled={!canSave || isSaving}
-                                className={cn(
-                                    "flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-black transition-all active:scale-95",
-                                    canSave && !isSaving ? "bg-gray-900 text-white hover:bg-black shadow-md shadow-gray-200" : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                )}>
-                                {isSaving ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving…</> : <><Check className="w-3.5 h-3.5" /> Save</>}
-                            </button>
+                        <div className="flex items-center gap-1.5 text-xs font-black text-gray-400">
+                            {saveState === "saving" && <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving…</>}
+                            {saveState === "saved" && <><Check className="w-3.5 h-3.5 text-green-600" /> Saved</>}
                         </div>
                     </div>
                 </div>

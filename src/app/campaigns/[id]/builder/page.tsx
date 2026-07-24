@@ -230,6 +230,7 @@ export default function CampaignBuilderPage() {
                                 isExpanded={expandedId === q.id}
                                 onToggleExpand={() => setExpandedId(prev => prev === q.id ? null : q.id)}
                                 onCollapseExpand={() => setExpandedId(null)}
+                                onSaved={(patch) => setQuestions(prev => prev.map(pq => pq.id === q.id ? { ...pq, ...patch } : pq))}
                                 onDelete={handleDelete}
                                 onMoveUp={() => handleMove(index, "up")}
                                 onMoveDown={() => handleMove(index, "down")}
