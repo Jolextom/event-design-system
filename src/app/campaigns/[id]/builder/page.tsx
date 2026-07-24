@@ -3,10 +3,11 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
-import { Plus, ArrowLeft, ExternalLink, Rocket, Copy, Check, Send } from "lucide-react";
+import { Plus, ArrowLeft, ExternalLink, Rocket, Copy, Check, Send, Upload } from "lucide-react";
 import DashboardGuard from "@/app/components/DashboardGuard";
 import { CampaignQuestionCard } from "./CampaignQuestionCard";
 import { SendCampaignModal } from "./SendCampaignModal";
+import { ImportQuestionsModal } from "./ImportQuestionsModal";
 import type { Campaign, Question } from "../../../events/[tag]/types";
 
 const supabase = createClient(
@@ -28,6 +29,7 @@ export default function CampaignBuilderPage() {
     const [copied, setCopied] = useState(false);
     const [publishing, setPublishing] = useState(false);
     const [isSendModalOpen, setIsSendModalOpen] = useState(false);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -251,7 +253,7 @@ export default function CampaignBuilderPage() {
                         )}
                     </div>
 
-                    {/* Add Question / Add Page */}
+                    {/* Add Question / Add Page / Import */}
                     <div className="flex items-center gap-3">
                         <button
                             onClick={handleAddQuestion}
@@ -265,9 +267,23 @@ export default function CampaignBuilderPage() {
                         >
                             + Page
                         </button>
+                        <button
+                            onClick={() => setIsImportModalOpen(true)}
+                            className="flex items-center gap-2 px-5 py-3.5 border-2 border-dashed border-gray-200 rounded-2xl text-xs font-black uppercase tracking-widest text-gray-400 hover:text-purple-600 hover:border-purple-300 hover:bg-purple-50/30 transition-all"
+                        >
+                            <Upload className="w-4 h-4" /> Import
+                        </button>
                     </div>
                 </div>
             </div>
+
+            <ImportQuestionsModal
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
+                campaignId={campaignId}
+                nextOrder={questions.length}
+                onImported={fetchData}
+            />
 
             {campaign.type === "event" && campaign.event_id && (
                 <SendCampaignModal
