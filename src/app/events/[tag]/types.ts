@@ -160,6 +160,7 @@ import {
   Zap,
   Check,
   Settings,
+  ClipboardList,
 } from "lucide-react";
 
 export type GlobalSection =
@@ -167,6 +168,7 @@ export type GlobalSection =
   | "studio"
   | "registry"
   | "automations"
+  | "campaigns"
   | "broadcast"
   | "live"
   | "settings";
@@ -216,6 +218,7 @@ export const GLOBAL_NAV = [
   { id: "studio", icon: Command, label: "Studio" },
   { id: "registry", icon: Users, label: "Guests" },
   { id: "automations", icon: Zap, label: "Automations" },
+  { id: "campaigns", icon: ClipboardList, label: "Campaigns" },
   { id: "broadcast", icon: MessageSquare, label: "Communications" },
   { id: "live", icon: Check, label: "Event Day" },
   { id: "settings", icon: Settings, label: "Settings" },
