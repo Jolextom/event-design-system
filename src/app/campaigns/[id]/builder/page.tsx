@@ -3,9 +3,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
-import { Plus, ArrowLeft, ExternalLink, Rocket, Copy, Check } from "lucide-react";
+import { Plus, ArrowLeft, ExternalLink, Rocket, Copy, Check, Send } from "lucide-react";
 import DashboardGuard from "@/app/components/DashboardGuard";
 import { CampaignQuestionCard } from "./CampaignQuestionCard";
+import { SendCampaignModal } from "./SendCampaignModal";
 import type { Campaign, Question } from "../../../events/[tag]/types";
 
 const supabase = createClient(
@@ -26,6 +27,7 @@ export default function CampaignBuilderPage() {
     const [name, setName] = useState("");
     const [copied, setCopied] = useState(false);
     const [publishing, setPublishing] = useState(false);
+    const [isSendModalOpen, setIsSendModalOpen] = useState(false);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -173,6 +175,14 @@ export default function CampaignBuilderPage() {
                                 <Rocket className="w-3.5 h-3.5" />
                                 {campaign.status === "active" ? "Unpublish" : "Publish"}
                             </button>
+                            {campaign.type === "event" && campaign.status === "active" && (
+                                <button
+                                    onClick={() => setIsSendModalOpen(true)}
+                                    className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-black bg-emerald-600 text-white hover:bg-emerald-700 transition-all"
+                                >
+                                    <Send className="w-3.5 h-3.5" /> Send to Attendees
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -251,6 +261,15 @@ export default function CampaignBuilderPage() {
                     </div>
                 </div>
             </div>
+
+            {campaign.type === "event" && campaign.event_id && (
+                <SendCampaignModal
+                    isOpen={isSendModalOpen}
+                    onClose={() => setIsSendModalOpen(false)}
+                    campaignId={campaignId}
+                    eventId={campaign.event_id}
+                />
+            )}
         </DashboardGuard>
     );
 }

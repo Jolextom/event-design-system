@@ -327,3 +327,122 @@ export async function broadcastUpdate({
         return { success: false, error: error.message || "Failed to send broadcast." };
     }
 }
+
+/**
+ * Sends an Event Campaign's public form link to attendees, each with their
+ * own individualized ?attendee= link so their answers sync back to their
+ * Registry profile. Skips anyone who has already responded. Optionally
+ * scoped to a Smart Group instead of every attendee.
+ */
+export async function sendCampaignToAttendees({
+    campaignId,
+    eventId,
+    segmentId
+}: {
+    campaignId: string;
+    eventId: string;
+    segmentId?: string;
+}) {
+    try {
+        const { data: campaign, error: campaignErr } = await adminSupabase
+            .from("campaigns")
+            .select("name, status, type")
+            .eq("id", campaignId)
+            .single();
+
+        if (campaignErr || !campaign) throw new Error("Campaign not found");
+        if (campaign.type !== "event") throw new Error("Only Event Campaigns can be sent to attendees.");
+        if (campaign.status !== "active") throw new Error("Publish the campaign before sending it.");
+
+        const { data: event, error: eventErr } = await adminSupabase
+            .from("events")
+            .select("event_title, image")
+            .eq("id", eventId)
+            .single();
+
+        if (eventErr || !event) throw new Error("Event not found");
+
+        // Fetch the audience — everyone registered, or a specific Smart Group
+        const { data: allAttendees, error: attErr } = await adminSupabase
+            .from("attendees")
+            .select("id, email, first_name, last_name, check_in, properties")
+            .eq("event_id", eventId)
+            .neq("email_status", "invited");
+
+        if (attErr) throw new Error("Failed to fetch attendees: " + attErr.message);
+
+        let audience = allAttendees || [];
+
+        if (segmentId) {
+            const { data: segment, error: segErr } = await adminSupabase
+                .from("smart_segments")
+                .select("rules_config")
+                .eq("id", segmentId)
+                .single();
+            if (segErr || !segment) throw new Error("Smart Group not found");
+
+            const { evaluateSegment } = await import("./events/[tag]/utils/segmentLogic");
+            audience = audience.filter((a: any) => evaluateSegment(a, segment.rules_config));
+        }
+
+        if (audience.length === 0) {
+            return { success: false, error: "No attendees match this audience." };
+        }
+
+        // Don't re-send to anyone who already responded to this campaign
+        const { data: existingResponses } = await adminSupabase
+            .from("form_responses")
+            .select("attendee_id")
+            .eq("campaign_id", campaignId);
+
+        const alreadyResponded = new Set(
+            (existingResponses || []).map((r: any) => r.attendee_id).filter(Boolean)
+        );
+        const targets = audience.filter((a: any) => !alreadyResponded.has(a.id));
+
+        if (targets.length === 0) {
+            return { success: false, error: "Everyone in this audience has already responded." };
+        }
+
+        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        let sentCount = 0;
+
+        const results = await Promise.allSettled(targets.map(async (attendee: any) => {
+            const link = `${baseUrl}/f/${campaignId}?attendee=${attendee.id}`;
+
+            const result = await sendBroadcastEmail({
+                to: [attendee.email],
+                eventTitle: event.event_title,
+                messageTitle: campaign.name,
+                messageBody: "We'd love to hear your feedback — it only takes a minute.",
+                eventImage: event.image,
+                actionLink: link,
+                actionText: "Share Your Feedback"
+            });
+
+            if (result.success) sentCount++;
+
+            // Best-effort audit log; failure here shouldn't fail the send itself
+            await adminSupabase.from("email_deliveries").insert({
+                attendee_id: attendee.id,
+                event_id: eventId,
+                email_type: "campaign_survey",
+                status: result.success ? "sent" : "failed",
+            });
+        }));
+
+        results.forEach((res, idx) => {
+            if (res.status === 'rejected') {
+                console.error(`Campaign send ${idx} for campaign ${campaignId} failed:`, res.reason);
+            }
+        });
+
+        return {
+            success: true,
+            message: `Sent to ${sentCount} of ${targets.length} attendee(s).`
+        };
+    } catch (error: any) {
+        console.error("sendCampaignToAttendees error:", error);
+        return { success: false, error: error.message || "Failed to send campaign." };
+    }
+}
