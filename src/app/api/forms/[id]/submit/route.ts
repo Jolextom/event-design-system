@@ -11,9 +11,17 @@ export async function POST(
         // Instantiated per-request rather than at module scope so that
         // `next build`'s page-data collection step (which imports this
         // module without runtime env vars present) doesn't throw.
+        //
+        // Uses the service role key (same pattern as src/app/actions.ts) rather
+        // than the public anon key: this route needs to read back the row it
+        // just inserted (.insert().select()), which the anon role can't do
+        // under RLS unless we also grant public SELECT on form_responses/
+        // form_answers — and we don't want survey responses/emails readable
+        // by anyone with the anon key via a direct API call. Running as a
+        // privileged server route sidesteps that without loosening RLS.
         const supabase = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
         );
 
         const body = await req.json();
