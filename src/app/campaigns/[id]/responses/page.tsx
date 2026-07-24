@@ -210,15 +210,18 @@ export default function CampaignResponsesPage() {
                                     })()}
 
                                     {isScale && (() => {
+                                        const min = q.scale_config?.min ?? 1;
+                                        const max = q.scale_config?.max ?? 5;
+                                        const values = Array.from({ length: Math.max(1, max - min + 1) }, (_, i) => min + i);
                                         const nums = qAnswers.map(a => Number(a.value)).filter(n => !Number.isNaN(n));
                                         const avg = nums.length > 0 ? (nums.reduce((s, n) => s + n, 0) / nums.length) : 0;
-                                        const distribution = [1, 2, 3, 4, 5].map(n => nums.filter(v => v === n).length);
-                                        const max = Math.max(1, ...distribution);
+                                        const distribution = values.map(n => nums.filter(v => v === n).length);
+                                        const maxCount = Math.max(1, ...distribution);
                                         return (
                                             <div className="space-y-5">
                                                 <div className="flex items-baseline gap-2">
                                                     <span className="text-3xl font-black text-gray-900">{avg.toFixed(1)}</span>
-                                                    <span className="text-xs font-bold text-gray-400">average out of 5</span>
+                                                    <span className="text-xs font-bold text-gray-400">average out of {max}</span>
                                                     {q.question_type === "star_rating" && <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 ml-1" />}
                                                 </div>
                                                 <div className="flex items-end gap-2 h-24">
@@ -227,10 +230,10 @@ export default function CampaignResponsesPage() {
                                                             <div className="w-full bg-gray-100 rounded-t-lg overflow-hidden flex items-end" style={{ height: "80px" }}>
                                                                 <div
                                                                     className="w-full bg-blue-500 rounded-t-lg transition-all"
-                                                                    style={{ height: `${(count / max) * 100}%` }}
+                                                                    style={{ height: `${(count / maxCount) * 100}%` }}
                                                                 />
                                                             </div>
-                                                            <span className="text-[10px] font-black text-gray-400">{i + 1}</span>
+                                                            <span className="text-[10px] font-black text-gray-400">{values[i]}</span>
                                                         </div>
                                                     ))}
                                                 </div>

@@ -240,3 +240,18 @@ CREATE TRIGGER trg_sync_form_answer_to_property
     AFTER INSERT ON public.form_answers
     FOR EACH ROW EXECUTE FUNCTION public.sync_answer_to_attendee_property();
 
+
+-- ============================================================================
+-- Configurable scale ranges for linear_scale / star_rating questions
+-- ============================================================================
+-- Previously hardcoded to a fixed 1-5 range everywhere (builder, public form,
+-- analytics). scale_config lets each question define its own range and
+-- optional endpoint labels, e.g. {"min":1,"max":5,"min_label":"Never reliable",
+-- "max_label":"Always reliable"} or {"min":1,"max":10}. NULL means "use the
+-- default 1-5" for backward compatibility with existing questions.
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'questions' AND column_name = 'scale_config') THEN
+        ALTER TABLE public.questions ADD COLUMN scale_config JSONB;
+    END IF;
+END $$;

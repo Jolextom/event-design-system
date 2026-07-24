@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@supabase/supabase-js";
-import type { Question, QuestionType, QuestionLogicRule } from "../../../events/[tag]/types";
+import type { Question, QuestionType, QuestionLogicRule, ScaleConfig } from "../../../events/[tag]/types";
 import { OptionsEditor } from "../../../events/[tag]/views/registration/OptionsEditor";
 
 const supabase = createClient(
@@ -57,6 +57,7 @@ export function CampaignQuestionCard({
     );
     const [propertyKey, setPropertyKey] = useState(question.property_key || "");
     const [logicRules, setLogicRules] = useState<QuestionLogicRule[]>(question.logic_rules || []);
+    const [scaleConfig, setScaleConfig] = useState<ScaleConfig>(question.scale_config || { min: 1, max: 5 });
     const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
     const [isDuplicating, setIsDuplicating] = useState(false);
 
@@ -71,6 +72,7 @@ export function CampaignQuestionCard({
             setOptions(question.options?.length ? question.options.map(o => o.option_text) : ["", ""]);
             setPropertyKey(question.property_key || "");
             setLogicRules(question.logic_rules || []);
+            setScaleConfig(question.scale_config || { min: 1, max: 5 });
             setSaveState("idle");
         }
     }, [isExpanded, question]);
@@ -86,13 +88,13 @@ export function CampaignQuestionCard({
     // Always-current snapshot so a flush triggered by isExpanded flipping to
     // false (which fires in the same tick as the last keystroke's state
     // update) reads the latest values rather than a stale closure.
-    const latestRef = useRef({ title, type, isRequired, options, propertyKey, logicRules });
+    const latestRef = useRef({ title, type, isRequired, options, propertyKey, logicRules, scaleConfig });
     useEffect(() => {
-        latestRef.current = { title, type, isRequired, options, propertyKey, logicRules };
-    }, [title, type, isRequired, options, propertyKey, logicRules]);
+        latestRef.current = { title, type, isRequired, options, propertyKey, logicRules, scaleConfig };
+    }, [title, type, isRequired, options, propertyKey, logicRules, scaleConfig]);
 
     const doSave = useCallback(async () => {
-        const { title, type, isRequired, options, propertyKey, logicRules } = latestRef.current;
+        const { title, type, isRequired, options, propertyKey, logicRules, scaleConfig } = latestRef.current;
         const meta = TYPE_META[type];
         const validOptions = options.filter(o => o.trim());
 
@@ -102,9 +104,14 @@ export function CampaignQuestionCard({
 
         setSaveState("saving");
         try {
-            const cleanedRules = meta.hasOptions
-                ? logicRules.filter(r => validOptions.includes(r.if_equals))
-                : [];
+            // Keep a rule if its target option still exists, OR if it's a
+            // wildcard ("*") — wildcards apply regardless of question type,
+            // so they must survive even when meta.hasOptions is false
+            // (e.g. an imported free-text closing question routed to submit).
+            const cleanedRules = logicRules.filter(r =>
+                r.if_equals === "*" || (meta.hasOptions && validOptions.includes(r.if_equals))
+            );
+            const isScaleType = type === "linear_scale" || type === "star_rating";
 
             const { error: qErr } = await supabase
                 .from("questions")
@@ -114,6 +121,7 @@ export function CampaignQuestionCard({
                     is_required: isRequired,
                     property_key: propertyKey.trim() || null,
                     logic_rules: cleanedRules.length > 0 ? cleanedRules : null,
+                    scale_config: isScaleType ? scaleConfig : null,
                 })
                 .eq("id", question.id);
             if (qErr) throw qErr;
@@ -139,6 +147,7 @@ export function CampaignQuestionCard({
                 is_required: isRequired,
                 property_key: propertyKey.trim() || null,
                 logic_rules: cleanedRules.length > 0 ? cleanedRules : null,
+                scale_config: isScaleType ? scaleConfig : null,
                 options: savedOptions,
             });
             setSaveState("saved");
@@ -156,7 +165,7 @@ export function CampaignQuestionCard({
         const timer = setTimeout(() => { doSave(); }, 700);
         return () => clearTimeout(timer);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [title, type, isRequired, options, propertyKey, logicRules, isExpanded]);
+    }, [title, type, isRequired, options, propertyKey, logicRules, scaleConfig, isExpanded]);
 
     // Flush immediately the moment this card collapses (e.g. because the
     // organizer clicked "Add Question" and moved on) so nothing is lost
@@ -313,10 +322,54 @@ export function CampaignQuestionCard({
                         </div>
                     )}
 
-                    {/* Scale hint */}
+                    {/* Scale configuration */}
                     {(type === "linear_scale" || type === "star_rating") && (
-                        <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl text-[11px] text-gray-500 font-bold">
-                            Respondents will answer on a fixed 1–5 {type === "star_rating" ? "star" : "point"} scale.
+                        <div className="space-y-3 p-4 bg-gray-50 border border-gray-100 rounded-xl">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                    <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 block">Min value</label>
+                                    <input
+                                        type="number"
+                                        value={scaleConfig.min}
+                                        onChange={(e) => setScaleConfig(prev => ({ ...prev, min: parseInt(e.target.value) || 1 }))}
+                                        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-semibold text-gray-900 outline-none focus:border-[var(--brand-blue)] transition-all"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 block">Max value</label>
+                                    <input
+                                        type="number"
+                                        value={scaleConfig.max}
+                                        onChange={(e) => setScaleConfig(prev => ({ ...prev, max: parseInt(e.target.value) || prev.min + 1 }))}
+                                        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-semibold text-gray-900 outline-none focus:border-[var(--brand-blue)] transition-all"
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                    <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 block">Min label (optional)</label>
+                                    <input
+                                        type="text"
+                                        value={scaleConfig.min_label || ""}
+                                        onChange={(e) => setScaleConfig(prev => ({ ...prev, min_label: e.target.value }))}
+                                        placeholder="e.g. Never reliable"
+                                        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-semibold text-gray-900 placeholder:text-gray-300 outline-none focus:border-[var(--brand-blue)] transition-all"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 block">Max label (optional)</label>
+                                    <input
+                                        type="text"
+                                        value={scaleConfig.max_label || ""}
+                                        onChange={(e) => setScaleConfig(prev => ({ ...prev, max_label: e.target.value }))}
+                                        placeholder="e.g. Always reliable"
+                                        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-semibold text-gray-900 placeholder:text-gray-300 outline-none focus:border-[var(--brand-blue)] transition-all"
+                                    />
+                                </div>
+                            </div>
+                            <p className="text-[10px] text-gray-400 font-bold">
+                                Respondents will answer on a {scaleConfig.min}–{scaleConfig.max} {type === "star_rating" ? "star" : "point"} scale.
+                            </p>
                         </div>
                     )}
 

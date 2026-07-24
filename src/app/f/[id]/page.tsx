@@ -318,36 +318,52 @@ export default function PublicFormPage() {
                                 </div>
                             )}
 
-                            {q.question_type === "linear_scale" && (
-                                <div className="flex items-center gap-2">
-                                    {[1, 2, 3, 4, 5].map(n => (
-                                        <button
-                                            key={n}
-                                            type="button"
-                                            onClick={() => setAnswer(q.id, n)}
-                                            className={cn(
-                                                "flex-1 py-3 rounded-xl border-2 text-sm font-black transition-all",
-                                                answers[q.id] === n ? "bg-blue-50 border-[var(--brand-blue,#2563eb)] text-gray-900" : "bg-gray-50 border-gray-100 text-gray-500 hover:border-gray-200"
-                                            )}
-                                        >
-                                            {n}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
+                            {q.question_type === "linear_scale" && (() => {
+                                const min = q.scale_config?.min ?? 1;
+                                const max = q.scale_config?.max ?? 5;
+                                const values = Array.from({ length: Math.max(1, max - min + 1) }, (_, i) => min + i);
+                                return (
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            {values.map(n => (
+                                                <button
+                                                    key={n}
+                                                    type="button"
+                                                    onClick={() => setAnswer(q.id, n)}
+                                                    className={cn(
+                                                        "flex-1 py-3 rounded-xl border-2 text-sm font-black transition-all",
+                                                        answers[q.id] === n ? "bg-blue-50 border-[var(--brand-blue,#2563eb)] text-gray-900" : "bg-gray-50 border-gray-100 text-gray-500 hover:border-gray-200"
+                                                    )}
+                                                >
+                                                    {n}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {(q.scale_config?.min_label || q.scale_config?.max_label) && (
+                                            <div className="flex items-center justify-between text-[10px] font-bold text-gray-400">
+                                                <span>{q.scale_config?.min_label}</span>
+                                                <span>{q.scale_config?.max_label}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
 
-                            {q.question_type === "star_rating" && (
-                                <div className="flex items-center gap-1.5">
-                                    {[1, 2, 3, 4, 5].map(n => {
-                                        const val = (answers[q.id] as number) || 0;
-                                        return (
+                            {q.question_type === "star_rating" && (() => {
+                                const min = q.scale_config?.min ?? 1;
+                                const max = q.scale_config?.max ?? 5;
+                                const values = Array.from({ length: Math.max(1, max - min + 1) }, (_, i) => min + i);
+                                const val = (answers[q.id] as number) || 0;
+                                return (
+                                    <div className="flex items-center gap-1.5">
+                                        {values.map(n => (
                                             <button key={n} type="button" onClick={() => setAnswer(q.id, n)} className="p-1">
                                                 <Star className={cn("w-7 h-7 transition-all", n <= val ? "fill-yellow-400 text-yellow-400" : "text-gray-200")} />
                                             </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
+                                        ))}
+                                    </div>
+                                );
+                            })()}
                         </div>
                     ))}
 

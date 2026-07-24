@@ -78,9 +78,21 @@ export interface QuestionOption {
 
 // Conditional page-routing rule attached to a question, evaluated on submit.
 // e.g. { if_equals: "Option A", go_to_page: 2 }
+// if_equals: "*" matches unconditionally (any answer, or none) — used to
+// route a branch's closing question straight to a target page or submit
+// regardless of what was typed, including for non-choice question types.
 export interface QuestionLogicRule {
   if_equals: string;
   go_to_page: number;
+}
+
+// Configurable range for linear_scale / star_rating questions.
+// Undefined/null means "use the default 1-5 range" for backward compatibility.
+export interface ScaleConfig {
+  min: number;
+  max: number;
+  min_label?: string;
+  max_label?: string;
 }
 
 export interface Question {
@@ -95,6 +107,7 @@ export interface Question {
   page?: number;                 // 1-indexed page/section within the form
   logic_rules?: QuestionLogicRule[] | null;
   property_key?: string | null;  // maps answer -> attendees.properties[property_key]
+  scale_config?: ScaleConfig | null; // for linear_scale/star_rating; null = default 1-5
   created_at?: string;
   options?: QuestionOption[]; // Joined data
 }
