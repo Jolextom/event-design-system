@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 export async function POST(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -13,6 +8,14 @@ export async function POST(
     const { id: campaignId } = await params;
 
     try {
+        // Instantiated per-request rather than at module scope so that
+        // `next build`'s page-data collection step (which imports this
+        // module without runtime env vars present) doesn't throw.
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+
         const body = await req.json();
         const { attendeeId, email, answers } = body as {
             attendeeId?: string;

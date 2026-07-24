@@ -230,13 +230,16 @@ export async function broadcastUpdate({
     messageTitle,
     messageBody,
     actionLink,
-    actionText
+    actionText,
+    segmentId
 }: {
     eventId: string;
     messageTitle: string;
     messageBody: string;
     actionLink?: string;
     actionText?: string;
+    /** If provided, only sends to attendees matching this Smart Group instead of all registered guests */
+    segmentId?: string;
 }) {
     try {
         // 1. Fetch Event Details
@@ -248,20 +251,46 @@ export async function broadcastUpdate({
 
         if (eventErr || !event) throw new Error("Event not found");
 
-        // 2. Fetch All Registered Attendees
-        const { data: attendees, error: attErr } = await adminSupabase
-            .from("attendees")
-            .select("email")
-            .eq("event_id", eventId)
-            .neq("email_status", "invited"); // Only registered guests
+        // 2. Fetch Registered Attendees — filtered by Smart Group if one was selected
+        let recipientEmails: string[];
 
-        if (attErr) throw new Error("Failed to fetch attendees: " + attErr.message);
-        if (!attendees || attendees.length === 0) {
-            return { success: false, error: "No registered attendees found to broadcast to." };
+        if (segmentId) {
+            const { data: segment, error: segErr } = await adminSupabase
+                .from("smart_segments")
+                .select("rules_config")
+                .eq("id", segmentId)
+                .single();
+
+            if (segErr || !segment) throw new Error("Smart Group not found");
+
+            const { data: attendees, error: attErr } = await adminSupabase
+                .from("attendees")
+                .select("email, first_name, last_name, check_in, properties")
+                .eq("event_id", eventId)
+                .neq("email_status", "invited");
+
+            if (attErr) throw new Error("Failed to fetch attendees: " + attErr.message);
+
+            const { evaluateSegment } = await import("./events/[tag]/utils/segmentLogic");
+            const matching = (attendees || []).filter((a: any) => evaluateSegment(a, segment.rules_config));
+
+            if (matching.length === 0) {
+                return { success: false, error: "No attendees match this Smart Group." };
+            }
+            recipientEmails = Array.from(new Set(matching.map((a: any) => a.email)));
+        } else {
+            const { data: attendees, error: attErr } = await adminSupabase
+                .from("attendees")
+                .select("email")
+                .eq("event_id", eventId)
+                .neq("email_status", "invited"); // Only registered guests
+
+            if (attErr) throw new Error("Failed to fetch attendees: " + attErr.message);
+            if (!attendees || attendees.length === 0) {
+                return { success: false, error: "No registered attendees found to broadcast to." };
+            }
+            recipientEmails = Array.from(new Set(attendees.map(a => a.email)));
         }
-
-        // Get unique emails
-        const recipientEmails = Array.from(new Set(attendees.map(a => a.email)));
 
         // 3. Send Emails in Batches (Resend to field is an array)
         // Note: Resend recommended batch size is ~50-100 per request

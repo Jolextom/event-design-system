@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
     Mail,
     Send,
@@ -10,15 +10,23 @@ import {
     Settings,
     Loader2,
     CheckCircle2,
-    X
+    X,
+    Users
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { createClient } from "@supabase/supabase-js";
 import { Event } from "../types";
 import { broadcastUpdate } from "@/app/actions";
 
 interface BroadcastViewProps {
     event: Event | null;
+}
+
+interface SegmentOption {
+    id: string;
+    name: string;
+    count: number;
 }
 
 export function BroadcastView({ event }: BroadcastViewProps) {
@@ -27,18 +35,34 @@ export function BroadcastView({ event }: BroadcastViewProps) {
     const [message, setMessage] = useState("");
     const [isSending, setIsSending] = useState(false);
     const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
+    const [segments, setSegments] = useState<SegmentOption[]>([]);
+    const [selectedSegmentId, setSelectedSegmentId] = useState<string>("");
+
+    useEffect(() => {
+        if (!event?.id) return;
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+        supabase
+            .from("smart_segments")
+            .select("id, name, count")
+            .eq("event_id", event.id)
+            .then(({ data }) => setSegments(data || []));
+    }, [event?.id]);
 
     const handleSend = async () => {
         if (!event?.id || !title || !message) return;
-        
+
         setIsSending(true);
         setResult(null);
-        
+
         try {
             const res = await broadcastUpdate({
                 eventId: event.id,
                 messageTitle: title,
-                messageBody: message
+                messageBody: message,
+                segmentId: selectedSegmentId || undefined
             });
             
             if (res.success) {
@@ -105,6 +129,22 @@ export function BroadcastView({ event }: BroadcastViewProps) {
                         >
                             <div className="space-y-4">
                                 <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block ml-2">Send To</label>
+                                    <div className="relative">
+                                        <select
+                                            value={selectedSegmentId}
+                                            onChange={(e) => setSelectedSegmentId(e.target.value)}
+                                            className="w-full appearance-none bg-white border border-gray-100 rounded-2xl px-6 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                                        >
+                                            <option value="">All Registered Guests</option>
+                                            {segments.map(s => (
+                                                <option key={s.id} value={s.id}>{s.name} ({s.count})</option>
+                                            ))}
+                                        </select>
+                                        <Users className="absolute right-6 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300 pointer-events-none" />
+                                    </div>
+                                </div>
+                                <div>
                                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block ml-2">Broadcast Subject</label>
                                     <input 
                                         type="text"
@@ -129,7 +169,9 @@ export function BroadcastView({ event }: BroadcastViewProps) {
                             <div className="flex items-center justify-between pt-4">
                                 <div className="flex items-center gap-3 text-xs font-bold text-gray-400">
                                     <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                                    Will be sent to all registered participants
+                                    {selectedSegmentId
+                                        ? `Will be sent to "${segments.find(s => s.id === selectedSegmentId)?.name}" only`
+                                        : "Will be sent to all registered participants"}
                                 </div>
                                 <button 
                                     onClick={handleSend}
