@@ -54,6 +54,9 @@ export default function CampaignsPage() {
                     <div className="bg-white border border-[var(--color-neutral-100)] rounded-3xl shadow-lg p-8">
                         <div className="flex items-center justify-between mb-6">
                             <div>
+                                <a href="/events/dashboard" className="text-[11px] font-black text-[var(--color-neutral-400)] hover:text-[var(--color-primary-700)] transition-all uppercase tracking-widest mb-2 inline-block">
+                                    ← Events Dashboard
+                                </a>
                                 <h2 className="text-2xl font-black text-[var(--color-primary-700)]">Campaigns</h2>
                                 <p className="text-xs text-[var(--color-neutral-400)] font-bold mt-1">Forms and surveys — event-linked or standalone.</p>
                             </div>

@@ -27,6 +27,9 @@ export default function PublicFormPage() {
     const [notPublished, setNotPublished] = useState(false);
 
     const [currentPage, setCurrentPage] = useState(1);
+    // Tracks the actual sequence of pages visited (not just page number - 1),
+    // so Back works correctly even when skip logic jumped non-sequentially.
+    const [pageHistory, setPageHistory] = useState<number[]>([]);
     const [answers, setAnswers] = useState<Record<string, AnswerValue>>({});
     const [email, setEmail] = useState("");
     const [submitting, setSubmitting] = useState(false);
@@ -102,12 +105,14 @@ export default function PublicFormPage() {
     };
 
     const resolveNextPage = (): number => {
-        // Any answered choice-type question on this page with a matching logic rule wins (first match)
+        // Any answered choice-type question on this page with a matching logic rule wins (first match).
+        // A rule with if_equals === "*" matches unconditionally — used to route free-text/rating
+        // questions (or "end this branch regardless of answer") straight to a target page or submit.
         for (const q of questionsOnPage) {
             if (!q.logic_rules || q.logic_rules.length === 0) continue;
             const answer = answers[q.id];
             const answerStr = Array.isArray(answer) ? answer[0] : answer;
-            const rule = q.logic_rules.find(r => r.if_equals === answerStr);
+            const rule = q.logic_rules.find(r => r.if_equals === answerStr) || q.logic_rules.find(r => r.if_equals === "*");
             if (rule) return rule.go_to_page;
         }
         return currentPage + 1;
@@ -119,6 +124,7 @@ export default function PublicFormPage() {
         setError(null);
         const next = resolveNextPage();
         if (next <= pageCount) {
+            setPageHistory(prev => [...prev, currentPage]);
             setCurrentPage(next);
         } else {
             handleSubmit();
@@ -127,7 +133,16 @@ export default function PublicFormPage() {
 
     const handleBack = () => {
         setError(null);
-        setCurrentPage(prev => Math.max(1, prev - 1));
+        setPageHistory(prev => {
+            if (prev.length === 0) {
+                setCurrentPage(p => Math.max(1, p - 1));
+                return prev;
+            }
+            const next = [...prev];
+            const previousPage = next.pop()!;
+            setCurrentPage(previousPage);
+            return next;
+        });
     };
 
     const handleSubmit = async () => {

@@ -148,9 +148,15 @@ export default function CampaignBuilderPage() {
                 <div className="max-w-3xl mx-auto space-y-8 px-4">
                     {/* Header */}
                     <div className="flex items-center justify-between">
-                        <button onClick={() => router.push("/campaigns")} className="flex items-center gap-2 text-xs font-black text-gray-400 hover:text-gray-700 transition-all">
-                            <ArrowLeft className="w-4 h-4" /> All Campaigns
-                        </button>
+                        <div className="flex items-center gap-4">
+                            <a href="/events/dashboard" className="flex items-center gap-2 text-xs font-black text-gray-300 hover:text-gray-600 transition-all">
+                                <ArrowLeft className="w-4 h-4" /> Events Dashboard
+                            </a>
+                            <div className="w-px h-4 bg-gray-100" />
+                            <button onClick={() => router.push("/campaigns")} className="flex items-center gap-2 text-xs font-black text-gray-400 hover:text-gray-700 transition-all">
+                                All Campaigns
+                            </button>
+                        </div>
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={handleCopyLink}
