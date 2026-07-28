@@ -191,6 +191,11 @@ export function ImportQuestionsModal({ isOpen, onClose, campaignId, nextOrder, o
                     </div>
                 ) : preview ? (
                     <div className="space-y-3">
+                        {error && (
+                            <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-xs text-red-600 font-bold flex items-center gap-2">
+                                <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {error}
+                            </div>
+                        )}
                         <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700 font-bold">
                             {preview.length} questions found across {new Set(preview.map(q => q.page)).size} page(s). Review below, then import.
                         </div>
