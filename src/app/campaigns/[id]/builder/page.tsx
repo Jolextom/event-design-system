@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
-import { Plus, ArrowLeft, ExternalLink, Rocket, Copy, Check, Send, Upload } from "lucide-react";
+import { Plus, ArrowLeft, ExternalLink, Rocket, Copy, Check, Send, Upload, ChevronLeft, ChevronRight } from "lucide-react";
 import DashboardGuard from "@/app/components/DashboardGuard";
 import { CampaignQuestionCard } from "./CampaignQuestionCard";
 import { SendCampaignModal } from "./SendCampaignModal";
@@ -209,20 +209,40 @@ export default function CampaignBuilderPage() {
                         </p>
                     </div>
 
-                    {/* Page Tabs */}
+                    {/* Page Navigator — a dropdown + prev/next instead of one pill per page,
+                        since a page-per-branch survey can easily have 20-25+ pages and a
+                        row of individual buttons just runs off-screen at that point. */}
                     {pageCount > 1 && (
-                        <div className="flex items-center gap-2">
-                            {Array.from({ length: pageCount }, (_, i) => i + 1).map(p => (
-                                <button
-                                    key={p}
-                                    onClick={() => setActivePage(p)}
-                                    className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                                        activePage === p ? "bg-gray-900 text-white" : "bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"
-                                    }`}
+                        <div className="flex items-center justify-between bg-white border border-gray-200 rounded-2xl px-3 py-2.5">
+                            <button
+                                onClick={() => setActivePage(p => Math.max(1, p - 1))}
+                                disabled={activePage === 1}
+                                className="p-2 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-30 disabled:pointer-events-none transition-all"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Page</span>
+                                <select
+                                    value={activePage}
+                                    onChange={(e) => setActivePage(parseInt(e.target.value))}
+                                    className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-black text-gray-900 outline-none focus:border-[var(--brand-blue)] transition-all"
                                 >
-                                    Page {p}
-                                </button>
-                            ))}
+                                    {Array.from({ length: pageCount }, (_, i) => i + 1).map(p => (
+                                        <option key={p} value={p}>{p}</option>
+                                    ))}
+                                </select>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">of {pageCount}</span>
+                            </div>
+
+                            <button
+                                onClick={() => setActivePage(p => Math.min(pageCount, p + 1))}
+                                disabled={activePage === pageCount}
+                                className="p-2 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-30 disabled:pointer-events-none transition-all"
+                            >
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
                         </div>
                     )}
 

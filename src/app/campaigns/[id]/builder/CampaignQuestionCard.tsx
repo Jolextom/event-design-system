@@ -64,19 +64,6 @@ export function CampaignQuestionCard({
     const meta = TYPE_META[type];
     const Icon = meta.icon;
 
-    useEffect(() => {
-        if (isExpanded) {
-            setTitle(question.title);
-            setType(question.question_type);
-            setIsRequired(question.is_required);
-            setOptions(question.options?.length ? question.options.map(o => o.option_text) : ["", ""]);
-            setPropertyKey(question.property_key || "");
-            setLogicRules(question.logic_rules || []);
-            setScaleConfig(question.scale_config || { min: 1, max: 5 });
-            setSaveState("idle");
-        }
-    }, [isExpanded, question]);
-
     const updateRuleForOption = (optionText: string, goToPage: number | null) => {
         setLogicRules(prev => {
             const withoutThis = prev.filter(r => r.if_equals !== optionText);
@@ -167,15 +154,32 @@ export function CampaignQuestionCard({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [title, type, isRequired, options, propertyKey, logicRules, scaleConfig, isExpanded]);
 
-    // Flush immediately the moment this card collapses (e.g. because the
-    // organizer clicked "Add Question" and moved on) so nothing is lost
-    // waiting on the debounce timer.
+    // Sync local state from props only on the false->true transition (card
+    // just opened), and flush any pending edit on the true->false transition
+    // (card just closed). Deliberately NOT keyed on `question` itself —
+    // every auto-save patches the parent's copy of this question with a new
+    // object (so the collapsed header updates), and if this effect re-ran
+    // on that alone it would re-derive `options` via a fresh .map() (new
+    // array reference every time even with identical content), which would
+    // retrigger the debounced auto-save below, which saves again, which
+    // patches the parent again — an infinite loop, once every ~700ms.
     const wasExpandedRef = useRef(isExpanded);
     useEffect(() => {
-        if (wasExpandedRef.current && !isExpanded) {
+        const wasExpanded = wasExpandedRef.current;
+        if (!wasExpanded && isExpanded) {
+            setTitle(question.title);
+            setType(question.question_type);
+            setIsRequired(question.is_required);
+            setOptions(question.options?.length ? question.options.map(o => o.option_text) : ["", ""]);
+            setPropertyKey(question.property_key || "");
+            setLogicRules(question.logic_rules || []);
+            setScaleConfig(question.scale_config || { min: 1, max: 5 });
+            setSaveState("idle");
+        } else if (wasExpanded && !isExpanded) {
             doSave();
         }
         wasExpandedRef.current = isExpanded;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isExpanded, doSave]);
 
     const handleDuplicate = async (e: React.MouseEvent) => {
