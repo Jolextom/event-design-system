@@ -64,6 +64,12 @@ export default function DemoDashboard() {
                             <h2 className="text-2xl font-black text-[var(--color-primary-700)]">Your Events</h2>
                             <div className="flex items-center gap-3">
                                 <a
+                                    href="/settings/senders"
+                                    className="bg-white border border-[var(--color-neutral-200)] text-[var(--color-neutral-700)] px-6 py-2 rounded-xl font-black text-xs hover:bg-[var(--color-neutral-50)] transition-all uppercase tracking-widest"
+                                >
+                                    Senders
+                                </a>
+                                <a
                                     href="/campaigns"
                                     className="bg-white border border-[var(--color-neutral-200)] text-[var(--color-neutral-700)] px-6 py-2 rounded-xl font-black text-xs hover:bg-[var(--color-neutral-50)] transition-all uppercase tracking-widest"
                                 >

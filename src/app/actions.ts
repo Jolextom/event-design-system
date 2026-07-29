@@ -231,7 +231,8 @@ export async function broadcastUpdate({
     messageBody,
     actionLink,
     actionText,
-    segmentId
+    segmentId,
+    senderIdentityId
 }: {
     eventId: string;
     messageTitle: string;
@@ -240,6 +241,8 @@ export async function broadcastUpdate({
     actionText?: string;
     /** If provided, only sends to attendees matching this Smart Group instead of all registered guests */
     segmentId?: string;
+    /** A verified sender_identities id to send From; falls back to the platform default if missing/unverified */
+    senderIdentityId?: string;
 }) {
     try {
         // 1. Fetch Event Details
@@ -292,6 +295,10 @@ export async function broadcastUpdate({
             recipientEmails = Array.from(new Set(attendees.map(a => a.email)));
         }
 
+        // Resolve the From line (only verified identities are honored)
+        const { resolveSender } = await import("@/lib/senderDomains");
+        const fromLine = await resolveSender(senderIdentityId);
+
         // 3. Send Emails in Batches (Resend to field is an array)
         // Note: Resend recommended batch size is ~50-100 per request
         const batchSize = 50;
@@ -302,6 +309,7 @@ export async function broadcastUpdate({
             const batch = recipientEmails.slice(i, i + batchSize);
             const result = await sendBroadcastEmail({
                 to: batch,
+                from: fromLine,
                 eventTitle: event.event_title,
                 messageTitle,
                 messageBody,
@@ -337,11 +345,14 @@ export async function broadcastUpdate({
 export async function sendCampaignToAttendees({
     campaignId,
     eventId,
-    segmentId
+    segmentId,
+    senderIdentityId
 }: {
     campaignId: string;
     eventId: string;
     segmentId?: string;
+    /** A verified sender_identities id to send From; falls back to the platform default if missing/unverified */
+    senderIdentityId?: string;
 }) {
     try {
         const { data: campaign, error: campaignErr } = await adminSupabase
@@ -405,6 +416,8 @@ export async function sendCampaignToAttendees({
         }
 
         const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const { resolveSender } = await import("@/lib/senderDomains");
+        const fromLine = await resolveSender(senderIdentityId);
         let sentCount = 0;
 
         const results = await Promise.allSettled(targets.map(async (attendee: any) => {
@@ -412,6 +425,7 @@ export async function sendCampaignToAttendees({
 
             const result = await sendBroadcastEmail({
                 to: [attendee.email],
+                from: fromLine,
                 eventTitle: event.event_title,
                 messageTitle: campaign.name,
                 messageBody: "We'd love to hear your feedback — it only takes a minute.",

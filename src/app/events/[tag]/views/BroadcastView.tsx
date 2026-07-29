@@ -29,6 +29,12 @@ interface SegmentOption {
     count: number;
 }
 
+interface SenderOption {
+    id: string;
+    from_name: string;
+    from_email: string;
+}
+
 export function BroadcastView({ event }: BroadcastViewProps) {
     const [isComposing, setIsComposing] = useState(false);
     const [title, setTitle] = useState("");
@@ -37,6 +43,8 @@ export function BroadcastView({ event }: BroadcastViewProps) {
     const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
     const [segments, setSegments] = useState<SegmentOption[]>([]);
     const [selectedSegmentId, setSelectedSegmentId] = useState<string>("");
+    const [senders, setSenders] = useState<SenderOption[]>([]);
+    const [selectedSenderId, setSelectedSenderId] = useState<string>("");
 
     useEffect(() => {
         if (!event?.id) return;
@@ -49,7 +57,14 @@ export function BroadcastView({ event }: BroadcastViewProps) {
             .select("id, name, count")
             .eq("event_id", event.id)
             .then(({ data }) => setSegments(data || []));
-    }, [event?.id]);
+
+        supabase
+            .from("sender_identities")
+            .select("id, from_name, from_email")
+            .eq("user_id", event.created_by)
+            .eq("status", "verified")
+            .then(({ data }) => setSenders(data || []));
+    }, [event?.id, event?.created_by]);
 
     const handleSend = async () => {
         if (!event?.id || !title || !message) return;
@@ -62,7 +77,8 @@ export function BroadcastView({ event }: BroadcastViewProps) {
                 eventId: event.id,
                 messageTitle: title,
                 messageBody: message,
-                segmentId: selectedSegmentId || undefined
+                segmentId: selectedSegmentId || undefined,
+                senderIdentityId: selectedSenderId || undefined
             });
             
             if (res.success) {
@@ -144,6 +160,21 @@ export function BroadcastView({ event }: BroadcastViewProps) {
                                         <Users className="absolute right-6 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300 pointer-events-none" />
                                     </div>
                                 </div>
+                                {senders.length > 0 && (
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block ml-2">Send From</label>
+                                        <select
+                                            value={selectedSenderId}
+                                            onChange={(e) => setSelectedSenderId(e.target.value)}
+                                            className="w-full appearance-none bg-white border border-gray-100 rounded-2xl px-6 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                                        >
+                                            <option value="">EventFlow (platform default)</option>
+                                            {senders.map(s => (
+                                                <option key={s.id} value={s.id}>{s.from_name} &lt;{s.from_email}&gt;</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
                                 <div>
                                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block ml-2">Broadcast Subject</label>
                                     <input 

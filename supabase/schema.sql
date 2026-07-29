@@ -255,3 +255,29 @@ BEGIN
         ALTER TABLE public.questions ADD COLUMN scale_config JSONB;
     END IF;
 END $$;
+
+
+-- ============================================================================
+-- Custom sender identities (send campaign/broadcast emails from own domains)
+-- ============================================================================
+-- Each row is a sending domain registered with Resend. The owner adds the
+-- DNS records we surface (from Resend's domain API), then verifies. Only
+-- identities with status='verified' may be used as a From address.
+CREATE TABLE IF NOT EXISTS public.sender_identities (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID NOT NULL,
+    domain TEXT NOT NULL,
+    from_name TEXT NOT NULL DEFAULT 'EventFlow',
+    from_email TEXT NOT NULL,               -- e.g. surveys@theirbrand.com
+    resend_domain_id TEXT,                  -- Resend's id for the domain
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'verified', 'failed')),
+    dns_records JSONB,                      -- records the owner must add (from Resend)
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, domain)
+);
+
+ALTER TABLE public.sender_identities ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users manage their own sender identities"
+ON public.sender_identities FOR ALL TO authenticated
+USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);

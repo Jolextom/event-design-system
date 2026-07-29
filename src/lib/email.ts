@@ -132,6 +132,8 @@ export async function sendConfirmationEmail({
 
 interface SendBroadcastEmailParams extends BroadcastEmailParams {
     to: string[];
+    /** Verified sender From line, e.g. "Kini AI <surveys@kini-ai.com>". Callers must resolve this via resolveSender() so unverified domains never get here. */
+    from?: string;
 }
 
 export async function sendBroadcastEmail({
@@ -141,7 +143,8 @@ export async function sendBroadcastEmail({
     messageBody,
     eventImage,
     actionLink,
-    actionText
+    actionText,
+    from
 }: SendBroadcastEmailParams) {
     try {
         const html = renderBroadcastEmailHtml({
@@ -155,7 +158,7 @@ export async function sendBroadcastEmail({
 
         // Resend allows sending to multiple recipients (up to 50 per request usually)
         const { data, error } = await getResend().emails.send({
-            from: 'EventFlow <noreply@partiesandeventz.com>',
+            from: from || 'EventFlow <noreply@partiesandeventz.com>',
             to: to,
             subject: `${messageTitle} - ${eventTitle}`,
             html,
