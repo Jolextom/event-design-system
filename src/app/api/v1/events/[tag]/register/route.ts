@@ -168,7 +168,9 @@ export async function POST(
 
         if (orderErr || !order) {
             console.error("v1 register: order upsert failed:", orderErr);
-            return corsJson(req, { error: "Failed to create order" }, { status: 500 });
+            // TEMP: surfacing the real DB error to diagnose — revert to a generic
+            // message once the root cause is fixed, so internals aren't exposed publicly.
+            return corsJson(req, { error: "Failed to create order", detail: orderErr }, { status: 500 });
         }
 
         if (isPaid) {
