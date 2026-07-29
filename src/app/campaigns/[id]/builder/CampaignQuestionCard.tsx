@@ -87,7 +87,7 @@ export function CampaignQuestionCard({
 
         // Not enough to save yet (e.g. still typing the title, or a choice
         // question with fewer than 2 options) — stay quiet, no error shown.
-        if (!title.trim() || (meta.hasOptions && validOptions.length < 2)) return;
+        if (!title.trim() || (meta.hasOptions && validOptions.length < 1)) return;
 
         setSaveState("saving");
         try {

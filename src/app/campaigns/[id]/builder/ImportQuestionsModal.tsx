@@ -53,8 +53,8 @@ function validate(raw: string): { questions: ImportQuestion[] } | { error: strin
         if (!VALID_TYPES.includes(q.type)) {
             return { error: `Question ${i + 1} ("${q.title}") has an invalid type "${q.type}". Must be one of: ${VALID_TYPES.join(", ")}.` };
         }
-        if (["select", "dropdown", "checkbox"].includes(q.type) && (!Array.isArray(q.options) || q.options.length < 2)) {
-            return { error: `Question ${i + 1} ("${q.title}") is a ${q.type} question and needs an "options" array with at least 2 entries.` };
+        if (["select", "dropdown", "checkbox"].includes(q.type) && (!Array.isArray(q.options) || q.options.length < 1)) {
+            return { error: `Question ${i + 1} ("${q.title}") is a ${q.type} question and needs an "options" array with at least 1 entry.` };
         }
         if (!q.page || typeof q.page !== "number") {
             return { error: `Question ${i + 1} ("${q.title}") is missing a numeric "page".` };

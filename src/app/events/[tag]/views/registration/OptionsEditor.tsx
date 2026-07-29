@@ -76,7 +76,7 @@ function SortableRow({ item, index, total, onChange, onRemove, onInsertBelow, on
                 placeholder={`Option ${index + 1}`}
                 onKeyDown={(e) => {
                     if (e.key === "Enter") { e.preventDefault(); onInsertBelow(); }
-                    if (e.key === "Backspace" && item.value === "" && total > 2) {
+                    if (e.key === "Backspace" && item.value === "" && total > 1) {
                         e.preventDefault();
                         onRemove();
                         setTimeout(() => {
@@ -97,7 +97,7 @@ function SortableRow({ item, index, total, onChange, onRemove, onInsertBelow, on
                     className="p-1.5 rounded-lg text-gray-300 hover:text-gray-700 hover:bg-gray-100 transition-all">
                     <Copy className="w-3.5 h-3.5" />
                 </button>
-                <button type="button" onClick={onRemove} disabled={total <= 2} title="Remove"
+                <button type="button" onClick={onRemove} disabled={total <= 1} title="Remove"
                     className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-25 disabled:pointer-events-none">
                     <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -154,7 +154,7 @@ export function OptionsEditor({ options, onChange }: OptionsEditorProps) {
     };
 
     const removeItem = (id: string) => {
-        if (items.length <= 2) return;
+        if (items.length <= 1) return;
         const next = items.filter(i => i.id !== id);
         setItems(next);
         pushUp(next);
@@ -221,7 +221,7 @@ export function OptionsEditor({ options, onChange }: OptionsEditorProps) {
                 <label className="text-[9px] font-black uppercase tracking-[0.25em] text-gray-400">
                     Options
                     <span className="ml-1.5 text-gray-300 font-semibold normal-case tracking-normal">
-                        ({items.filter(i => i.value.trim()).length} / min 2)
+                        ({items.filter(i => i.value.trim()).length} / min 1)
                     </span>
                 </label>
                 {hasMeaningful && (
