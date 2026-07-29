@@ -27,7 +27,9 @@ interface ImportQuestion {
 interface ImportQuestionsModalProps {
     isOpen: boolean;
     onClose: () => void;
-    campaignId: string;
+    /** Provide exactly one: campaignId for a Campaign form, eventId for an event's registration questions. */
+    campaignId?: string;
+    eventId?: string;
     nextOrder: number;
     onImported: () => void;
 }
@@ -64,7 +66,7 @@ function validate(raw: string): { questions: ImportQuestion[] } | { error: strin
     return { questions: list as ImportQuestion[] };
 }
 
-export function ImportQuestionsModal({ isOpen, onClose, campaignId, nextOrder, onImported }: ImportQuestionsModalProps) {
+export function ImportQuestionsModal({ isOpen, onClose, campaignId, eventId, nextOrder, onImported }: ImportQuestionsModalProps) {
     const [raw, setRaw] = useState("");
     const [error, setError] = useState<string | null>(null);
     const [preview, setPreview] = useState<ImportQuestion[] | null>(null);
@@ -102,8 +104,8 @@ export function ImportQuestionsModal({ isOpen, onClose, campaignId, nextOrder, o
         setError(null);
         try {
             const questionRows = preview.map((q, i) => ({
-                campaign_id: campaignId,
-                event_id: null,
+                campaign_id: campaignId || null,
+                event_id: eventId || null,
                 title: q.title,
                 question_type: q.type,
                 is_required: q.required || false,

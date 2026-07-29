@@ -27,7 +27,9 @@ import {
     Mail,
     PlusCircle,
     Loader2,
-    AlertCircle
+    AlertCircle,
+    Star,
+    CheckCircle2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Event, Pass, Question } from "../events/[tag]/types";
@@ -50,7 +52,7 @@ export default function RegistrationPage() {
     const [step, setStep] = useState(1);
     const [selectedTicket, setSelectedTicket] = useState<string>("");
     const [quantity, setQuantity] = useState(1);
-    const [guests, setGuests] = useState([{ firstName: "", lastName: "", email: "", isInvite: false, answers: {} as Record<string, string> }]);
+    const [guests, setGuests] = useState([{ firstName: "", lastName: "", email: "", isInvite: false, answers: {} as Record<string, string | string[] | number> }]);
     const [submitting, setSubmitting] = useState(false);
 
     // --- Trigger Question Logic (Dynamic Track Selection) ---
@@ -252,7 +254,9 @@ export default function RegistrationPage() {
                 if (!guest.isInvite) {
                     for (const rq of requiredQuestions) {
                         const answer = guest.answers[rq.id];
-                        if (!answer || !String(answer).trim()) {
+                        const isEmpty = answer === undefined || answer === null || answer === ""
+                            || (Array.isArray(answer) && answer.length === 0);
+                        if (isEmpty) {
                             const guestLabel = i === 0 ? "Primary guest" : `Guest ${i + 1}`;
                             throw new Error(`${guestLabel} must answer: "${rq.title}"`);
                         }
@@ -1009,45 +1013,138 @@ export default function RegistrationPage() {
                                                             </div>
 
                                                             {/* Custom Dynamic Questions */}
-                                                            {questions.filter(q => !q.is_selection_logic).map((q) => (
-                                                                <div key={q.id} className="space-y-3">
-                                                                    <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">
-                                                                        {q.title} {q.is_required && <span className="text-red-500">*</span>}
-                                                                    </label>
-                                                                    {q.question_type === 'select' ? (
-                                                                        <div className="relative">
-                                                                            <select
-                                                                                value={guest.answers[q.id] || ""}
-                                                                                onChange={(e) => {
-                                                                                    const newGuests = [...guests];
-                                                                                    newGuests[index].answers = { ...newGuests[index].answers, [q.id]: e.target.value };
-                                                                                    setGuests(newGuests);
-                                                                                }}
-                                                                                className="w-full bg-gray-50/50 border-gray-100 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border appearance-none cursor-pointer"
-                                                                            >
-                                                                                <option value="" disabled>Select an option</option>
+                                                            {questions.filter(q => !q.is_selection_logic).map((q) => {
+                                                                const setAnswer = (value: string | string[] | number) => {
+                                                                    const newGuests = [...guests];
+                                                                    newGuests[index].answers = { ...newGuests[index].answers, [q.id]: value };
+                                                                    setGuests(newGuests);
+                                                                };
+                                                                const toggleCheckbox = (optionText: string) => {
+                                                                    const current = (guest.answers[q.id] as string[]) || [];
+                                                                    setAnswer(current.includes(optionText) ? current.filter(v => v !== optionText) : [...current, optionText]);
+                                                                };
+                                                                const scaleMin = q.scale_config?.min ?? 1;
+                                                                const scaleMax = q.scale_config?.max ?? 5;
+                                                                const scaleValues = Array.from({ length: Math.max(1, scaleMax - scaleMin + 1) }, (_, i) => scaleMin + i);
+
+                                                                return (
+                                                                    <div key={q.id} className="space-y-3">
+                                                                        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">
+                                                                            {q.title} {q.is_required && <span className="text-red-500">*</span>}
+                                                                        </label>
+
+                                                                        {q.question_type === 'select' && (
+                                                                            <div className="space-y-2">
                                                                                 {q.options?.map(opt => (
-                                                                                    <option key={opt.id} value={opt.option_text}>{opt.option_text}</option>
+                                                                                    <button
+                                                                                        key={opt.id}
+                                                                                        type="button"
+                                                                                        onClick={() => setAnswer(opt.option_text)}
+                                                                                        className={cn(
+                                                                                            "w-full text-left px-4 py-3 rounded-[20px] border-2 text-sm font-bold transition-all",
+                                                                                            guest.answers[q.id] === opt.option_text ? "bg-blue-50 border-blue-600 text-gray-900" : "bg-gray-50/50 border-gray-100 text-gray-600 hover:border-gray-200"
+                                                                                        )}
+                                                                                    >
+                                                                                        {opt.option_text}
+                                                                                    </button>
                                                                                 ))}
-                                                                            </select>
-                                                                            <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                                                                                <PlusCircle className="w-4 h-4 rotate-45" />
                                                                             </div>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <input
-                                                                            value={guest.answers[q.id] || ""}
-                                                                            onChange={(e) => {
-                                                                                const newGuests = [...guests];
-                                                                                newGuests[index].answers = { ...newGuests[index].answers, [q.id]: e.target.value };
-                                                                                setGuests(newGuests);
-                                                                            }}
-                                                                            placeholder="Your answer"
-                                                                            className="w-full bg-gray-50/50 border-gray-100 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border"
-                                                                        />
-                                                                    )}
-                                                                </div>
-                                                            ))}
+                                                                        )}
+
+                                                                        {q.question_type === 'dropdown' && (
+                                                                            <div className="relative">
+                                                                                <select
+                                                                                    value={(guest.answers[q.id] as string) || ""}
+                                                                                    onChange={(e) => setAnswer(e.target.value)}
+                                                                                    className="w-full bg-gray-50/50 border-gray-100 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border appearance-none cursor-pointer"
+                                                                                >
+                                                                                    <option value="" disabled>Select an option</option>
+                                                                                    {q.options?.map(opt => (
+                                                                                        <option key={opt.id} value={opt.option_text}>{opt.option_text}</option>
+                                                                                    ))}
+                                                                                </select>
+                                                                                <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                                                                    <PlusCircle className="w-4 h-4 rotate-45" />
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+
+                                                                        {q.question_type === 'checkbox' && (
+                                                                            <div className="space-y-2">
+                                                                                {q.options?.map(opt => {
+                                                                                    const checked = ((guest.answers[q.id] as string[]) || []).includes(opt.option_text);
+                                                                                    return (
+                                                                                        <button
+                                                                                            key={opt.id}
+                                                                                            type="button"
+                                                                                            onClick={() => toggleCheckbox(opt.option_text)}
+                                                                                            className={cn(
+                                                                                                "w-full flex items-center gap-3 text-left px-4 py-3 rounded-[20px] border-2 text-sm font-bold transition-all",
+                                                                                                checked ? "bg-blue-50 border-blue-600 text-gray-900" : "bg-gray-50/50 border-gray-100 text-gray-600 hover:border-gray-200"
+                                                                                            )}
+                                                                                        >
+                                                                                            <div className={cn("w-4 h-4 rounded-md border-2 flex items-center justify-center shrink-0", checked ? "bg-blue-600 border-blue-600" : "border-gray-300")}>
+                                                                                                {checked && <CheckCircle2 className="w-3 h-3 text-white" />}
+                                                                                            </div>
+                                                                                            {opt.option_text}
+                                                                                        </button>
+                                                                                    );
+                                                                                })}
+                                                                            </div>
+                                                                        )}
+
+                                                                        {q.question_type === 'long_text' && (
+                                                                            <textarea
+                                                                                rows={4}
+                                                                                value={(guest.answers[q.id] as string) || ""}
+                                                                                onChange={(e) => setAnswer(e.target.value)}
+                                                                                placeholder="Your answer"
+                                                                                className="w-full bg-gray-50/50 border-gray-100 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border resize-none"
+                                                                            />
+                                                                        )}
+
+                                                                        {q.question_type === 'linear_scale' && (
+                                                                            <div className="flex items-center gap-2">
+                                                                                {scaleValues.map(n => (
+                                                                                    <button
+                                                                                        key={n}
+                                                                                        type="button"
+                                                                                        onClick={() => setAnswer(n)}
+                                                                                        className={cn(
+                                                                                            "flex-1 py-3 rounded-[16px] border-2 text-sm font-black transition-all",
+                                                                                            guest.answers[q.id] === n ? "bg-blue-50 border-blue-600 text-gray-900" : "bg-gray-50/50 border-gray-100 text-gray-500 hover:border-gray-200"
+                                                                                        )}
+                                                                                    >
+                                                                                        {n}
+                                                                                    </button>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+
+                                                                        {q.question_type === 'star_rating' && (
+                                                                            <div className="flex items-center gap-1.5">
+                                                                                {scaleValues.map(n => {
+                                                                                    const val = (guest.answers[q.id] as number) || 0;
+                                                                                    return (
+                                                                                        <button key={n} type="button" onClick={() => setAnswer(n)} className="p-1">
+                                                                                            <Star className={cn("w-6 h-6 transition-all", n <= val ? "fill-yellow-400 text-yellow-400" : "text-gray-200")} />
+                                                                                        </button>
+                                                                                    );
+                                                                                })}
+                                                                            </div>
+                                                                        )}
+
+                                                                        {(q.question_type === 'text' || !q.question_type) && (
+                                                                            <input
+                                                                                value={(guest.answers[q.id] as string) || ""}
+                                                                                onChange={(e) => setAnswer(e.target.value)}
+                                                                                placeholder="Your answer"
+                                                                                className="w-full bg-gray-50/50 border-gray-100 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border"
+                                                                            />
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })}
                                                         </motion.div>
                                                     ) : (
                                                         <motion.div

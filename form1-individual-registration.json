@@ -1,0 +1,11 @@
+[
+  { "page": 1, "title": "First Name", "type": "text", "required": true },
+  { "page": 1, "title": "Last Name", "type": "text", "required": true },
+  { "page": 1, "title": "Gender", "type": "select", "required": true, "options": ["Male", "Female"] },
+  { "page": 1, "title": "Organisation or school name", "type": "text", "required": true },
+  { "page": 1, "title": "Are you attending as a", "type": "select", "required": true, "options": ["Teacher", "School administrator", "EdTech or industry guest", "Other"], "property_key": "attending_as" },
+  { "page": 1, "title": "Email address", "type": "text", "required": true },
+  { "page": 1, "title": "Phone number", "type": "text", "required": true },
+  { "page": 1, "title": "Would you like a slot in the AI UNIPOD tour? Runs from 8:00am, first come first served, in 2 batches only.", "type": "select", "required": true, "options": ["Yes", "No"], "property_key": "unipod_tour" },
+  { "page": 1, "title": "Consent for photographs or video taken on the day to be used in Summit reporting and promotion", "type": "select", "required": true, "options": ["Yes, I consent"] }
+]

@@ -189,8 +189,8 @@ export function CampaignQuestionCard({
             const { data: newQuestion, error: qErr } = await supabase
                 .from("questions")
                 .insert({
-                    campaign_id: question.campaign_id,
-                    event_id: null,
+                    campaign_id: question.campaign_id || null,
+                    event_id: question.event_id || null,
                     title: `${question.title} (copy)`,
                     question_type: question.question_type,
                     is_required: question.is_required,

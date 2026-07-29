@@ -1,0 +1,13 @@
+[
+  { "page": 1, "title": "School name", "type": "text", "required": true },
+  { "page": 1, "title": "Is your school public or private?", "type": "select", "required": true, "options": ["Public", "Private"], "property_key": "school_type" },
+  { "page": 1, "title": "Name of accompanying Staff (teacher or administrator)", "type": "text", "required": true },
+  { "page": 1, "title": "Staff phone number", "type": "text", "required": true },
+  { "page": 1, "title": "Staff email address", "type": "text", "required": true },
+  { "page": 1, "title": "Would you like a slot in the AI UNIPOD tour? Runs from 8:00am, first come first served, in 2 batches only.", "type": "select", "required": true, "options": ["Yes", "No"], "property_key": "unipod_tour" },
+  { "page": 1, "title": "Number of students attending", "type": "text", "required": true },
+  { "page": 1, "title": "Full name of each student attending, one per line", "type": "long_text", "required": true },
+  { "page": 1, "title": "Will you be participating in the Student Hackathon Challenge?", "type": "select", "required": true, "options": ["Yes", "No"], "property_key": "hackathon_participation" },
+  { "page": 1, "title": "I confirm, on behalf of the parents or guardians of the students named above, that they consent to attendance and to photographs or video taken on the day being used in Summit reporting or promotion.", "type": "select", "required": true, "options": ["Yes, I confirm consent for all students named above"] },
+  { "page": 1, "title": "I confirm the students named above, accompanied by me, will attend on Thursday 10 September 2026.", "type": "select", "required": true, "options": ["Yes, confirmed"] }
+]

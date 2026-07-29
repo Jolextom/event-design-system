@@ -12,7 +12,7 @@ interface RegisterGuest {
     lastName?: string;
     email: string;
     isInvite?: boolean;
-    answers?: Record<string, string>;
+    answers?: Record<string, string | string[] | number>;
 }
 
 /**
@@ -114,7 +114,9 @@ export async function POST(
             if (guest.isInvite) continue;
             for (const rq of requiredQuestions) {
                 const answer = guest.answers[rq.id];
-                if (!answer || !String(answer).trim()) {
+                const isEmpty = answer === undefined || answer === null || answer === ""
+                    || (Array.isArray(answer) && answer.length === 0);
+                if (isEmpty) {
                     return corsJson(req, {
                         error: `${i === 0 ? "Primary guest" : `Guest ${i + 1}`} must answer: "${rq.title}"`
                     }, { status: 400 });
