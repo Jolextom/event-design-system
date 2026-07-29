@@ -301,7 +301,11 @@ export default function RegistrationPage() {
             // If the user is retrying a failed or abandoned checkout, Paystack requires a fresh reference.
             // Our webhook relies on orderId in metadata, so changing the order_ref on the DB record is safe.
             const uniquePart = crypto.randomUUID().replace(/-/g, '').substring(0, 10).toUpperCase();
-            const orderRef = `EF-${event.tag?.toUpperCase() || 'EV'}-${uniquePart}`;
+            // order_ref is varchar(50) — long descriptive event tags (e.g. full-sentence
+            // slugs) can overflow it once "EF-" + tag + "-" + uniquePart are combined,
+            // so the tag portion is capped to leave safe headroom.
+            const safeTag = (event.tag?.toUpperCase() || 'EV').substring(0, 20);
+            const orderRef = `EF-${safeTag}-${uniquePart}`;
 
             // === UPSERT ORDER ===
             const orderData = {

@@ -146,7 +146,10 @@ export async function POST(
             .maybeSingle();
 
         const uniquePart = crypto.randomUUID().replace(/-/g, "").substring(0, 10).toUpperCase();
-        const orderRef = `EF-${(event.tag || "EV").toUpperCase()}-${uniquePart}`;
+        // order_ref is varchar(50) — long descriptive event tags can overflow it once
+        // "EF-" + tag + "-" + uniquePart are combined, so the tag portion is capped.
+        const safeTag = (event.tag || "EV").toUpperCase().substring(0, 20);
+        const orderRef = `EF-${safeTag}-${uniquePart}`;
 
         const orderData = {
             event_id: event.id,
@@ -168,9 +171,7 @@ export async function POST(
 
         if (orderErr || !order) {
             console.error("v1 register: order upsert failed:", orderErr);
-            // TEMP: surfacing the real DB error to diagnose — revert to a generic
-            // message once the root cause is fixed, so internals aren't exposed publicly.
-            return corsJson(req, { error: "Failed to create order", detail: orderErr }, { status: 500 });
+            return corsJson(req, { error: "Failed to create order" }, { status: 500 });
         }
 
         if (isPaid) {
