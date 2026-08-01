@@ -33,6 +33,8 @@ export interface SenderIdentity {
     domain: string;
     from_name: string;
     from_email: string;
+    /** Where replies should land — e.g. a real person's inbox instead of the noreply address itself. */
+    reply_to: string | null;
     resend_domain_id: string | null;
     status: "pending" | "verified" | "failed";
     dns_records: any;
@@ -58,12 +60,15 @@ export async function addSenderDomain({
     domain,
     fromName,
     fromLocalPart,
+    replyTo,
 }: {
     userId: string;
     domain: string;
     fromName: string;
     /** the part before the @, e.g. "surveys" for surveys@theirbrand.com */
     fromLocalPart: string;
+    /** Optional: where replies should be forwarded, e.g. a real person's inbox instead of the noreply address. */
+    replyTo?: string;
 }): Promise<{ identity: SenderIdentity } | { error: string }> {
     try {
         if (!process.env.RESEND_API_KEY) throw new Error("RESEND_API_KEY is not configured");
@@ -74,6 +79,10 @@ export async function addSenderDomain({
         }
         const localPart = fromLocalPart.trim().toLowerCase().replace(/[^a-z0-9._-]/g, "");
         if (!localPart) throw new Error("Enter the email name before the @ (e.g. surveys)");
+        const cleanReplyTo = replyTo?.trim();
+        if (cleanReplyTo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanReplyTo)) {
+            throw new Error("That doesn't look like a valid reply-to email address");
+        }
 
         // Register the domain with Resend
         const res = await fetch(`${RESEND_API}/domains`, {
@@ -110,6 +119,7 @@ export async function addSenderDomain({
                 domain: cleanDomain,
                 from_name: fromName.trim() || "EventFlow",
                 from_email: `${localPart}@${cleanDomain}`,
+                reply_to: cleanReplyTo || null,
                 resend_domain_id: resendDomainId,
                 status: "pending",
                 dns_records: dnsRecords,
@@ -195,21 +205,21 @@ export async function deleteSenderIdentity({ identityId }: { identityId: string 
 }
 
 /**
- * Resolves the From line for an outgoing email. Only verified identities are
- * honored; anything else falls back to the platform default so mail never
- * goes out through an unverified domain.
+ * Resolves the From line (+ optional Reply-To) for an outgoing email. Only
+ * verified identities are honored; anything else falls back to the platform
+ * default so mail never goes out through an unverified domain.
  */
-export async function resolveSender(identityId?: string | null): Promise<string> {
-    const fallback = "EventFlow <noreply@partiesandeventz.com>";
+export async function resolveSender(identityId?: string | null): Promise<{ from: string; replyTo?: string }> {
+    const fallback = { from: "EventFlow <noreply@partiesandeventz.com>" };
     if (!identityId) return fallback;
     try {
         const { data } = await admin()
             .from("sender_identities")
-            .select("from_name, from_email, status")
+            .select("from_name, from_email, reply_to, status")
             .eq("id", identityId)
             .single();
         if (data && data.status === "verified") {
-            return `${data.from_name} <${data.from_email}>`;
+            return { from: `${data.from_name} <${data.from_email}>`, replyTo: data.reply_to || undefined };
         }
     } catch { /* fall through */ }
     return fallback;
@@ -224,21 +234,51 @@ export async function resolveSender(identityId?: string | null): Promise<string>
  */
 export async function resolveSenderForUser(
     userId?: string | null
-): Promise<{ from: string; brandName: string } | null> {
+): Promise<{ from: string; brandName: string; replyTo?: string } | null> {
     if (!userId) return null;
     try {
         const { data } = await admin()
             .from("sender_identities")
-            .select("from_name, from_email")
+            .select("from_name, from_email, reply_to")
             .eq("user_id", userId)
             .eq("status", "verified")
             .order("created_at", { ascending: false })
             .limit(1)
             .maybeSingle();
         if (!data) return null;
-        return { from: `${data.from_name} <${data.from_email}>`, brandName: data.from_name };
+        return {
+            from: `${data.from_name} <${data.from_email}>`,
+            brandName: data.from_name,
+            replyTo: data.reply_to || undefined,
+        };
     } catch (err) {
         console.error("resolveSenderForUser error:", err);
         return null;
+    }
+}
+
+/** Updates the Reply-To address on an existing sender identity. */
+export async function updateSenderReplyTo({
+    identityId,
+    replyTo,
+}: {
+    identityId: string;
+    replyTo: string;
+}): Promise<{ identity: SenderIdentity } | { error: string }> {
+    try {
+        const cleanReplyTo = replyTo.trim();
+        if (cleanReplyTo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanReplyTo)) {
+            throw new Error("That doesn't look like a valid reply-to email address");
+        }
+        const { data, error } = await admin()
+            .from("sender_identities")
+            .update({ reply_to: cleanReplyTo || null })
+            .eq("id", identityId)
+            .select()
+            .single();
+        if (error) throw error;
+        return { identity: data as SenderIdentity };
+    } catch (err: any) {
+        return { error: err.message || "Failed to update reply-to address" };
     }
 }

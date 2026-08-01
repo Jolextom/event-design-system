@@ -34,6 +34,8 @@ interface SendInviteEmailParams extends InviteEmailParams {
     to: string;
     /** Verified sender From line, e.g. "Kini AI <noreply@kini-ai.com>". Callers should resolve this via resolveSender()/resolveSenderForUser() so unverified domains never get here. */
     from?: string;
+    /** Where replies should land, e.g. a real person's inbox instead of the noreply address. */
+    replyTo?: string;
 }
 
 export async function sendInviteEmail({
@@ -46,7 +48,8 @@ export async function sendInviteEmail({
     inviteLink,
     eventImage,
     brandName,
-    from
+    from,
+    replyTo
 }: SendInviteEmailParams) {
     try {
         const html = renderInviteEmailHtml({
@@ -63,7 +66,8 @@ export async function sendInviteEmail({
         const { data, error } = await getResend().emails.send({
             from: from || 'EventFlow <noreply@partiesandeventz.com>',
             to: [to],
-            // In dev mode, we can only send to verified email. 
+            replyTo: replyTo || undefined,
+            // In dev mode, we can only send to verified email.
             // If to is not verified, it might fail depending on Resend plan.
             subject: `You're invited to ${eventTitle}!`,
             html,
@@ -89,6 +93,8 @@ interface SendConfirmationEmailParams extends ConfirmationEmailParams {
     to: string;
     /** Verified sender From line, e.g. "Kini AI <noreply@kini-ai.com>". Callers should resolve this via resolveSender()/resolveSenderForUser() so unverified domains never get here. */
     from?: string;
+    /** Where replies should land, e.g. a real person's inbox instead of the noreply address. */
+    replyTo?: string;
 }
 
 export async function sendConfirmationEmail({
@@ -102,7 +108,8 @@ export async function sendConfirmationEmail({
     attendeeName,
     eventImage,
     brandName,
-    from
+    from,
+    replyTo
 }: SendConfirmationEmailParams) {
     try {
         const html = renderConfirmationEmailHtml({
@@ -120,6 +127,7 @@ export async function sendConfirmationEmail({
         const { data, error } = await getResend().emails.send({
             from: from || 'EventFlow <noreply@partiesandeventz.com>',
             to: [to],
+            replyTo: replyTo || undefined,
             subject: `Registration Confirmed - ${eventTitle}`,
             html,
         });
@@ -144,6 +152,8 @@ interface SendBroadcastEmailParams extends BroadcastEmailParams {
     to: string[];
     /** Verified sender From line, e.g. "Kini AI <surveys@kini-ai.com>". Callers must resolve this via resolveSender() so unverified domains never get here. */
     from?: string;
+    /** Where replies should land, e.g. a real person's inbox instead of the noreply address. */
+    replyTo?: string;
 }
 
 export async function sendBroadcastEmail({
@@ -155,7 +165,8 @@ export async function sendBroadcastEmail({
     actionLink,
     actionText,
     brandName,
-    from
+    from,
+    replyTo
 }: SendBroadcastEmailParams) {
     try {
         const html = renderBroadcastEmailHtml({
@@ -172,6 +183,7 @@ export async function sendBroadcastEmail({
         const { data, error } = await getResend().emails.send({
             from: from || 'EventFlow <noreply@partiesandeventz.com>',
             to: to,
+            replyTo: replyTo || undefined,
             subject: `${messageTitle} - ${eventTitle}`,
             html,
         });

@@ -151,6 +151,7 @@ export async function sendWelcomeEmail(attendeeId: string, eventId: string) {
 
         const result = await sendConfirmationEmail({
             from: sender?.from,
+            replyTo: sender?.replyTo,
             to: attendee.email,
             ...templateParams
         });
@@ -310,7 +311,7 @@ export async function broadcastUpdate({
 
         // Resolve the From line (only verified identities are honored)
         const { resolveSender } = await import("@/lib/senderDomains");
-        const fromLine = await resolveSender(senderIdentityId);
+        const sender = await resolveSender(senderIdentityId);
 
         // 3. Send Emails in Batches (Resend to field is an array)
         // Note: Resend recommended batch size is ~50-100 per request
@@ -322,8 +323,9 @@ export async function broadcastUpdate({
             const batch = recipientEmails.slice(i, i + batchSize);
             const result = await sendBroadcastEmail({
                 to: batch,
-                from: fromLine,
-                brandName: brandNameFromSender(fromLine),
+                from: sender.from,
+                replyTo: sender.replyTo,
+                brandName: brandNameFromSender(sender.from),
                 eventTitle: event.event_title,
                 messageTitle,
                 messageBody,
@@ -431,7 +433,7 @@ export async function sendCampaignToAttendees({
 
         const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
         const { resolveSender } = await import("@/lib/senderDomains");
-        const fromLine = await resolveSender(senderIdentityId);
+        const sender = await resolveSender(senderIdentityId);
         let sentCount = 0;
 
         const results = await Promise.allSettled(targets.map(async (attendee: any) => {
@@ -439,8 +441,9 @@ export async function sendCampaignToAttendees({
 
             const result = await sendBroadcastEmail({
                 to: [attendee.email],
-                from: fromLine,
-                brandName: brandNameFromSender(fromLine),
+                from: sender.from,
+                replyTo: sender.replyTo,
+                brandName: brandNameFromSender(sender.from),
                 eventTitle: event.event_title,
                 messageTitle: campaign.name,
                 messageBody: "We'd love to hear your feedback — it only takes a minute.",

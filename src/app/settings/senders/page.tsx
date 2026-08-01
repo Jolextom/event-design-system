@@ -7,7 +7,7 @@ import { Plus, Globe, CheckCircle2, Clock, XCircle, RefreshCw, Trash2, Copy, Che
 import { Modal, ModalButton } from "@/app/components/ui/Modal";
 import { Input } from "@/app/components/ui/Input";
 import {
-    listSenderIdentities, addSenderDomain, checkSenderDomain, deleteSenderIdentity,
+    listSenderIdentities, addSenderDomain, checkSenderDomain, deleteSenderIdentity, updateSenderReplyTo,
     type SenderIdentity,
 } from "@/lib/senderDomains";
 
@@ -30,8 +30,14 @@ export default function SenderSettingsPage() {
     const [domain, setDomain] = useState("");
     const [fromName, setFromName] = useState("");
     const [localPart, setLocalPart] = useState("surveys");
+    const [replyTo, setReplyTo] = useState("");
     const [addError, setAddError] = useState<string | null>(null);
     const [adding, setAdding] = useState(false);
+
+    // Inline reply-to editing on existing identities
+    const [editingReplyToId, setEditingReplyToId] = useState<string | null>(null);
+    const [replyToDraft, setReplyToDraft] = useState("");
+    const [savingReplyTo, setSavingReplyTo] = useState(false);
 
     const refresh = useCallback(async () => {
         if (!user) return;
@@ -52,16 +58,30 @@ export default function SenderSettingsPage() {
             domain,
             fromName: fromName || "EventFlow",
             fromLocalPart: localPart,
+            replyTo: replyTo || undefined,
         });
         setAdding(false);
         if ("error" in result) {
             setAddError(result.error);
         } else {
             setIsAddOpen(false);
-            setDomain(""); setFromName(""); setLocalPart("surveys");
+            setDomain(""); setFromName(""); setLocalPart("surveys"); setReplyTo("");
             setExpandedId(result.identity.id);
             refresh();
         }
+    };
+
+    const startEditReplyTo = (identity: SenderIdentity) => {
+        setEditingReplyToId(identity.id);
+        setReplyToDraft(identity.reply_to || "");
+    };
+
+    const saveReplyTo = async (id: string) => {
+        setSavingReplyTo(true);
+        await updateSenderReplyTo({ identityId: id, replyTo: replyToDraft });
+        setSavingReplyTo(false);
+        setEditingReplyToId(null);
+        refresh();
     };
 
     const handleCheck = async (id: string) => {
@@ -133,6 +153,33 @@ export default function SenderSettingsPage() {
                                                         <div className="text-sm font-black text-gray-900">{identity.from_name} &lt;{identity.from_email}&gt;</div>
                                                         <div className="text-xs text-gray-400 font-bold">{identity.domain}</div>
                                                     </div>
+                                                </div>
+                                                <div className="text-xs text-gray-400 font-bold flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                                    {editingReplyToId === identity.id ? (
+                                                        <>
+                                                            <input
+                                                                value={replyToDraft}
+                                                                onChange={(e) => setReplyToDraft(e.target.value)}
+                                                                placeholder="replies go to..."
+                                                                className="px-2 py-1 border border-gray-200 rounded-lg text-xs font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--brand-blue)]/20"
+                                                                autoFocus
+                                                            />
+                                                            <button
+                                                                onClick={() => saveReplyTo(identity.id)}
+                                                                disabled={savingReplyTo}
+                                                                className="text-[10px] font-black uppercase text-[var(--color-primary-700)] disabled:opacity-50"
+                                                            >
+                                                                Save
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => startEditReplyTo(identity)}
+                                                            className="hover:text-gray-700 transition-all"
+                                                        >
+                                                            Replies to: {identity.reply_to || <span className="italic">not set</span>}
+                                                        </button>
+                                                    )}
                                                 </div>
                                                 <div className="flex items-center gap-3">
                                                     <span className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${meta.cls}`}>
@@ -233,8 +280,15 @@ export default function SenderSettingsPage() {
                             <span className="text-sm font-bold text-gray-400">@{domain.trim() || "yourbrand.com"}</span>
                         </div>
                     </div>
+                    <Input
+                        label="Reply-To (optional)"
+                        value={replyTo}
+                        onChange={(e) => setReplyTo(e.target.value)}
+                        placeholder="a real person's inbox, e.g. bawoni@kini-ai.com"
+                    />
                     <p className="text-[10px] text-gray-400 font-bold leading-relaxed">
                         You'll get DNS records to add at your domain host. Emails only send from this address once the domain verifies — until then everything falls back to the platform default.
+                        Leave Reply-To blank if replies should go to the sender address itself.
                     </p>
                 </div>
             </Modal>
