@@ -214,3 +214,31 @@ export async function resolveSender(identityId?: string | null): Promise<string>
     } catch { /* fall through */ }
     return fallback;
 }
+
+/**
+ * Auto-resolves the sender + brand for transactional emails (invite,
+ * confirmation) that fire without a UI step to pick a sender — e.g. right
+ * after registration. Picks the event owner's most recently verified
+ * identity. Returns null (caller falls back to the platform default) when
+ * the owner has no verified domain, so unrelated tenants are unaffected.
+ */
+export async function resolveSenderForUser(
+    userId?: string | null
+): Promise<{ from: string; brandName: string } | null> {
+    if (!userId) return null;
+    try {
+        const { data } = await admin()
+            .from("sender_identities")
+            .select("from_name, from_email")
+            .eq("user_id", userId)
+            .eq("status", "verified")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        if (!data) return null;
+        return { from: `${data.from_name} <${data.from_email}>`, brandName: data.from_name };
+    } catch (err) {
+        console.error("resolveSenderForUser error:", err);
+        return null;
+    }
+}

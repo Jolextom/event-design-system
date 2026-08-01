@@ -1,6 +1,11 @@
 'use server'
 
 import { createClient } from "@supabase/supabase-js";
+
+/** Pulls the display name out of a resolved "Name <email>" From line. */
+function brandNameFromSender(fromLine: string): string {
+    return fromLine.replace(/\s*<.*>\s*$/, '').trim() || 'EventFlow';
+}
 import { sendConfirmationEmail, sendBroadcastEmail } from "@/lib/email";
 import * as PaystackLib from "@/lib/paystack";
 import { fulfillOrder } from "@/lib/registrations";
@@ -123,6 +128,12 @@ export async function sendWelcomeEmail(attendeeId: string, eventId: string) {
             description: `Order Ref: ${orderRef}`
         }) : undefined;
 
+        // Auto-resolve the event owner's verified sender (e.g. Kini AI's
+        // kini-ai.com identity) so their attendees don't see the platform
+        // default. Falls back silently to the platform default otherwise.
+        const { resolveSenderForUser } = await import("@/lib/senderDomains");
+        const sender = await resolveSenderForUser(event.created_by);
+
         const templateParams = {
             eventTitle: event.event_title,
             eventDate: eventDateStr,
@@ -135,9 +146,11 @@ export async function sendWelcomeEmail(attendeeId: string, eventId: string) {
             googleCalendarLink,
             outlookCalendarLink,
             eventImage: event.image,
+            brandName: sender?.brandName,
         };
 
         const result = await sendConfirmationEmail({
+            from: sender?.from,
             to: attendee.email,
             ...templateParams
         });
@@ -310,6 +323,7 @@ export async function broadcastUpdate({
             const result = await sendBroadcastEmail({
                 to: batch,
                 from: fromLine,
+                brandName: brandNameFromSender(fromLine),
                 eventTitle: event.event_title,
                 messageTitle,
                 messageBody,
@@ -426,6 +440,7 @@ export async function sendCampaignToAttendees({
             const result = await sendBroadcastEmail({
                 to: [attendee.email],
                 from: fromLine,
+                brandName: brandNameFromSender(fromLine),
                 eventTitle: event.event_title,
                 messageTitle: campaign.name,
                 messageBody: "We'd love to hear your feedback — it only takes a minute.",

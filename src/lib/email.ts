@@ -32,6 +32,8 @@ const getResend = () => {
 
 interface SendInviteEmailParams extends InviteEmailParams {
     to: string;
+    /** Verified sender From line, e.g. "Kini AI <noreply@kini-ai.com>". Callers should resolve this via resolveSender()/resolveSenderForUser() so unverified domains never get here. */
+    from?: string;
 }
 
 export async function sendInviteEmail({
@@ -42,7 +44,9 @@ export async function sendInviteEmail({
     inviterName,
     passType,
     inviteLink,
-    eventImage
+    eventImage,
+    brandName,
+    from
 }: SendInviteEmailParams) {
     try {
         const html = renderInviteEmailHtml({
@@ -52,11 +56,12 @@ export async function sendInviteEmail({
             inviterName,
             passType,
             inviteLink,
-            eventImage
+            eventImage,
+            brandName
         });
 
         const { data, error } = await getResend().emails.send({
-            from: 'EventFlow <noreply@partiesandeventz.com>',
+            from: from || 'EventFlow <noreply@partiesandeventz.com>',
             to: [to],
             // In dev mode, we can only send to verified email. 
             // If to is not verified, it might fail depending on Resend plan.
@@ -82,6 +87,8 @@ export async function sendInviteEmail({
 
 interface SendConfirmationEmailParams extends ConfirmationEmailParams {
     to: string;
+    /** Verified sender From line, e.g. "Kini AI <noreply@kini-ai.com>". Callers should resolve this via resolveSender()/resolveSenderForUser() so unverified domains never get here. */
+    from?: string;
 }
 
 export async function sendConfirmationEmail({
@@ -93,7 +100,9 @@ export async function sendConfirmationEmail({
     receiptLink,
     watchLink,
     attendeeName,
-    eventImage
+    eventImage,
+    brandName,
+    from
 }: SendConfirmationEmailParams) {
     try {
         const html = renderConfirmationEmailHtml({
@@ -104,11 +113,12 @@ export async function sendConfirmationEmail({
             receiptLink,
             watchLink,
             attendeeName,
-            eventImage
+            eventImage,
+            brandName
         });
 
         const { data, error } = await getResend().emails.send({
-            from: 'EventFlow <noreply@partiesandeventz.com>',
+            from: from || 'EventFlow <noreply@partiesandeventz.com>',
             to: [to],
             subject: `Registration Confirmed - ${eventTitle}`,
             html,
@@ -144,6 +154,7 @@ export async function sendBroadcastEmail({
     eventImage,
     actionLink,
     actionText,
+    brandName,
     from
 }: SendBroadcastEmailParams) {
     try {
@@ -153,7 +164,8 @@ export async function sendBroadcastEmail({
             messageBody,
             eventImage,
             actionLink,
-            actionText
+            actionText,
+            brandName
         });
 
         // Resend allows sending to multiple recipients (up to 50 per request usually)

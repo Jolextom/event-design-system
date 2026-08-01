@@ -174,11 +174,13 @@ export async function fulfillOrder({
         // Fetch event data for emails
         const { data: event } = await supabase
             .from("events")
-            .select("event_title, start_date, start_time, location")
+            .select("event_title, start_date, start_time, location, created_by")
             .eq("id", eventId)
             .single();
 
         if (event) {
+            const { resolveSenderForUser } = await import("./senderDomains");
+            const sender = await resolveSenderForUser(event.created_by);
             const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
             const eventDate = event.start_date
                 ? new Date(event.start_date).toLocaleDateString('en-US', {
@@ -214,6 +216,8 @@ export async function fulfillOrder({
 
                     return sendInviteEmail({
                         to: att.email,
+                        from: sender?.from,
+                        brandName: sender?.brandName,
                         eventTitle: event.event_title,
                         eventDate,
                         eventLocation: event.location || 'TBA',

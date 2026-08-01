@@ -14,6 +14,8 @@ export interface InviteEmailParams {
     googleCalendarLink?: string;
     outlookCalendarLink?: string;
     eventImage?: string;
+    /** Sender brand shown in the header badge and footer. Defaults to the platform brand. */
+    brandName?: string;
 }
 
 export function renderInviteEmailHtml({
@@ -25,7 +27,8 @@ export function renderInviteEmailHtml({
     inviteLink,
     googleCalendarLink,
     outlookCalendarLink,
-    eventImage
+    eventImage,
+    brandName = 'EventFlow'
 }: InviteEmailParams): string {
     return `
 <!DOCTYPE html>
@@ -42,8 +45,8 @@ export function renderInviteEmailHtml({
                     <tr>
                         <td style="text-align: center; padding-bottom: 24px;">
                             <div style="display: inline-flex; align-items: center; gap: 8px;">
-                                <div style="width: 32px; height: 32px; background: #fee2e2; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 14px;">❤</div>
-                                <span style="font-weight: 900; font-size: 16px; letter-spacing: -0.5px; color: #111827;">EventFlow</span>
+                                <div style="width: 32px; height: 32px; background: #eef2ff; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 900; color: #4f46e5;">${brandName.charAt(0).toUpperCase()}</div>
+                                <span style="font-weight: 900; font-size: 16px; letter-spacing: -0.5px; color: #111827;">${brandName}</span>
                             </div>
                         </td>
                     </tr>
@@ -109,7 +112,7 @@ export function renderInviteEmailHtml({
                     <tr>
                         <td style="padding-top: 32px; text-align: center;">
                             <p style="margin: 0; font-size: 12px; color: #94a3b8; font-weight: 500;">
-                                Sent via <strong style="color: #64748b;">EventFlow</strong>
+                                Sent via <strong style="color: #64748b;">${brandName}</strong>
                             </p>
                         </td>
                     </tr>
@@ -138,6 +141,8 @@ export interface ConfirmationEmailParams {
     googleCalendarLink?: string;
     outlookCalendarLink?: string;
     eventImage?: string;
+    /** Sender brand shown in the header badge and footer. Defaults to the platform brand. */
+    brandName?: string;
 }
 
 export function renderConfirmationEmailHtml({
@@ -151,7 +156,8 @@ export function renderConfirmationEmailHtml({
     classNotesHtml,
     googleCalendarLink,
     outlookCalendarLink,
-    eventImage
+    eventImage,
+    brandName = 'EventFlow'
 }: ConfirmationEmailParams): string {
     return `
 <!DOCTYPE html>
@@ -168,8 +174,8 @@ export function renderConfirmationEmailHtml({
                     <tr>
                         <td style="text-align: center; padding-bottom: 24px;">
                             <div style="display: inline-flex; align-items: center; gap: 8px;">
-                                <div style="width: 32px; height: 32px; background: #fee2e2; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 14px;">❤</div>
-                                <span style="font-weight: 900; font-size: 16px; letter-spacing: -0.5px; color: #111827;">EventFlow</span>
+                                <div style="width: 32px; height: 32px; background: #eef2ff; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 900; color: #4f46e5;">${brandName.charAt(0).toUpperCase()}</div>
+                                <span style="font-weight: 900; font-size: 16px; letter-spacing: -0.5px; color: #111827;">${brandName}</span>
                             </div>
                         </td>
                     </tr>
@@ -255,7 +261,7 @@ export function renderConfirmationEmailHtml({
                     <tr>
                         <td style="padding-top: 32px; text-align: center;">
                             <p style="margin: 0; font-size: 12px; color: #94a3b8; font-weight: 500;">
-                                Powered by <strong style="color: #64748b;">EventFlow</strong> ⚡️ Premium Events
+                                Powered by <strong style="color: #64748b;">${brandName}</strong>
                             </p>
                         </td>
                     </tr>
@@ -279,6 +285,8 @@ export interface BroadcastEmailParams {
     eventImage?: string;
     actionLink?: string;
     actionText?: string;
+    /** Sender brand shown in the header badge. Defaults to the platform brand. */
+    brandName?: string;
 }
 
 export function renderBroadcastEmailHtml({
@@ -287,7 +295,8 @@ export function renderBroadcastEmailHtml({
     messageBody,
     eventImage,
     actionLink,
-    actionText
+    actionText,
+    brandName = 'EventFlow'
 }: BroadcastEmailParams): string {
     return `
 <!DOCTYPE html>
@@ -304,8 +313,8 @@ export function renderBroadcastEmailHtml({
                     <tr>
                         <td style="text-align: center; padding-bottom: 24px;">
                             <div style="display: inline-flex; align-items: center; gap: 8px;">
-                                <div style="width: 32px; height: 32px; background: #fee2e2; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 14px;">❤</div>
-                                <span style="font-weight: 900; font-size: 16px; letter-spacing: -0.5px; color: #111827;">EventFlow</span>
+                                <div style="width: 32px; height: 32px; background: #eef2ff; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 900; color: #4f46e5;">${brandName.charAt(0).toUpperCase()}</div>
+                                <span style="font-weight: 900; font-size: 16px; letter-spacing: -0.5px; color: #111827;">${brandName}</span>
                             </div>
                         </td>
                     </tr>
