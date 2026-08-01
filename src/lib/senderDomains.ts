@@ -92,14 +92,19 @@ export async function addSenderDomain({
         });
         const data = await res.json();
 
-        // Resend returns 422 if the domain already exists on the account —
-        // in that case, look it up so re-adding is idempotent rather than fatal.
+        // The POST can fail for two different reasons that both mean "this
+        // domain is already on the account": a straight 422 "already exists",
+        // or (as seen with kini-ai.com) a plan-limit rejection ("Your plan
+        // includes 1 domain...") that fires before Resend even checks for a
+        // duplicate. Either way, the fix is the same: look the domain up by
+        // name and reuse it instead of failing. Only throw if it's genuinely
+        // not found — i.e. some other domain is actually over the limit.
         let resendDomainId: string;
         let dnsRecords: any;
         if (res.ok) {
             resendDomainId = data.id;
             dnsRecords = data.records || null;
-        } else if (res.status === 422 || /already exists/i.test(data?.message || "")) {
+        } else {
             const listRes = await fetch(`${RESEND_API}/domains`, { headers: resendHeaders() });
             const listData = await listRes.json();
             const existing = (listData?.data || []).find((d: any) => d.name === cleanDomain);
@@ -108,8 +113,6 @@ export async function addSenderDomain({
             const detailRes = await fetch(`${RESEND_API}/domains/${resendDomainId}`, { headers: resendHeaders() });
             const detail = await detailRes.json();
             dnsRecords = detail.records || null;
-        } else {
-            throw new Error(data?.message || "Failed to register domain with Resend");
         }
 
         const { data: identity, error } = await admin()
