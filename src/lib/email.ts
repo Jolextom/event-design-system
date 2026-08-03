@@ -1,7 +1,7 @@
 import { Resend } from 'resend';
 import {
     renderInviteEmailHtml,
-    renderConfirmationEmailHtml,
+    renderConfirmationEmailHtmlForTemplate,
     renderBroadcastEmailHtml,
     InviteEmailParams,
     ConfirmationEmailParams,
@@ -108,6 +108,8 @@ interface SendConfirmationEmailParams extends ConfirmationEmailParams {
     replyTo?: string;
     /** Only needed if the sender's domain lives under a different Resend account than the platform default. */
     resendApiKey?: string;
+    /** Selects a non-default confirmation design, e.g. 'kini_summit'. Resolved from events.confirmation_template by the caller. */
+    templateKey?: string | null;
 }
 
 export async function sendConfirmationEmail({
@@ -123,10 +125,11 @@ export async function sendConfirmationEmail({
     brandName,
     from,
     replyTo,
-    resendApiKey
+    resendApiKey,
+    templateKey
 }: SendConfirmationEmailParams) {
     try {
-        const html = renderConfirmationEmailHtml({
+        const html = renderConfirmationEmailHtmlForTemplate(templateKey, {
             eventTitle,
             eventDate,
             eventLocation,

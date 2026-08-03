@@ -275,6 +275,150 @@ export function renderConfirmationEmailHtml({
 }
 
 // ============================================================================
+// KINI AI — SUMMIT CONFIRMATION EMAIL
+// A dedicated, non-generic template for Kini AI's own events (selected via
+// events.confirmation_template — see renderConfirmationEmailHtmlForTemplate
+// below) instead of the shared EventFlow-style card every other tenant gets.
+// ============================================================================
+
+export function renderKiniSummitConfirmationEmailHtml({
+    eventTitle,
+    eventDate,
+    eventLocation,
+    orderRef,
+    receiptLink,
+    watchLink,
+    attendeeName,
+    classNotesHtml,
+    googleCalendarLink,
+    outlookCalendarLink,
+}: ConfirmationEmailParams): string {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0; padding:0; background-color:#f2f2f2; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+<table role="presentation" style="width:100%; border-collapse:collapse;">
+  <tr>
+    <td align="center" style="padding:32px 16px;">
+      <table role="presentation" style="width:100%; max-width:560px; border-collapse:collapse;">
+
+        <tr>
+          <td style="padding-bottom:24px; text-align:center;">
+            <span style="font-family:Georgia, 'Times New Roman', serif; font-weight:700; font-size:20px; letter-spacing:1px; color:#2b3a36;">KINI&nbsp;&middot;&nbsp;AI</span>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="background:#ffffff; border-radius:20px; overflow:hidden; border:1px solid #ececeb; box-shadow:0 10px 30px rgba(0,0,0,0.06);">
+
+            <table role="presentation" style="width:100%; border-collapse:collapse;">
+              <tr>
+                <td style="height:6px; background:linear-gradient(to right,#007cba,#7a2b2b);"></td>
+              </tr>
+            </table>
+
+            <table role="presentation" style="width:100%; border-collapse:collapse;">
+              <tr>
+                <td style="padding:40px 36px 8px;">
+                  <div style="display:inline-block; background:#eaf5fb; color:#007cba; padding:6px 14px; border-radius:100px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:20px;">
+                    Registration Confirmed
+                  </div>
+                  <h1 style="margin:0 0 8px; font-size:26px; line-height:1.25; font-weight:800; color:#181818;">
+                    You're in, ${attendeeName}.
+                  </h1>
+                  <p style="margin:0 0 28px; font-size:15px; line-height:1.7; color:#333333;">
+                    Your spot at <strong style="color:#181818;">${eventTitle}</strong> is confirmed. See you there.
+                  </p>
+
+                  <table role="presentation" style="width:100%; border-collapse:collapse; background:#f8f8f7; border-radius:16px; margin-bottom:24px;">
+                    <tr>
+                      <td style="padding:20px 22px;">
+                        <table role="presentation" style="width:100%; border-collapse:collapse; font-size:14px; color:#181818;">
+                          <tr>
+                            <td style="padding:5px 0; width:80px; font-weight:800; color:#8a8a88; vertical-align:top;">DATE</td>
+                            <td style="padding:5px 0; font-weight:700;">${eventDate}</td>
+                          </tr>
+                          <tr>
+                            <td style="padding:5px 0; font-weight:800; color:#8a8a88; vertical-align:top;">VENUE</td>
+                            <td style="padding:5px 0; font-weight:700;">${eventLocation}</td>
+                          </tr>
+                          <tr>
+                            <td style="padding:5px 0; font-weight:800; color:#8a8a88; vertical-align:top;">REF</td>
+                            <td style="padding:5px 0; font-weight:700; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:12px;">${orderRef}</td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+
+                  ${watchLink ? `
+                  <table role="presentation" style="width:100%; border-collapse:collapse; margin-bottom:24px;">
+                    <tr>
+                      <td align="center">
+                        <a href="${watchLink}" style="display:inline-block; background:#007cba; color:#ffffff; text-decoration:none; font-size:15px; font-weight:800; padding:16px 40px; border-radius:14px;">
+                          Join Digital Venue &rarr;
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
+                  ` : ''}
+
+                  ${classNotesHtml ? `
+                  <div style="background:#f8f8f7; border-radius:16px; padding:20px 22px; margin-bottom:24px;">
+                    <div style="font-size:11px; font-weight:800; color:#007cba; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:12px;">Session Schedule</div>
+                    <div style="font-size:13px; color:#333333;">${classNotesHtml}</div>
+                  </div>
+                  ` : ''}
+
+                  <table role="presentation" style="width:100%; border-collapse:collapse; margin-bottom:8px;">
+                    <tr>
+                      <td align="center">
+                        <a href="${receiptLink}" style="font-size:13px; font-weight:700; color:#007cba; text-decoration:none;">
+                          View Full Receipt &rarr;
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
+
+                  ${(googleCalendarLink || outlookCalendarLink) ? `
+                  <table role="presentation" style="width:100%; border-collapse:collapse; margin-top:24px; padding-top:24px; border-top:1px solid #ececeb;">
+                    <tr>
+                      <td align="center">
+                        <p style="margin:0 0 12px; font-size:11px; font-weight:800; color:#8a8a88; text-transform:uppercase; letter-spacing:1.5px;">Add to Calendar</p>
+                        ${googleCalendarLink ? `<a href="${googleCalendarLink}" style="font-size:12px; color:#007cba; text-decoration:none; font-weight:800; padding:10px 18px; background:#eaf5fb; border-radius:12px; margin:0 4px;">Google</a>` : ''}
+                        ${outlookCalendarLink ? `<a href="${outlookCalendarLink}" style="font-size:12px; color:#007cba; text-decoration:none; font-weight:800; padding:10px 18px; background:#eaf5fb; border-radius:12px; margin:0 4px;">Outlook</a>` : ''}
+                      </td>
+                    </tr>
+                  </table>
+                  ` : ''}
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding-top:24px; text-align:center;">
+            <p style="margin:0; font-size:12px; color:#9a9a98;">
+              Kini AI &middot; <a href="https://www.kini-ai.com" style="color:#9a9a98;">www.kini-ai.com</a>
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
+`.trim();
+}
+
+// ============================================================================
 // BROADCAST EMAIL
 // ============================================================================
 
@@ -373,6 +517,24 @@ export function renderBroadcastEmailHtml({
 // ============================================================================
 // HELPERS
 // ============================================================================
+
+/**
+ * Picks the confirmation email design for a given event. `null`/unknown
+ * falls back to the shared EventFlow-style template every other tenant
+ * gets — only events with an explicit override (events.confirmation_template)
+ * get a custom design.
+ */
+export function renderConfirmationEmailHtmlForTemplate(
+    templateKey: string | null | undefined,
+    params: ConfirmationEmailParams
+): string {
+    switch (templateKey) {
+        case 'kini_summit':
+            return renderKiniSummitConfirmationEmailHtml(params);
+        default:
+            return renderConfirmationEmailHtml(params);
+    }
+}
 
 export type EmailTemplateType = 'invite' | 'confirmation' | 'broadcast';
 

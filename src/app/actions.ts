@@ -153,6 +153,7 @@ export async function sendWelcomeEmail(attendeeId: string, eventId: string) {
             from: sender?.from,
             replyTo: sender?.replyTo,
             resendApiKey: sender?.resendApiKey,
+            templateKey: event.confirmation_template,
             to: attendee.email,
             ...templateParams
         });
