@@ -218,6 +218,7 @@ export async function fulfillOrder({
                         to: att.email,
                         from: sender?.from,
                         replyTo: sender?.replyTo,
+                        resendApiKey: sender?.resendApiKey,
                         brandName: sender?.brandName,
                         eventTitle: event.event_title,
                         eventDate,

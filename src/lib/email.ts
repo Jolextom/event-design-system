@@ -11,11 +11,19 @@ import {
 // Re-export for convenience if needed, though direct import preferred
 export * from './email-templates';
 
-// Initialize Resend lazily to avoid issues if this file is imported in a client component
+// A verified domain only sends through the Resend ACCOUNT that verified it.
+// Most sender identities use the platform's own account (env var, cached as
+// a singleton below); a tenant whose domain lives under a separate Resend
+// account (their own API key) needs a client built with THAT key instead —
+// reusing the platform singleton for them would silently try to send a
+// domain the platform's account doesn't own.
 let resendInstance: Resend | null = null;
-const getResend = () => {
+const getResend = (apiKey?: string) => {
     if (typeof window !== 'undefined') {
         throw new Error('Resend cannot be initialized on the client side.');
+    }
+    if (apiKey) {
+        return new Resend(apiKey);
     }
     if (!resendInstance) {
         if (!process.env.RESEND_API_KEY) {
@@ -36,6 +44,8 @@ interface SendInviteEmailParams extends InviteEmailParams {
     from?: string;
     /** Where replies should land, e.g. a real person's inbox instead of the noreply address. */
     replyTo?: string;
+    /** Only needed if the sender's domain lives under a different Resend account than the platform default. */
+    resendApiKey?: string;
 }
 
 export async function sendInviteEmail({
@@ -49,7 +59,8 @@ export async function sendInviteEmail({
     eventImage,
     brandName,
     from,
-    replyTo
+    replyTo,
+    resendApiKey
 }: SendInviteEmailParams) {
     try {
         const html = renderInviteEmailHtml({
@@ -63,7 +74,7 @@ export async function sendInviteEmail({
             brandName
         });
 
-        const { data, error } = await getResend().emails.send({
+        const { data, error } = await getResend(resendApiKey).emails.send({
             from: from || 'EventFlow <noreply@partiesandeventz.com>',
             to: [to],
             replyTo: replyTo || undefined,
@@ -95,6 +106,8 @@ interface SendConfirmationEmailParams extends ConfirmationEmailParams {
     from?: string;
     /** Where replies should land, e.g. a real person's inbox instead of the noreply address. */
     replyTo?: string;
+    /** Only needed if the sender's domain lives under a different Resend account than the platform default. */
+    resendApiKey?: string;
 }
 
 export async function sendConfirmationEmail({
@@ -109,7 +122,8 @@ export async function sendConfirmationEmail({
     eventImage,
     brandName,
     from,
-    replyTo
+    replyTo,
+    resendApiKey
 }: SendConfirmationEmailParams) {
     try {
         const html = renderConfirmationEmailHtml({
@@ -124,7 +138,7 @@ export async function sendConfirmationEmail({
             brandName
         });
 
-        const { data, error } = await getResend().emails.send({
+        const { data, error } = await getResend(resendApiKey).emails.send({
             from: from || 'EventFlow <noreply@partiesandeventz.com>',
             to: [to],
             replyTo: replyTo || undefined,
@@ -154,6 +168,8 @@ interface SendBroadcastEmailParams extends BroadcastEmailParams {
     from?: string;
     /** Where replies should land, e.g. a real person's inbox instead of the noreply address. */
     replyTo?: string;
+    /** Only needed if the sender's domain lives under a different Resend account than the platform default. */
+    resendApiKey?: string;
 }
 
 export async function sendBroadcastEmail({
@@ -166,7 +182,8 @@ export async function sendBroadcastEmail({
     actionText,
     brandName,
     from,
-    replyTo
+    replyTo,
+    resendApiKey
 }: SendBroadcastEmailParams) {
     try {
         const html = renderBroadcastEmailHtml({
@@ -180,7 +197,7 @@ export async function sendBroadcastEmail({
         });
 
         // Resend allows sending to multiple recipients (up to 50 per request usually)
-        const { data, error } = await getResend().emails.send({
+        const { data, error } = await getResend(resendApiKey).emails.send({
             from: from || 'EventFlow <noreply@partiesandeventz.com>',
             to: to,
             replyTo: replyTo || undefined,

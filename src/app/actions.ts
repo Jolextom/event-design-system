@@ -152,6 +152,7 @@ export async function sendWelcomeEmail(attendeeId: string, eventId: string) {
         const result = await sendConfirmationEmail({
             from: sender?.from,
             replyTo: sender?.replyTo,
+            resendApiKey: sender?.resendApiKey,
             to: attendee.email,
             ...templateParams
         });
@@ -325,6 +326,7 @@ export async function broadcastUpdate({
                 to: batch,
                 from: sender.from,
                 replyTo: sender.replyTo,
+                resendApiKey: sender.resendApiKey,
                 brandName: brandNameFromSender(sender.from),
                 eventTitle: event.event_title,
                 messageTitle,
@@ -443,6 +445,7 @@ export async function sendCampaignToAttendees({
                 to: [attendee.email],
                 from: sender.from,
                 replyTo: sender.replyTo,
+                resendApiKey: sender.resendApiKey,
                 brandName: brandNameFromSender(sender.from),
                 eventTitle: event.event_title,
                 messageTitle: campaign.name,

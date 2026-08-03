@@ -31,6 +31,7 @@ export default function SenderSettingsPage() {
     const [fromName, setFromName] = useState("");
     const [localPart, setLocalPart] = useState("surveys");
     const [replyTo, setReplyTo] = useState("");
+    const [resendApiKey, setResendApiKey] = useState("");
     const [addError, setAddError] = useState<string | null>(null);
     const [adding, setAdding] = useState(false);
 
@@ -59,13 +60,14 @@ export default function SenderSettingsPage() {
             fromName: fromName || "EventFlow",
             fromLocalPart: localPart,
             replyTo: replyTo || undefined,
+            resendApiKey: resendApiKey || undefined,
         });
         setAdding(false);
         if ("error" in result) {
             setAddError(result.error);
         } else {
             setIsAddOpen(false);
-            setDomain(""); setFromName(""); setLocalPart("surveys"); setReplyTo("");
+            setDomain(""); setFromName(""); setLocalPart("surveys"); setReplyTo(""); setResendApiKey("");
             setExpandedId(result.identity.id);
             refresh();
         }
@@ -286,9 +288,18 @@ export default function SenderSettingsPage() {
                         onChange={(e) => setReplyTo(e.target.value)}
                         placeholder="a real person's inbox, e.g. bawoni@kini-ai.com"
                     />
+                    <Input
+                        label="Resend API Key (optional)"
+                        type="password"
+                        value={resendApiKey}
+                        onChange={(e) => setResendApiKey(e.target.value)}
+                        placeholder="only if this domain is on a different Resend account"
+                        autoComplete="off"
+                    />
                     <p className="text-[10px] text-gray-400 font-bold leading-relaxed">
                         You'll get DNS records to add at your domain host. Emails only send from this address once the domain verifies — until then everything falls back to the platform default.
                         Leave Reply-To blank if replies should go to the sender address itself.
+                        Leave the API key blank unless this domain was verified under a <strong>separate</strong> Resend account from the platform's own — most domains don't need one.
                     </p>
                 </div>
             </Modal>
