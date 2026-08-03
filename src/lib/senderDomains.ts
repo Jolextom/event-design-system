@@ -119,9 +119,14 @@ export async function addSenderDomain({
         // not found — i.e. some other domain is actually over the limit.
         let resendDomainId: string;
         let dnsRecords: any;
+        // Resend's own status for the domain, so a domain that's already
+        // verified under this account shows Verified immediately instead of
+        // sitting at Pending until someone clicks Verify.
+        let resendStatus: string = "pending";
         if (res.ok) {
             resendDomainId = data.id;
             dnsRecords = data.records || null;
+            resendStatus = data.status || "pending";
         } else {
             const listRes = await fetch(`${RESEND_API}/domains`, { headers: resendHeaders(cleanApiKey) });
             const listData = await listRes.json();
@@ -131,7 +136,9 @@ export async function addSenderDomain({
             const detailRes = await fetch(`${RESEND_API}/domains/${resendDomainId}`, { headers: resendHeaders(cleanApiKey) });
             const detail = await detailRes.json();
             dnsRecords = detail.records || null;
+            resendStatus = detail.status || existing.status || "pending";
         }
+        const ourStatus = resendStatus === "verified" ? "verified" : (resendStatus === "failed" ? "failed" : "pending");
 
         const { data: identity, error } = await admin()
             .from("sender_identities")
@@ -143,7 +150,7 @@ export async function addSenderDomain({
                 reply_to: cleanReplyTo || null,
                 resend_domain_id: resendDomainId,
                 resend_api_key: cleanApiKey,
-                status: "pending",
+                status: ourStatus,
                 dns_records: dnsRecords,
             }, { onConflict: "user_id,domain" })
             .select(PUBLIC_FIELDS)
