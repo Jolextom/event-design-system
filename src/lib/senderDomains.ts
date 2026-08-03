@@ -164,6 +164,69 @@ export async function addSenderDomain({
     }
 }
 
+/**
+ * Registers a sender identity for a domain you've already verified directly
+ * on Resend (its own dashboard, a separate account, whatever) — skips the
+ * Domains API registration dance entirely and just trusts the given API key
+ * as proof. Use this instead of addSenderDomain() when there's nothing left
+ * to verify; addSenderDomain is for domains that still need DNS records set up.
+ */
+export async function addVerifiedSender({
+    userId,
+    domain,
+    fromName,
+    fromLocalPart,
+    replyTo,
+    resendApiKey,
+}: {
+    userId: string;
+    domain: string;
+    fromName: string;
+    /** the part before the @, e.g. "surveys" for surveys@theirbrand.com */
+    fromLocalPart: string;
+    replyTo?: string;
+    /** Required — this is the only proof we have that the domain is actually usable. */
+    resendApiKey: string;
+}): Promise<{ identity: SenderIdentity } | { error: string }> {
+    try {
+        const cleanApiKey = resendApiKey.trim();
+        if (!cleanApiKey) throw new Error("A Resend API key is required for an already-verified domain");
+
+        const cleanDomain = domain.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+        if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(cleanDomain)) {
+            throw new Error("That doesn't look like a valid domain (e.g. yourbrand.com)");
+        }
+        const localPart = fromLocalPart.trim().toLowerCase().replace(/[^a-z0-9._-]/g, "");
+        if (!localPart) throw new Error("Enter the email name before the @ (e.g. surveys)");
+        const cleanReplyTo = replyTo?.trim();
+        if (cleanReplyTo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanReplyTo)) {
+            throw new Error("That doesn't look like a valid reply-to email address");
+        }
+
+        const { data: identity, error } = await admin()
+            .from("sender_identities")
+            .upsert({
+                user_id: userId,
+                domain: cleanDomain,
+                from_name: fromName.trim() || "EventFlow",
+                from_email: `${localPart}@${cleanDomain}`,
+                reply_to: cleanReplyTo || null,
+                resend_domain_id: null,
+                resend_api_key: cleanApiKey,
+                status: "verified",
+                dns_records: null,
+            }, { onConflict: "user_id,domain" })
+            .select(PUBLIC_FIELDS)
+            .single();
+
+        if (error) throw error;
+        return { identity: identity as SenderIdentity };
+    } catch (err: any) {
+        console.error("addVerifiedSender error:", err);
+        return { error: err.message || "Failed to add sender" };
+    }
+}
+
 export async function checkSenderDomain({
     identityId,
 }: {

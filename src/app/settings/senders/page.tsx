@@ -7,7 +7,7 @@ import { Plus, Globe, CheckCircle2, Clock, XCircle, RefreshCw, Trash2, Copy, Che
 import { Modal, ModalButton } from "@/app/components/ui/Modal";
 import { Input } from "@/app/components/ui/Input";
 import {
-    listSenderIdentities, addSenderDomain, checkSenderDomain, deleteSenderIdentity, updateSenderReplyTo,
+    listSenderIdentities, addSenderDomain, addVerifiedSender, checkSenderDomain, deleteSenderIdentity, updateSenderReplyTo,
     type SenderIdentity,
 } from "@/lib/senderDomains";
 
@@ -32,6 +32,7 @@ export default function SenderSettingsPage() {
     const [localPart, setLocalPart] = useState("surveys");
     const [replyTo, setReplyTo] = useState("");
     const [resendApiKey, setResendApiKey] = useState("");
+    const [alreadyVerified, setAlreadyVerified] = useState(false);
     const [addError, setAddError] = useState<string | null>(null);
     const [adding, setAdding] = useState(false);
 
@@ -54,20 +55,29 @@ export default function SenderSettingsPage() {
         if (!user) return;
         setAdding(true);
         setAddError(null);
-        const result = await addSenderDomain({
-            userId: user.id,
-            domain,
-            fromName: fromName || "EventFlow",
-            fromLocalPart: localPart,
-            replyTo: replyTo || undefined,
-            resendApiKey: resendApiKey || undefined,
-        });
+        const result = alreadyVerified
+            ? await addVerifiedSender({
+                userId: user.id,
+                domain,
+                fromName: fromName || "EventFlow",
+                fromLocalPart: localPart,
+                replyTo: replyTo || undefined,
+                resendApiKey,
+            })
+            : await addSenderDomain({
+                userId: user.id,
+                domain,
+                fromName: fromName || "EventFlow",
+                fromLocalPart: localPart,
+                replyTo: replyTo || undefined,
+                resendApiKey: resendApiKey || undefined,
+            });
         setAdding(false);
         if ("error" in result) {
             setAddError(result.error);
         } else {
             setIsAddOpen(false);
-            setDomain(""); setFromName(""); setLocalPart("surveys"); setReplyTo(""); setResendApiKey("");
+            setDomain(""); setFromName(""); setLocalPart("surveys"); setReplyTo(""); setResendApiKey(""); setAlreadyVerified(false);
             setExpandedId(result.identity.id);
             refresh();
         }
@@ -258,8 +268,14 @@ export default function SenderSettingsPage() {
                 footer={
                     <>
                         <ModalButton variant="secondary" onClick={() => setIsAddOpen(false)}>Cancel</ModalButton>
-                        <ModalButton variant="primary" onClick={handleAdd} loading={adding} loadingText="Adding..." disabled={!domain.trim()}>
-                            Add Domain
+                        <ModalButton
+                            variant="primary"
+                            onClick={handleAdd}
+                            loading={adding}
+                            loadingText="Adding..."
+                            disabled={!domain.trim() || (alreadyVerified && !resendApiKey.trim())}
+                        >
+                            {alreadyVerified ? "Add Sender" : "Add Domain"}
                         </ModalButton>
                     </>
                 }
@@ -268,6 +284,19 @@ export default function SenderSettingsPage() {
                     {addError && (
                         <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-xs text-red-600 font-bold">{addError}</div>
                     )}
+
+                    <label className="flex items-start gap-3 p-3 bg-gray-50 border border-gray-100 rounded-xl cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={alreadyVerified}
+                            onChange={(e) => setAlreadyVerified(e.target.checked)}
+                            className="mt-0.5"
+                        />
+                        <span className="text-xs font-bold text-gray-700 leading-relaxed">
+                            This domain is already verified directly on Resend — skip DNS setup and just use my API key.
+                        </span>
+                    </label>
+
                     <Input label="Domain" value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="yourbrand.com" autoFocus />
                     <Input label="Sender Name" value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder="e.g. Kini AI" />
                     <div className="space-y-1.5">
@@ -289,18 +318,25 @@ export default function SenderSettingsPage() {
                         placeholder="a real person's inbox, e.g. bawoni@kini-ai.com"
                     />
                     <Input
-                        label="Resend API Key (optional)"
+                        label={alreadyVerified ? "Resend API Key (required)" : "Resend API Key (optional)"}
                         type="password"
                         value={resendApiKey}
                         onChange={(e) => setResendApiKey(e.target.value)}
-                        placeholder="only if this domain is on a different Resend account"
+                        placeholder={alreadyVerified ? "the key from the Resend account that owns this domain" : "only if this domain is on a different Resend account"}
                         autoComplete="off"
                     />
-                    <p className="text-[10px] text-gray-400 font-bold leading-relaxed">
-                        You'll get DNS records to add at your domain host. Emails only send from this address once the domain verifies — until then everything falls back to the platform default.
-                        Leave Reply-To blank if replies should go to the sender address itself.
-                        Leave the API key blank unless this domain was verified under a <strong>separate</strong> Resend account from the platform's own — most domains don't need one.
-                    </p>
+                    {alreadyVerified ? (
+                        <p className="text-[10px] text-gray-400 font-bold leading-relaxed">
+                            No DNS records, no waiting — this is added as Verified immediately and used for sending right away.
+                            Make sure the API key is from the same Resend account/workspace where this domain shows as verified.
+                        </p>
+                    ) : (
+                        <p className="text-[10px] text-gray-400 font-bold leading-relaxed">
+                            You'll get DNS records to add at your domain host. Emails only send from this address once the domain verifies — until then everything falls back to the platform default.
+                            Leave Reply-To blank if replies should go to the sender address itself.
+                            Leave the API key blank unless this domain was verified under a <strong>separate</strong> Resend account from the platform's own — most domains don't need one.
+                        </p>
+                    )}
                 </div>
             </Modal>
         </DashboardGuard>
