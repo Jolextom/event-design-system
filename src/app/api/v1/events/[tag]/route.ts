@@ -26,7 +26,7 @@ export async function GET(
             .select(`
                 *,
                 passes (*),
-                questions (*, options:question_options (*))
+                questions (*, options:question_options!question_options_question_id_fkey (*))
             `)
             .eq("tag", tag)
             .eq("is_published", true)

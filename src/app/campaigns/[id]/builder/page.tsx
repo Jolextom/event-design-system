@@ -35,7 +35,7 @@ export default function CampaignBuilderPage() {
         setLoading(true);
         const [{ data: campaignData }, { data: questionData }] = await Promise.all([
             supabase.from("campaigns").select("*").eq("id", campaignId).single(),
-            supabase.from("questions").select("*, options:question_options(*)").eq("campaign_id", campaignId).order("question_order"),
+            supabase.from("questions").select("*, options:question_options!question_options_question_id_fkey(*)").eq("campaign_id", campaignId).order("question_order"),
         ]);
 
         if (campaignData) {

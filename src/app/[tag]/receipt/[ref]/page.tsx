@@ -183,7 +183,7 @@ export default function ReceiptPage() {
                             id, event_title, tag, start_date, start_time, location, image,
                             questions (
                                 *,
-                                options:question_options (*)
+                                options:question_options!question_options_question_id_fkey (*)
                             )
                         `)
                         .eq("id", orderData.event_id)

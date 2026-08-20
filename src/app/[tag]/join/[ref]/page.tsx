@@ -126,7 +126,7 @@ export default function JoinInvitePage() {
                 // Fetch questions
                 const { data: questionsData } = await supabase
                     .from("questions")
-                    .select("*, options:question_options(*)")
+                    .select("*, options:question_options!question_options_question_id_fkey(*)")
                     .eq("event_id", attendeeData.event_id)
                     .order("question_order", { ascending: true });
 

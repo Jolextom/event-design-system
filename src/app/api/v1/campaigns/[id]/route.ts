@@ -33,7 +33,7 @@ export async function GET(
 
         const { data: questions } = await supabase
             .from("questions")
-            .select("*, options:question_options (*)")
+            .select("*, options:question_options!question_options_question_id_fkey (*)")
             .eq("campaign_id", id)
             .order("question_order");
 

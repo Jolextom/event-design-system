@@ -60,7 +60,7 @@ export default function PublicFormPage() {
 
             const { data: questionData } = await supabase
                 .from("questions")
-                .select("*, options:question_options(*)")
+                .select("*, options:question_options!question_options_question_id_fkey(*)")
                 .eq("campaign_id", campaignId)
                 .order("question_order");
 

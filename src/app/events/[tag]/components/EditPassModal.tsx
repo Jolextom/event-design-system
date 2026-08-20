@@ -57,7 +57,7 @@ export function EditPassModal({ isOpen, onClose, pass, onPassUpdated }: EditPass
                 );
                 const { data } = await supabase
                     .from("questions")
-                    .select("*, options:question_options(*)")
+                    .select("*, options:question_options!question_options_question_id_fkey(*)")
                     .eq("event_id", pass.event_id)
                     .eq("question_type", "select")
                     .order("question_order", { ascending: true });

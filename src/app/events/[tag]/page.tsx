@@ -270,7 +270,7 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                         .from("questions")
                         .select(`
                             *,
-                            options:question_options(*)
+                            options:question_options!question_options_question_id_fkey(*)
                         `)
                         .eq("event_id", eventData.id)
                         .order("question_order", { ascending: true });
@@ -377,7 +377,7 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
             .from("questions")
             .select(`
                 *,
-                options:question_options(*)
+                options:question_options!question_options_question_id_fkey(*)
             `)
             .eq("event_id", event.id)
             .order("question_order", { ascending: true });

@@ -55,7 +55,7 @@ export async function POST(
         // Load event + pass + questions
         const { data: event, error: eventErr } = await supabase
             .from("events")
-            .select("id, event_title, tag, is_published, questions (id, title, is_required, is_selection_logic, show_for_option_id, options:question_options(id, option_text))")
+            .select("id, event_title, tag, is_published, questions (id, title, is_required, is_selection_logic, show_for_option_id, options:question_options!question_options_question_id_fkey(id, option_text))")
             .eq("tag", tag)
             .single();
 

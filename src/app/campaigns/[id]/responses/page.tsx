@@ -44,7 +44,7 @@ export default function CampaignResponsesPage() {
         setLoading(true);
         const [{ data: campaignData }, { data: questionData }, { data: responseData }] = await Promise.all([
             supabase.from("campaigns").select("*").eq("id", campaignId).single(),
-            supabase.from("questions").select("*, options:question_options(*)").eq("campaign_id", campaignId).order("question_order"),
+            supabase.from("questions").select("*, options:question_options!question_options_question_id_fkey(*)").eq("campaign_id", campaignId).order("question_order"),
             supabase.from("form_responses").select("*, attendee:attendee_id(first_name, last_name, email)").eq("campaign_id", campaignId).order("submitted_at", { ascending: false }),
         ]);
 

@@ -148,7 +148,7 @@ export default function RegistrationPage() {
                         passes (*),
                         questions (
                             *,
-                            options:question_options (*)
+                            options:question_options!question_options_question_id_fkey (*)
                         )
                     `)
                     .eq("tag", tag)
