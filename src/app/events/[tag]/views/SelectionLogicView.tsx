@@ -131,6 +131,8 @@ export function SelectionLogicView({ questions, passes, loading, error, eventId,
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         {question.options?.map(option => {
                                             const linkedPasses = passes.filter(p => p.show_for_option_id === option.id);
+                                            const linkedQuestions = questions.filter(q => !q.is_selection_logic && q.show_for_option_id === option.id);
+                                            const linkableQuestions = questions.filter(q => !q.is_selection_logic && q.show_for_option_id !== option.id);
                                             return (
                                                 <div key={option.id} className="p-8 bg-white border border-gray-100 rounded-[32px] space-y-6 shadow-sm hover:border-blue-200 transition-all">
                                                     <div className="flex justify-between items-start">
@@ -138,54 +140,110 @@ export function SelectionLogicView({ questions, passes, loading, error, eventId,
                                                         <span className="text-[8px] font-black text-gray-300 uppercase tracking-widest bg-gray-50 px-2 py-1 rounded-md">Option</span>
                                                     </div>
 
-                                                    <div className="space-y-2">
-                                                        {linkedPasses.length > 0 ? (
-                                                            linkedPasses.map(ticket => (
-                                                                <div key={ticket.id} className="flex items-center justify-between p-3 bg-blue-50/50 rounded-xl group/ticket">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <div className="w-2 h-2 rounded-full bg-blue-500" />
-                                                                        <span className="text-xs font-bold text-gray-700">{ticket.title}</span>
+                                                    <div className="space-y-3">
+                                                        <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest">Tickets</p>
+                                                        <div className="space-y-2">
+                                                            {linkedPasses.length > 0 ? (
+                                                                linkedPasses.map(ticket => (
+                                                                    <div key={ticket.id} className="flex items-center justify-between p-3 bg-blue-50/50 rounded-xl group/ticket">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <div className="w-2 h-2 rounded-full bg-blue-500" />
+                                                                            <span className="text-xs font-bold text-gray-700">{ticket.title}</span>
+                                                                        </div>
+                                                                        <button
+                                                                            onClick={async () => {
+                                                                                const supabase = createClient(
+                                                                                    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                                                                                    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+                                                                                );
+                                                                                await supabase.from('passes').update({ show_for_option_id: null }).eq('id', ticket.id);
+                                                                                onPassUpdated();
+                                                                            }}
+                                                                            className="p-1 text-gray-300 hover:text-red-500 hover:bg-white rounded-lg transition-all opacity-0 group-hover/ticket:opacity-100"
+                                                                        >
+                                                                            <X className="w-3 h-3" />
+                                                                        </button>
                                                                     </div>
-                                                                    <button
-                                                                        onClick={async () => {
-                                                                            const supabase = createClient(
-                                                                                process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                                                                                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-                                                                            );
-                                                                            await supabase.from('passes').update({ show_for_option_id: null }).eq('id', ticket.id);
-                                                                            onPassUpdated();
-                                                                        }}
-                                                                        className="p-1 text-gray-300 hover:text-red-500 hover:bg-white rounded-lg transition-all opacity-0 group-hover/ticket:opacity-100"
-                                                                    >
-                                                                        <X className="w-3 h-3" />
-                                                                    </button>
-                                                                </div>
-                                                            ))
-                                                        ) : (
-                                                            <p className="text-[10px] text-gray-400 font-bold italic py-2">No tickets linked</p>
-                                                        )}
+                                                                ))
+                                                            ) : (
+                                                                <p className="text-[10px] text-gray-400 font-bold italic py-2">No tickets linked</p>
+                                                            )}
+                                                        </div>
+
+                                                        <div className="relative">
+                                                            <select
+                                                                className="w-full bg-gray-50 border-none rounded-xl px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest focus:ring-2 focus:ring-blue-100 outline-none appearance-none cursor-pointer hover:bg-blue-50 hover:text-blue-600 transition-all"
+                                                                value=""
+                                                                onChange={async (e) => {
+                                                                    const passId = e.target.value;
+                                                                    if (!passId) return;
+                                                                    const supabase = createClient(
+                                                                        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                                                                        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+                                                                    );
+                                                                    await supabase.from('passes').update({ show_for_option_id: option.id }).eq('id', passId);
+                                                                    onPassUpdated();
+                                                                }}
+                                                            >
+                                                                <option value="">+ Link Ticket</option>
+                                                                {passes.filter(p => p.show_for_option_id !== option.id).map(p => (
+                                                                    <option key={p.id} value={p.id}>{p.title}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
                                                     </div>
 
-                                                    <div className="relative">
-                                                        <select 
-                                                            className="w-full bg-gray-50 border-none rounded-xl px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest focus:ring-2 focus:ring-blue-100 outline-none appearance-none cursor-pointer hover:bg-blue-50 hover:text-blue-600 transition-all"
-                                                            value=""
-                                                            onChange={async (e) => {
-                                                                const passId = e.target.value;
-                                                                if (!passId) return;
-                                                                const supabase = createClient(
-                                                                    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                                                                    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-                                                                );
-                                                                await supabase.from('passes').update({ show_for_option_id: option.id }).eq('id', passId);
-                                                                onPassUpdated();
-                                                            }}
-                                                        >
-                                                            <option value="">+ Link Ticket</option>
-                                                            {passes.filter(p => p.show_for_option_id !== option.id).map(p => (
-                                                                <option key={p.id} value={p.id}>{p.title}</option>
-                                                            ))}
-                                                        </select>
+                                                    <div className="space-y-3 pt-2 border-t border-gray-50">
+                                                        <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest">Questions</p>
+                                                        <div className="space-y-2">
+                                                            {linkedQuestions.length > 0 ? (
+                                                                linkedQuestions.map(q => (
+                                                                    <div key={q.id} className="flex items-center justify-between p-3 bg-purple-50/50 rounded-xl group/question">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <div className="w-2 h-2 rounded-full bg-purple-500" />
+                                                                            <span className="text-xs font-bold text-gray-700">{q.title}</span>
+                                                                        </div>
+                                                                        <button
+                                                                            onClick={async () => {
+                                                                                const supabase = createClient(
+                                                                                    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                                                                                    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+                                                                                );
+                                                                                await supabase.from('questions').update({ show_for_option_id: null }).eq('id', q.id);
+                                                                                onQuestionCreated();
+                                                                            }}
+                                                                            className="p-1 text-gray-300 hover:text-red-500 hover:bg-white rounded-lg transition-all opacity-0 group-hover/question:opacity-100"
+                                                                        >
+                                                                            <X className="w-3 h-3" />
+                                                                        </button>
+                                                                    </div>
+                                                                ))
+                                                            ) : (
+                                                                <p className="text-[10px] text-gray-400 font-bold italic py-2">No questions linked</p>
+                                                            )}
+                                                        </div>
+
+                                                        <div className="relative">
+                                                            <select
+                                                                className="w-full bg-gray-50 border-none rounded-xl px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest focus:ring-2 focus:ring-purple-100 outline-none appearance-none cursor-pointer hover:bg-purple-50 hover:text-purple-600 transition-all"
+                                                                value=""
+                                                                onChange={async (e) => {
+                                                                    const questionId = e.target.value;
+                                                                    if (!questionId) return;
+                                                                    const supabase = createClient(
+                                                                        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                                                                        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+                                                                    );
+                                                                    await supabase.from('questions').update({ show_for_option_id: option.id }).eq('id', questionId);
+                                                                    onQuestionCreated();
+                                                                }}
+                                                            >
+                                                                <option value="">+ Link Question</option>
+                                                                {linkableQuestions.map(q => (
+                                                                    <option key={q.id} value={q.id}>{q.title}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             );

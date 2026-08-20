@@ -55,7 +55,7 @@ export async function POST(
         // Load event + pass + questions
         const { data: event, error: eventErr } = await supabase
             .from("events")
-            .select("id, event_title, tag, is_published, questions (id, title, is_required, is_selection_logic)")
+            .select("id, event_title, tag, is_published, questions (id, title, is_required, is_selection_logic, show_for_option_id, options:question_options(id, option_text))")
             .eq("tag", tag)
             .single();
 
@@ -108,12 +108,29 @@ export async function POST(
             }, { status: 409 });
         }
 
+        // Track-relevance index: an option id -> which question it belongs to
+        // and its display text, so a question gated by show_for_option_id can
+        // be skipped for guests whose own trigger answer doesn't match it.
+        const optionIndex = new Map<string, { questionId: string; text: string }>();
+        for (const q of event.questions || []) {
+            for (const opt of (q as any).options || []) {
+                optionIndex.set(opt.id, { questionId: q.id, text: opt.option_text });
+            }
+        }
+        const isQuestionRelevant = (q: any, guestAnswers: Record<string, any>) => {
+            if (!q.show_for_option_id) return true;
+            const linked = optionIndex.get(q.show_for_option_id);
+            if (!linked) return false; // stale/orphaned link — fail closed, matching the hosted page's hidden behavior
+            return guestAnswers[linked.questionId] === linked.text;
+        };
+
         // Required registration questions answered (non-invite guests only)
         const requiredQuestions = (event.questions || []).filter((q: any) => q.is_required && !q.is_selection_logic);
         for (let i = 0; i < validGuests.length; i++) {
             const guest = validGuests[i];
             if (guest.isInvite) continue;
             for (const rq of requiredQuestions) {
+                if (!isQuestionRelevant(rq, guest.answers)) continue;
                 const answer = guest.answers[rq.id];
                 const isEmpty = answer === undefined || answer === null || answer === ""
                     || (Array.isArray(answer) && answer.length === 0);

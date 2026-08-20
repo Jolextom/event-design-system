@@ -63,6 +63,7 @@ export function shapeQuestion(q: any) {
         order: q.question_order,
         page: q.page || 1,
         is_selection_logic: q.is_selection_logic || false,
+        show_for_option_id: q.show_for_option_id || null,
         options: (q.options || [])
             .sort((a: any, b: any) => a.display_order - b.display_order)
             .map((o: any) => ({ id: o.id, text: o.option_text })),

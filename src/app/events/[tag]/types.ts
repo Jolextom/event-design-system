@@ -104,6 +104,7 @@ export interface Question {
   is_required: boolean;
   question_order: number;
   is_selection_logic?: boolean;
+  show_for_option_id?: string | null; // mirrors Pass.show_for_option_id — hidden unless this option was picked
   page?: number;                 // 1-indexed page/section within the form
   logic_rules?: QuestionLogicRule[] | null;
   property_key?: string | null;  // maps answer -> attendees.properties[property_key]

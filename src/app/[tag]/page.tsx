@@ -100,6 +100,30 @@ export default function RegistrationPage() {
         });
     }, [passes, triggerAnswers, triggerQuestions]);
 
+    // Non-trigger questions to actually render on the guest-info form,
+    // filtered the same way filteredPasses filters tickets — a question
+    // with no show_for_option_id is always visible, one with it set is
+    // only visible once the matching trigger option has been picked.
+    const visibleFormQuestions = React.useMemo(() => {
+        return questions.filter(q =>
+            !q.is_selection_logic &&
+            (!q.show_for_option_id || Object.values(triggerAnswers).includes(q.show_for_option_id))
+        );
+    }, [questions, triggerAnswers]);
+
+    // Trigger answers resolved to their option text, keyed by question id —
+    // this is what gets written into each guest's `answers` object (see the
+    // totalGuests sync effect below), matching what the trigger-question
+    // click handler stores for guest 0.
+    const triggerAnswerTexts = React.useMemo(() => {
+        const map: Record<string, string> = {};
+        Object.entries(triggerAnswers).forEach(([questionId, optionId]) => {
+            const opt = questions.find(q => q.id === questionId)?.options?.find(o => o.id === optionId);
+            if (opt) map[questionId] = opt.option_text;
+        });
+        return map;
+    }, [triggerAnswers, questions]);
+
     // Auto-advance if no trigger questions or all answered
     const allTriggersAnswered = triggerQuestions.length === 0 || (Object.keys(triggerAnswers).length >= triggerQuestions.length && triggerQuestions.every(q => triggerAnswers[q.id]));
 
@@ -173,20 +197,23 @@ export default function RegistrationPage() {
         ? (currentTicket.group_size || 1)
         : quantity;
 
-    // Sync guests array when totalGuests changes
+    // Sync guests array when totalGuests changes. Also keeps every guest's
+    // trigger-question answers in sync with triggerAnswerTexts — previously
+    // only guest 0 ever got the trigger answer written into it, so guests
+    // 2+ on a group pass never carried the track they registered under.
     useEffect(() => {
         setGuests(prev => {
-            const newGuests = [...prev];
+            let newGuests = [...prev];
             if (newGuests.length < totalGuests) {
                 for (let i = newGuests.length; i < totalGuests; i++) {
-                    newGuests.push({ firstName: "", lastName: "", email: "", isInvite: true, answers: {} });
+                    newGuests.push({ firstName: "", lastName: "", email: "", isInvite: true, answers: { ...triggerAnswerTexts } });
                 }
             } else if (newGuests.length > totalGuests) {
-                return newGuests.slice(0, totalGuests);
+                newGuests = newGuests.slice(0, totalGuests);
             }
-            return newGuests;
+            return newGuests.map(g => ({ ...g, answers: { ...g.answers, ...triggerAnswerTexts } }));
         });
-    }, [totalGuests]);
+    }, [totalGuests, triggerAnswerTexts]);
 
     const handleRegister = async () => {
         if (!event || !selectedTicket) return;
@@ -249,7 +276,9 @@ export default function RegistrationPage() {
             }
 
             // === VALIDATION 5: Check required questions are answered ===
-            const requiredQuestions = questions.filter(q => q.is_required);
+            // visibleFormQuestions already excludes selection-logic questions
+            // and anything hidden for the track that wasn't picked.
+            const requiredQuestions = visibleFormQuestions.filter(q => q.is_required);
             for (let i = 0; i < validGuests.length; i++) {
                 const guest = validGuests[i];
                 // Only check non-invite guests (invites just have email)
@@ -471,18 +500,11 @@ export default function RegistrationPage() {
                                     <button
                                         key={opt.id}
                                         onClick={() => {
-                                            const newAnswers = { ...triggerAnswers, [currentTrigger.id]: opt.id };
-                                            setTriggerAnswers(newAnswers);
-                                            // Sync to primary guest answers
-                                            setGuests(prev => {
-                                                const updated = [...prev];
-                                                updated[0] = { 
-                                                    ...updated[0], 
-                                                    answers: { ...updated[0].answers, [currentTrigger.id]: opt.option_text } 
-                                                };
-                                                return updated;
-                                            });
-                                            
+                                            // Guest answers are kept in sync via the totalGuests
+                                            // effect (keyed on triggerAnswerTexts) — covers every
+                                            // guest, not just guest 0.
+                                            setTriggerAnswers({ ...triggerAnswers, [currentTrigger.id]: opt.id });
+
                                             // Auto-advance to next trigger or show tickets
                                             if (currentTriggerIndex < triggerQuestions.length - 1) {
                                                 setCurrentTriggerIndex(prev => prev + 1);
@@ -1034,7 +1056,7 @@ export default function RegistrationPage() {
                                                             </div>
 
                                                             {/* Custom Dynamic Questions */}
-                                                            {questions.filter(q => !q.is_selection_logic).map((q) => {
+                                                            {visibleFormQuestions.map((q) => {
                                                                 const setAnswer = (value: string | string[] | number) => {
                                                                     const newGuests = [...guests];
                                                                     newGuests[index].answers = { ...newGuests[index].answers, [q.id]: value };

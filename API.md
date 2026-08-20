@@ -72,6 +72,7 @@ and its registration questions. 404 if unknown or unpublished.
       "order": 0,
       "page": 1,
       "is_selection_logic": false,      // true = asked BEFORE tickets, gates which passes show
+      "show_for_option_id": null,       // set = only relevant/shown if this trigger option was picked
       "options": [ { "id": "uuid", "text": "Medium" } ],
       "scale": null,                    // for scales: { "min": 1, "max": 5, "min_label": "...", "max_label": "..." }
       "logic": null                     // for campaigns; unused in event registration
@@ -81,8 +82,8 @@ and its registration questions. 404 if unknown or unpublished.
 ```
 
 Selection-logic flow: show questions with `is_selection_logic: true` first;
-when the visitor picks an option, only display passes whose
-`show_for_option_id` is null or matches the chosen option's id.
+when the visitor picks an option, only display passes AND regular questions
+whose `show_for_option_id` is null or matches the chosen option's id.
 
 ## POST /api/v1/events/{tag}/register
 
