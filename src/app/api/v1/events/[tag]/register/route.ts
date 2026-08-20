@@ -40,10 +40,11 @@ export async function POST(
     try {
         const supabase = adminClient();
         const body = await req.json();
-        const { pass_id, guests, callback_url } = body as {
+        const { pass_id, guests, callback_url, ref } = body as {
             pass_id: string;
             guests: RegisterGuest[];
             callback_url?: string;
+            ref?: string;
         };
 
         if (!pass_id) return corsJson(req, { error: "pass_id is required" }, { status: 400 });
@@ -151,6 +152,18 @@ export async function POST(
         const safeTag = (event.tag || "EV").toUpperCase().substring(0, 20);
         const orderRef = `EF-${safeTag}-${uniquePart}`;
 
+        // Resolve referral code (if the embedding site passed one through)
+        let referredByCollaboratorId: string | null = null;
+        if (ref) {
+            const { data: collab } = await supabase
+                .from("event_collaborators")
+                .select("id, status")
+                .eq("event_id", event.id)
+                .eq("referral_code", ref)
+                .maybeSingle();
+            if (collab?.status === "active") referredByCollaboratorId = collab.id;
+        }
+
         const orderData = {
             event_id: event.id,
             pass_id: pass.id,
@@ -163,6 +176,7 @@ export async function POST(
             expected_amount_kobo: isPaid ? Math.round(expectedPrice * 100) : 0,
             status: "pending",
             updated_at: new Date().toISOString(),
+            referred_by_collaborator_id: referredByCollaboratorId,
         };
 
         const { data: order, error: orderErr } = existingOrder
@@ -186,6 +200,7 @@ export async function POST(
                     passId: pass.id,
                     eventTag: event.tag,
                     validGuests,
+                    referrerCollaboratorId: referredByCollaboratorId,
                 },
                 callbackUrl: callback_url || `${appUrl}/${event.tag}/receipt/${orderRef}`,
             });
@@ -210,6 +225,7 @@ export async function POST(
             validGuests,
             totalAmount: 0,
             supabaseClient: supabase,
+            referredByCollaboratorId,
         });
 
         return corsJson(req, { status: "registered", order_ref: orderRef });

@@ -13,6 +13,7 @@ export interface FulfillOrderParams {
     totalAmount?: number;
     expectedAmount?: number;
     supabaseClient?: SupabaseClient;
+    referredByCollaboratorId?: string | null;
 }
 
 /**
@@ -27,7 +28,8 @@ export async function fulfillOrder({
     validGuests,
     totalAmount = 0,
     expectedAmount,
-    supabaseClient
+    supabaseClient,
+    referredByCollaboratorId
 }: FulfillOrderParams) {
     const supabase = supabaseClient || defaultSupabase;
     console.log(`Fulfilling order ${orderId} for event ${eventTag}. Guests count: ${validGuests?.length || 0}`);
@@ -60,7 +62,8 @@ export async function fulfillOrder({
         .update({
             status: "completed",
             total_amount: totalAmount,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            referred_by_collaborator_id: referredByCollaboratorId ?? null
         })
         .eq("id", orderId);
 
@@ -120,7 +123,8 @@ export async function fulfillOrder({
                     last_name: guest.lastName || "",
                     email: guest.email,
                     ref: attendeeRef,
-                    email_status: status
+                    email_status: status,
+                    referred_by_collaborator_id: referredByCollaboratorId ?? null
                 })
                 .select()
                 .single();

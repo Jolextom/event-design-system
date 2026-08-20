@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -40,6 +40,8 @@ import Script from "next/script";
 export default function RegistrationPage() {
     const params = useParams();
     const tag = typeof params === "object" && params?.tag ? String(params.tag) : null;
+    const searchParams = useSearchParams();
+    const referralCode = searchParams.get("ref");
 
     // --- State ---
     const [loading, setLoading] = useState(true);
@@ -307,6 +309,18 @@ export default function RegistrationPage() {
             const safeTag = (event.tag?.toUpperCase() || 'EV').substring(0, 20);
             const orderRef = `EF-${safeTag}-${uniquePart}`;
 
+            // === RESOLVE REFERRAL CODE (if a ?ref= link was used) ===
+            let referredByCollaboratorId: string | null = null;
+            if (referralCode) {
+                const { data: collab } = await supabase
+                    .from("event_collaborators")
+                    .select("id, status")
+                    .eq("event_id", event.id)
+                    .eq("referral_code", referralCode)
+                    .maybeSingle();
+                if (collab?.status === "active") referredByCollaboratorId = collab.id;
+            }
+
             // === UPSERT ORDER ===
             const orderData = {
                 event_id: event.id,
@@ -322,7 +336,8 @@ export default function RegistrationPage() {
                 // once attendees are actually created and emails sent. Marking it completed
                 // here would make fulfillOrder's idempotency guard skip fulfillment entirely.
                 status: "pending",
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
+                referred_by_collaborator_id: referredByCollaboratorId
             };
 
             const { data: order, error: orderErr } = existingOrder 
@@ -356,7 +371,8 @@ export default function RegistrationPage() {
                         eventId: event.id,
                         passId: selectedTicket,
                         eventTag: event.tag,
-                        validGuests: validGuests
+                        validGuests: validGuests,
+                        referrerCollaboratorId: referredByCollaboratorId
                     },
                     callbackUrl: `${window.location.origin}/${event.tag}/receipt/${orderRef}`
                 });
@@ -376,7 +392,8 @@ export default function RegistrationPage() {
                     passId: selectedTicket,
                     eventTag: event.tag || "event",
                     validGuests: validGuests,
-                    totalAmount: 0
+                    totalAmount: 0,
+                    referredByCollaboratorId
                 });
 
                 // === REDIRECT TO RECEIPT ===

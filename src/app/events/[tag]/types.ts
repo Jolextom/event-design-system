@@ -252,6 +252,7 @@ export interface Attendee {
   pass_id: string | null;
   checked_in_by_staff_id: string | null;
   checked_in_by: string | null;
+  referred_by_collaborator_id?: string | null;
   responses?: Record<string, string>;
   properties?: Record<string, any>; // Dynamic variables
   order?: {
@@ -269,6 +270,19 @@ export interface Staff {
   status: 'online' | 'offline';
   current_station: string | null;
   last_active: string | null;
+  created_at: string;
+}
+
+export interface EventCollaborator {
+  id: string;
+  event_id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  access_code: string;
+  referral_code: string;
+  view_scope: 'own_only' | 'full_highlighted';
+  status: 'active' | 'revoked';
   created_at: string;
 }
 

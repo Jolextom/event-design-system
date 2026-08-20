@@ -221,7 +221,8 @@ export async function verifyAndFulfillPayment(reference: string) {
                 validGuests: metadata.validGuests,
                 totalAmount: paystackData.amount / 100,
                 expectedAmount: order.expected_amount_kobo / 100,
-                supabaseClient: adminSupabase
+                supabaseClient: adminSupabase,
+                referredByCollaboratorId: metadata.referrerCollaboratorId ?? null
             });
         } catch (fulfillErr: any) {
             console.error("Fulfillment inner error:", fulfillErr);

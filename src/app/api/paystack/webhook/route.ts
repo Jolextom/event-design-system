@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
             }
 
             // Extract fulfillment details from metadata
-            const { orderId, eventId, passId, eventTag, validGuests } = metadataObj || {};
+            const { orderId, eventId, passId, eventTag, validGuests, referrerCollaboratorId } = metadataObj || {};
 
             if (!orderId || !eventId || !passId || !eventTag || !validGuests) {
                 console.error("Missing fulfillment metadata in Paystack webhook. Metadata:", metadataObj);
@@ -102,7 +102,8 @@ export async function POST(req: NextRequest) {
                 validGuests,
                 totalAmount: paidAmountNaira,
                 expectedAmount: expectedKobo / 100,
-                supabaseClient: adminSupabase
+                supabaseClient: adminSupabase,
+                referredByCollaboratorId: referrerCollaboratorId ?? null
             });
 
             console.log(`Payment successful for order ${orderId}, reference ${reference}`);

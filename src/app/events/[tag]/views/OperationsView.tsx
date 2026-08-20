@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Plus, Check, Users, Activity, MoreHorizontal, Terminal, Loader2, RefreshCw, Scan } from "lucide-react";
+import { Plus, Check, Users, Activity, MoreHorizontal, Terminal, Loader2, RefreshCw, Scan, Link2, Copy, Ban } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@supabase/supabase-js";
 import { useParams } from "next/navigation";
-import { Staff } from "../types"; // Adjust path if needed
+import { Staff, EventCollaborator } from "../types"; // Adjust path if needed
 import { AddStaffModal } from "./registry/AddStaffModal";
+import { AddCollaboratorModal } from "./registry/AddCollaboratorModal";
 import Link from "next/link";
 
 export function OperationsView() {
@@ -15,11 +16,15 @@ export function OperationsView() {
 
     const [event, setEvent] = useState<any>(null);
     const [staff, setStaff] = useState<Staff[]>([]);
+    const [collaborators, setCollaborators] = useState<EventCollaborator[]>([]);
+    const [referralCounts, setReferralCounts] = useState<Record<string, number>>({});
     const [checkInLogs, setCheckInLogs] = useState<any[]>([]);
     const [stats, setStats] = useState({ totalCheckedIn: 0, capacity: 0 });
     const [usherStats, setUsherStats] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isAddCollaboratorModalOpen, setIsAddCollaboratorModalOpen] = useState(false);
+    const [copiedCollaboratorId, setCopiedCollaboratorId] = useState<string | null>(null);
 
     useEffect(() => {
         if (tag) {
@@ -58,14 +63,32 @@ export function OperationsView() {
 
         if (staffData) setStaff(staffData as Staff[]);
 
+        // 2b. Get Collaborators
+        const { data: collaboratorData } = await supabase
+            .from("event_collaborators")
+            .select("*")
+            .eq("event_id", eventData.id)
+            .order("created_at", { ascending: false });
+
+        if (collaboratorData) setCollaborators(collaboratorData as EventCollaborator[]);
+
         // 3. Get Attendees (for stats and feed) - Only registered guests
         const { data: attendeesData } = await supabase
             .from("attendees")
-            .select("id, first_name, last_name, check_in, check_in_time, email_status, checked_in_by_staff_id, checked_in_by")
+            .select("id, first_name, last_name, check_in, check_in_time, email_status, checked_in_by_staff_id, checked_in_by, referred_by_collaborator_id")
             .eq("event_id", eventData.id)
             .eq("email_status", "registered");
 
         if (attendeesData) {
+            // Referral Counts
+            const rCounts: Record<string, number> = {};
+            attendeesData.forEach(a => {
+                if (a.referred_by_collaborator_id) {
+                    rCounts[a.referred_by_collaborator_id] = (rCounts[a.referred_by_collaborator_id] || 0) + 1;
+                }
+            });
+            setReferralCounts(rCounts);
+
             // Stats
             const checkedIn = attendeesData.filter(a => a.check_in).length;
             setStats({
@@ -100,6 +123,32 @@ export function OperationsView() {
         setLoading(false);
     };
 
+    const updateCollaboratorScope = async (id: string, viewScope: "own_only" | "full_highlighted") => {
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+        await supabase.from("event_collaborators").update({ view_scope: viewScope }).eq("id", id);
+        setCollaborators(prev => prev.map(c => (c.id === id ? { ...c, view_scope: viewScope } : c)));
+    };
+
+    const revokeCollaborator = async (id: string) => {
+        if (!confirm("Revoke this collaborator's access? They will no longer be able to log in or attribute new registrations. Past attribution is kept.")) return;
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+        await supabase.from("event_collaborators").update({ status: "revoked" }).eq("id", id);
+        setCollaborators(prev => prev.map(c => (c.id === id ? { ...c, status: "revoked" } : c)));
+    };
+
+    const copyReferralLink = async (collaborator: EventCollaborator) => {
+        const link = `${window.location.origin}/${tag}?ref=${collaborator.referral_code}`;
+        await navigator.clipboard.writeText(link);
+        setCopiedCollaboratorId(collaborator.id);
+        setTimeout(() => setCopiedCollaboratorId(null), 1500);
+    };
+
     const getTimeAgo = (dateStr: string) => {
         const diff = Date.now() - new Date(dateStr).getTime();
         const mins = Math.floor(diff / 60000);
@@ -125,6 +174,12 @@ export function OperationsView() {
                         >
                             <Scan className="w-4 h-4" /> Launch Check-in
                         </Link>
+                        <button
+                            onClick={() => setIsAddCollaboratorModalOpen(true)}
+                            className="flex items-center gap-2 bg-white border border-gray-200 text-gray-900 px-6 py-3 rounded-2xl text-xs font-black hover:bg-gray-50 transition-all shadow-sm active:scale-95"
+                        >
+                            <Link2 className="w-4 h-4" /> Add Collaborator
+                        </button>
                         <button
                             onClick={() => setIsAddModalOpen(true)}
                             className="flex items-center gap-2 bg-gray-900 text-white px-6 py-3 rounded-2xl text-xs font-black hover:bg-black transition-all shadow-xl shadow-gray-100 active:scale-95"
@@ -206,6 +261,83 @@ export function OperationsView() {
                             </div>
                         )}
 
+                        <div className="pt-6 space-y-6">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Collaborators</h3>
+                                <span className="text-[10px] font-bold text-gray-400">{collaborators.length} People</span>
+                            </div>
+
+                            {collaborators.length === 0 ? (
+                                <div className="text-center py-16 bg-gray-50 rounded-[32px] border border-dashed border-gray-200">
+                                    <Link2 className="w-10 h-10 text-gray-300 mx-auto mb-4" />
+                                    <h4 className="text-sm font-black text-gray-900 mb-2">No collaborators yet</h4>
+                                    <p className="text-xs text-gray-400 font-bold max-w-xs mx-auto mb-6">Give people a personal referral link and a limited view of registrants — no login sharing needed.</p>
+                                    <button
+                                        onClick={() => setIsAddCollaboratorModalOpen(true)}
+                                        className="px-6 py-3 bg-white border border-gray-200 shadow-sm rounded-xl text-xs font-black text-gray-900 hover:bg-gray-50 transition-colors"
+                                    >
+                                        Add First Collaborator
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 gap-3">
+                                    {collaborators.map((collaborator) => (
+                                        <div
+                                            key={collaborator.id}
+                                            className={cn(
+                                                "p-5 border rounded-[24px] bg-white transition-all shadow-sm flex items-center justify-between group",
+                                                collaborator.status === "revoked" ? "border-gray-100 opacity-50" : "border-gray-100 hover:border-[var(--brand-blue)]/30"
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center text-[11px] font-black text-gray-400 border border-gray-200 uppercase">
+                                                    {collaborator.first_name.charAt(0)}{collaborator.last_name.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <h4 className="text-base font-black text-gray-900 tracking-tight">{collaborator.first_name} {collaborator.last_name}</h4>
+                                                        {collaborator.status === "revoked" && (
+                                                            <span className="text-[8px] font-black px-1.5 py-0.5 bg-red-50 text-red-400 rounded uppercase border border-red-100">Revoked</span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-[10px] font-bold text-gray-400 mt-0.5">
+                                                        {referralCounts[collaborator.id] || 0} referred
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <select
+                                                    value={collaborator.view_scope}
+                                                    onChange={(e) => updateCollaboratorScope(collaborator.id, e.target.value as "own_only" | "full_highlighted")}
+                                                    disabled={collaborator.status === "revoked"}
+                                                    className="h-9 px-3 rounded-xl bg-gray-50 border border-gray-100 text-[10px] font-black text-gray-600 outline-none appearance-none"
+                                                >
+                                                    <option value="full_highlighted">Full list, highlighted</option>
+                                                    <option value="own_only">Own referrals only</option>
+                                                </select>
+                                                <button
+                                                    onClick={() => copyReferralLink(collaborator)}
+                                                    className="p-2.5 text-gray-400 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all"
+                                                    title="Copy referral link"
+                                                >
+                                                    {copiedCollaboratorId === collaborator.id ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                                                </button>
+                                                {collaborator.status === "active" && (
+                                                    <button
+                                                        onClick={() => revokeCollaborator(collaborator.id)}
+                                                        className="p-2.5 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                                                        title="Revoke access"
+                                                    >
+                                                        <Ban className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
                         <div className="pt-6">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1 mb-6">Live Check-in Feed</h3>
                             {checkInLogs.length === 0 ? (
@@ -257,6 +389,14 @@ export function OperationsView() {
                 isOpen={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}
                 currentEventId={event?.id}
+                onSuccess={fetchData}
+            />
+
+            <AddCollaboratorModal
+                isOpen={isAddCollaboratorModalOpen}
+                onClose={() => setIsAddCollaboratorModalOpen(false)}
+                currentEventId={event?.id}
+                eventTag={tag}
                 onSuccess={fetchData}
             />
         </div>
