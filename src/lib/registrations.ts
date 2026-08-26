@@ -3,6 +3,7 @@ import { sendWelcomeEmail } from "@/app/actions";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { sendInviteEmail } from "./email";
 import { generateGoogleCalendarLink, generateOutlookLink } from "./calendar";
+import { syncRegistrationsToSheet } from "./sheetsSync";
 
 export interface FulfillOrderParams {
     orderId: string;
@@ -181,6 +182,38 @@ export async function fulfillOrder({
             .select("event_title, start_date, start_time, location, created_by")
             .eq("id", eventId)
             .single();
+
+        // Sync each newly fulfilled attendee to the registrations Google Sheet
+        // (no-op if REGISTRATIONS_SHEET_WEBHOOK_URL isn't configured). Answers
+        // are keyed by question title (not id) so the receiving sheet can show
+        // whatever custom fields THIS event's form asks, per-event, without
+        // any code change here — see src/lib/sheetsSync.ts.
+        const { data: answerRows } = await supabase
+            .from("answers")
+            .select("attendee_id, answer_text, question:question_id(title)")
+            .in("attendee_id", attendeesWithStatus.map((att) => att.id));
+
+        const answersByAttendee = new Map<string, Record<string, string>>();
+        for (const row of answerRows || []) {
+            const title = (row.question as any)?.title;
+            if (!title) continue;
+            const bucket = answersByAttendee.get(row.attendee_id) || {};
+            bucket[title] = row.answer_text || "";
+            answersByAttendee.set(row.attendee_id, bucket);
+        }
+
+        const syncedAt = new Date().toISOString();
+        await syncRegistrationsToSheet(attendeesWithStatus.map((att) => ({
+            timestamp: syncedAt,
+            event: event?.event_title || eventTag,
+            firstName: att.first_name || "",
+            lastName: att.last_name || "",
+            email: att.email,
+            pass: (att.pass as any)?.title || "",
+            status: att.email_status || "",
+            ref: att.ref || "",
+            answers: answersByAttendee.get(att.id) || {},
+        })));
 
         if (event) {
             const { resolveSenderForUser } = await import("./senderDomains");
