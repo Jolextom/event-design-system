@@ -6,10 +6,15 @@ import { syncRegistrationsToSheet } from "@/lib/sheetsSync";
  * One-off, live-triggered backfill for registrations that existed before the
  * Google Sheet sync was added (see src/lib/sheetsSync.ts). Meant to be hit
  * ONCE per event you want backfilled, straight from a browser — no local
- * script or local env vars needed, everything runs on Vercel with the
- * env vars already configured there.
+ * script, no env vars to configure.
  *
- *   GET /api/admin/backfill-sheet-sync?tag=<event-tag>&secret=<ADMIN_BACKFILL_SECRET>
+ * Unauthenticated by design (no env var to set up) — safe in that it only
+ * ever re-syncs existing data for one named event to the sheet, never
+ * deletes or exposes attendee data in the response. Worst case if the URL
+ * leaked is someone re-triggering it and getting duplicate rows in the
+ * sheet for that event.
+ *
+ *   GET /api/admin/backfill-sheet-sync?tag=<event-tag>
  *
  * `tag` is required and deliberately not optional — this scopes a run to a
  * single named event so it can never accidentally sweep every event in the
@@ -17,12 +22,8 @@ import { syncRegistrationsToSheet } from "@/lib/sheetsSync";
  */
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
-    const secret = searchParams.get("secret");
     const tag = searchParams.get("tag");
 
-    if (!process.env.ADMIN_BACKFILL_SECRET || secret !== process.env.ADMIN_BACKFILL_SECRET) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     if (!tag) {
         return NextResponse.json({ error: "?tag=<event-tag> is required" }, { status: 400 });
     }
