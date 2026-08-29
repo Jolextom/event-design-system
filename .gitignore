@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Internal handoff notes — business strategy, sales prospects, and a
+# security-gap audit. This repository is PUBLIC, so these are kept local.
+# If the repo is ever made private, this entry can be removed.
+/docs/handoff/
