@@ -14,14 +14,17 @@ import { generateGoogleCalendarLink, generateOutlookLink } from "@/lib/calendar"
  * which can at worst duplicate a row — this sends real email. An open
  * endpoint here means anyone with the URL could spam every attendee.
  *
- * Two modes, and a bare hit does nothing:
+ * Three modes, and a bare hit does nothing:
  *
  *   Test send (safe — sends ONE email, using a real attendee's real data,
  *   to an address of your choosing instead of theirs):
  *     GET /api/admin/send-checkin-reminder?tag=<event-tag>&secret=<SECRET>&testEmail=you@example.com
  *
- *   Real send (emails every registered attendee — only run after the test
- *   looks right):
+ *   One real attendee, their own real email (e.g. re-sending to someone who
+ *   says they didn't get it, or sending just one person's own copy):
+ *     GET /api/admin/send-checkin-reminder?tag=<event-tag>&secret=<SECRET>&onlyEmail=someone@example.com&confirm=yes
+ *
+ *   Real send to everyone (only run after a test looks right):
  *     GET /api/admin/send-checkin-reminder?tag=<event-tag>&secret=<SECRET>&confirm=yes
  */
 const SECRET = process.env.CHECKIN_REMINDER_SECRET;
@@ -31,6 +34,7 @@ export async function GET(req: NextRequest) {
     const secret = searchParams.get("secret");
     const tag = searchParams.get("tag");
     const testEmail = searchParams.get("testEmail");
+    const onlyEmail = searchParams.get("onlyEmail");
     const confirm = searchParams.get("confirm") === "yes";
 
     if (!SECRET || secret !== SECRET) {
@@ -39,9 +43,14 @@ export async function GET(req: NextRequest) {
     if (!tag) {
         return NextResponse.json({ error: "?tag=<event-tag> is required" }, { status: 400 });
     }
-    if (!testEmail && !confirm) {
+    if (onlyEmail && !confirm) {
         return NextResponse.json({
-            error: "Nothing sent. Pass &testEmail=you@example.com for a safe single test send, or &confirm=yes to email every registered attendee for real."
+            error: "onlyEmail sends a real email to that real attendee — pass &confirm=yes too, to make that explicit."
+        }, { status: 400 });
+    }
+    if (!testEmail && !onlyEmail && !confirm) {
+        return NextResponse.json({
+            error: "Nothing sent. Pass &testEmail=you@example.com for a safe single test send, &onlyEmail=<address>&confirm=yes for one real attendee, or &confirm=yes to email every registered attendee for real."
         }, { status: 400 });
     }
 
@@ -65,13 +74,20 @@ export async function GET(req: NextRequest) {
 
     // Test mode only needs one real attendee's data to build a realistic email.
     if (testEmail) attendeesQuery = attendeesQuery.limit(1);
+    // onlyEmail scopes to exactly that attendee — a real send, to their own address.
+    if (onlyEmail) attendeesQuery = attendeesQuery.eq("email", onlyEmail);
 
     const { data: attendees, error: attErr } = await attendeesQuery;
     if (attErr) {
         return NextResponse.json({ error: attErr.message }, { status: 500 });
     }
     if (!attendees || attendees.length === 0) {
-        return NextResponse.json({ sent: 0, message: "No attendees with a check-in ref found for this event." });
+        return NextResponse.json({
+            sent: 0,
+            message: onlyEmail
+                ? `No registered attendee found with email "${onlyEmail}" for this event.`
+                : "No attendees with a check-in ref found for this event.",
+        });
     }
 
     const eventDateStr = event.start_date
@@ -118,7 +134,7 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({
-        mode: testEmail ? "test" : "real",
+        mode: testEmail ? "test" : (onlyEmail ? "single-real" : "real"),
         event: event.event_title,
         sent,
         failed: failures.length,
