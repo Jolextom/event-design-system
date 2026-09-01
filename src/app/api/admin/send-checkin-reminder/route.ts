@@ -24,7 +24,7 @@ import { generateGoogleCalendarLink, generateOutlookLink } from "@/lib/calendar"
  *   looks right):
  *     GET /api/admin/send-checkin-reminder?tag=<event-tag>&secret=<SECRET>&confirm=yes
  */
-const SECRET = "aaes-checkin-2026-lF9qT2";
+const SECRET = process.env.CHECKIN_REMINDER_SECRET;
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     const testEmail = searchParams.get("testEmail");
     const confirm = searchParams.get("confirm") === "yes";
 
-    if (secret !== SECRET) {
+    if (!SECRET || secret !== SECRET) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     if (!tag) {
