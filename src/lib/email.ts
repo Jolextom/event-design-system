@@ -1,9 +1,11 @@
 import { Resend } from 'resend';
 import {
     renderInviteEmailHtml,
+    renderKiniSummitReminderEmailHtml,
     renderConfirmationEmailHtmlForTemplate,
     renderBroadcastEmailHtml,
     InviteEmailParams,
+    ReminderEmailParams,
     ConfirmationEmailParams,
     BroadcastEmailParams
 } from './email-templates';
@@ -157,6 +159,78 @@ export async function sendConfirmationEmail({
         return { success: true, data };
     } catch (error) {
         console.error('Failed to send confirmation email:', error);
+        return { success: false, error };
+    }
+}
+
+// ============================================================================
+// REMINDER EMAIL (pre-event check-in QR)
+// ============================================================================
+
+/**
+ * Builds a hosted QR image URL encoding the given data — no dependency
+ * added, and a normal external <img src> works reliably in email clients,
+ * unlike a data: URI which many clients strip. Uses api.qrserver.com, a
+ * free, no-signup QR image service; the data (an attendee ref like
+ * "EF-AIFORAFRICASEDUCATIONSUMMIT-A1B2C3D4") is not personally identifying.
+ */
+export function buildQrCodeUrl(data: string, size: number = 240): string {
+    const encoded = encodeURIComponent(data);
+    return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encoded}`;
+}
+
+interface SendReminderEmailParams extends ReminderEmailParams {
+    to: string;
+    /** Verified sender From line, e.g. "Kini AI <noreply@kini-ai.com>". Callers should resolve this via resolveSender()/resolveSenderForUser() so unverified domains never get here. */
+    from?: string;
+    /** Where replies should land, e.g. a real person's inbox instead of the noreply address. */
+    replyTo?: string;
+    /** Only needed if the sender's domain lives under a different Resend account than the platform default. */
+    resendApiKey?: string;
+}
+
+export async function sendReminderEmail({
+    to,
+    eventTitle,
+    eventDate,
+    eventLocation,
+    attendeeName,
+    checkInRef,
+    qrCodeUrl,
+    googleCalendarLink,
+    outlookCalendarLink,
+    from,
+    replyTo,
+    resendApiKey,
+}: SendReminderEmailParams) {
+    try {
+        const html = renderKiniSummitReminderEmailHtml({
+            eventTitle,
+            eventDate,
+            eventLocation,
+            attendeeName,
+            checkInRef,
+            qrCodeUrl,
+            googleCalendarLink,
+            outlookCalendarLink,
+        });
+
+        const { data, error } = await getResend(resendApiKey).emails.send({
+            from: from || 'EventFlow <noreply@partiesandeventz.com>',
+            to: [to],
+            replyTo: replyTo || undefined,
+            subject: `Your check-in code for ${eventTitle}`,
+            html,
+        });
+
+        if (error) {
+            console.error('Failed to send reminder email:', error);
+            return { success: false, error };
+        }
+
+        return { success: true, data };
+    } catch (error) {
+        console.error('Failed to send reminder email:', error);
         return { success: false, error };
     }
 }

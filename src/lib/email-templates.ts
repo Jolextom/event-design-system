@@ -418,6 +418,144 @@ export function renderKiniSummitConfirmationEmailHtml({
 `.trim();
 }
 
+export interface ReminderEmailParams {
+    eventTitle: string;
+    eventDate: string;
+    eventLocation: string;
+    attendeeName: string;
+    /** The attendee's own check-in code (attendees.ref) — NOT the order ref, which is shared across a group registration and can't identify one person at the door. */
+    checkInRef: string;
+    /** Pre-built QR image URL encoding checkInRef — see buildQrCodeUrl() in email.ts. */
+    qrCodeUrl: string;
+    googleCalendarLink?: string;
+    outlookCalendarLink?: string;
+}
+
+/**
+ * Pre-event check-in reminder for AAES. Deliberately a SEPARATE template from
+ * renderKiniSummitConfirmationEmailHtml (which stays untouched) — this one
+ * carries the QR code and is sent once, a few days before the event, to
+ * everyone already registered. Styled to the actual AAES page palette
+ * (AAES Space #00133F, AAES Sea #0057FF, AAES Sky #C5FFFB) rather than the
+ * generic Kini AI email style the confirmation email happens to use.
+ */
+export function renderKiniSummitReminderEmailHtml({
+    eventTitle,
+    eventDate,
+    eventLocation,
+    attendeeName,
+    checkInRef,
+    qrCodeUrl,
+    googleCalendarLink,
+    outlookCalendarLink,
+}: ReminderEmailParams): string {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0; padding:0; background-color:#00133F; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+<table role="presentation" style="width:100%; border-collapse:collapse;">
+  <tr>
+    <td align="center" style="padding:32px 16px;">
+      <table role="presentation" style="width:100%; max-width:520px; border-collapse:collapse;">
+
+        <tr>
+          <td style="padding-bottom:24px; text-align:center;">
+            <span style="font-weight:800; font-size:15px; letter-spacing:2px; color:#C5FFFB; text-transform:uppercase;">AAES &middot; AI for Africa's Education Summit</span>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="background:#ffffff; border-radius:20px; overflow:hidden; border:1px solid rgba(197,255,251,0.4);">
+
+            <table role="presentation" style="width:100%; border-collapse:collapse;">
+              <tr>
+                <td style="height:6px; background:#0057FF;"></td>
+              </tr>
+            </table>
+
+            <table role="presentation" style="width:100%; border-collapse:collapse;">
+              <tr>
+                <td style="padding:36px 32px 8px;">
+                  <div style="display:inline-block; background:#C5FFFB; color:#0057FF; padding:6px 14px; border-radius:100px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:20px;">
+                    Almost here
+                  </div>
+                  <h1 style="margin:0 0 8px; font-size:24px; line-height:1.3; font-weight:800; color:#00133F;">
+                    See you soon, ${attendeeName}.
+                  </h1>
+                  <p style="margin:0 0 28px; font-size:15px; line-height:1.7; color:#333333;">
+                    <strong style="color:#00133F;">${eventTitle}</strong> is coming up. Your check-in code is below — show it at the entrance, no printing needed.
+                  </p>
+
+                  <table role="presentation" style="width:100%; border-collapse:collapse; background:#00133F; border-radius:16px; margin-bottom:24px;">
+                    <tr>
+                      <td align="center" style="padding:28px 22px;">
+                        <table role="presentation" style="background:#ffffff; border-radius:14px; padding:14px;">
+                          <tr>
+                            <td>
+                              <img src="${qrCodeUrl}" width="200" height="200" alt="Your check-in QR code" style="display:block; width:200px; height:200px;">
+                            </td>
+                          </tr>
+                        </table>
+                        <p style="margin:16px 0 0; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:13px; letter-spacing:0.5px; color:#C5FFFB;">${checkInRef}</p>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <table role="presentation" style="width:100%; border-collapse:collapse; background:#f8f8f7; border-radius:16px; margin-bottom:8px;">
+                    <tr>
+                      <td style="padding:20px 22px;">
+                        <table role="presentation" style="width:100%; border-collapse:collapse; font-size:14px; color:#00133F;">
+                          <tr>
+                            <td style="padding:5px 0; width:80px; font-weight:800; color:#8a8a88; vertical-align:top;">DATE</td>
+                            <td style="padding:5px 0; font-weight:700;">${eventDate}</td>
+                          </tr>
+                          <tr>
+                            <td style="padding:5px 0; font-weight:800; color:#8a8a88; vertical-align:top;">VENUE</td>
+                            <td style="padding:5px 0; font-weight:700;">${eventLocation}</td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+
+                  ${(googleCalendarLink || outlookCalendarLink) ? `
+                  <table role="presentation" style="width:100%; border-collapse:collapse; margin-top:16px; padding-top:20px; border-top:1px solid #ececeb;">
+                    <tr>
+                      <td align="center">
+                        <p style="margin:0 0 12px; font-size:11px; font-weight:800; color:#8a8a88; text-transform:uppercase; letter-spacing:1.5px;">Add to Calendar</p>
+                        ${googleCalendarLink ? `<a href="${googleCalendarLink}" style="font-size:12px; color:#0057FF; text-decoration:none; font-weight:800; padding:10px 18px; background:#eaf0ff; border-radius:12px; margin:0 4px;">Google</a>` : ''}
+                        ${outlookCalendarLink ? `<a href="${outlookCalendarLink}" style="font-size:12px; color:#0057FF; text-decoration:none; font-weight:800; padding:10px 18px; background:#eaf0ff; border-radius:12px; margin:0 4px;">Outlook</a>` : ''}
+                      </td>
+                    </tr>
+                  </table>
+                  ` : ''}
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding-top:24px; text-align:center;">
+            <p style="margin:0; font-size:12px; color:#C5FFFB;">
+              Kini AI &middot; <a href="https://www.kini-ai.com" style="color:#C5FFFB;">www.kini-ai.com</a>
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
+`.trim();
+}
+
 // ============================================================================
 // BROADCAST EMAIL
 // ============================================================================
