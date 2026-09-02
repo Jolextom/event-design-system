@@ -14,14 +14,19 @@ import { generateGoogleCalendarLink, generateOutlookLink } from "@/lib/calendar"
  * which can at worst duplicate a row — this sends real email. An open
  * endpoint here means anyone with the URL could spam every attendee.
  *
- * Three modes, and a bare hit does nothing:
+ * Four modes, and a bare hit does nothing:
  *
- *   Test send (safe — sends ONE email, using a real attendee's real data,
- *   to an address of your choosing instead of theirs):
+ *   Test send (safe — uses whichever attendee registered first, sent to an
+ *   address of your choosing instead of theirs. Good for checking the
+ *   design, but the data inside it belongs to a real, unrelated attendee):
  *     GET /api/admin/send-checkin-reminder?tag=<event-tag>&secret=<SECRET>&testEmail=you@example.com
  *
- *   One real attendee, their own real email (e.g. re-sending to someone who
- *   says they didn't get it, or sending just one person's own copy):
+ *   Preview ONE named attendee's own real data, delivered to a different
+ *   address instead of theirs (safe — nothing reaches the real attendee):
+ *     GET /api/admin/send-checkin-reminder?tag=<event-tag>&secret=<SECRET>&onlyEmail=someone@example.com&testEmail=you@example.com
+ *
+ *   One real attendee, their own real email — an actual send (e.g.
+ *   re-sending to someone who says they didn't get it):
  *     GET /api/admin/send-checkin-reminder?tag=<event-tag>&secret=<SECRET>&onlyEmail=someone@example.com&confirm=yes
  *
  *   Real send to everyone (only run after a test looks right):
@@ -43,14 +48,17 @@ export async function GET(req: NextRequest) {
     if (!tag) {
         return NextResponse.json({ error: "?tag=<event-tag> is required" }, { status: 400 });
     }
-    if (onlyEmail && !confirm) {
+    // onlyEmail alone (no testEmail) is a real send to that real person —
+    // require the explicit flag. onlyEmail + testEmail together is a safe
+    // preview (their data, delivered to you instead), so it doesn't need it.
+    if (onlyEmail && !testEmail && !confirm) {
         return NextResponse.json({
-            error: "onlyEmail sends a real email to that real attendee — pass &confirm=yes too, to make that explicit."
+            error: "onlyEmail without testEmail sends a real email to that real attendee — pass &confirm=yes too, to make that explicit. Or add &testEmail=you@example.com to preview it safely instead."
         }, { status: 400 });
     }
     if (!testEmail && !onlyEmail && !confirm) {
         return NextResponse.json({
-            error: "Nothing sent. Pass &testEmail=you@example.com for a safe single test send, &onlyEmail=<address>&confirm=yes for one real attendee, or &confirm=yes to email every registered attendee for real."
+            error: "Nothing sent. Pass &testEmail=you@example.com for a safe test send, &onlyEmail=<address>&testEmail=<address> to safely preview one specific attendee's data, &onlyEmail=<address>&confirm=yes for a real send to one attendee, or &confirm=yes to email every registered attendee for real."
         }, { status: 400 });
     }
 
@@ -72,9 +80,11 @@ export async function GET(req: NextRequest) {
         .not("ref", "is", null)
         .order("created_at", { ascending: true });
 
-    // Test mode only needs one real attendee's data to build a realistic email.
-    if (testEmail) attendeesQuery = attendeesQuery.limit(1);
-    // onlyEmail scopes to exactly that attendee — a real send, to their own address.
+    // Plain test mode (no onlyEmail) just needs any one real attendee's data.
+    if (testEmail && !onlyEmail) attendeesQuery = attendeesQuery.limit(1);
+    // onlyEmail scopes to exactly that attendee. Combined with testEmail this
+    // is a safe preview (their data, delivered elsewhere); alone it's a real
+    // send to their own address.
     if (onlyEmail) attendeesQuery = attendeesQuery.eq("email", onlyEmail);
 
     const { data: attendees, error: attErr } = await attendeesQuery;
@@ -133,12 +143,26 @@ export async function GET(req: NextRequest) {
         }
     }
 
+    let mode: string;
+    let note: string | undefined;
+    if (testEmail && onlyEmail) {
+        mode = "preview";
+        note = `Preview of ${onlyEmail}'s own reminder, delivered to ${testEmail} instead — nothing was sent to ${onlyEmail}.`;
+    } else if (testEmail) {
+        mode = "test";
+        note = `Test email sent to ${testEmail}, using real data from attendee ${attendees[0].email} (whoever registered first) — this is a design preview, not that attendee's real reminder.`;
+    } else if (onlyEmail) {
+        mode = "single-real";
+    } else {
+        mode = "real";
+    }
+
     return NextResponse.json({
-        mode: testEmail ? "test" : (onlyEmail ? "single-real" : "real"),
+        mode,
         event: event.event_title,
         sent,
         failed: failures.length,
         failures: failures.length > 0 ? failures : undefined,
-        ...(testEmail ? { note: `Test email sent to ${testEmail}, using real data from attendee ${attendees[0].email}.` } : {}),
+        ...(note ? { note } : {}),
     });
 }
