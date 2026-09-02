@@ -16,9 +16,10 @@ import { generateGoogleCalendarLink, generateOutlookLink } from "@/lib/calendar"
  *
  * Four modes, and a bare hit does nothing:
  *
- *   Test send (safe — uses whichever attendee registered first, sent to an
- *   address of your choosing instead of theirs. Good for checking the
- *   design, but the data inside it belongs to a real, unrelated attendee):
+ *   Test send (safe — if testEmail is itself a registered attendee, shows
+ *   THEIR own real reminder content, delivered here instead of anywhere
+ *   else being touched. If it isn't registered, falls back to whoever
+ *   registered first, purely so there's realistic sample data to render):
  *     GET /api/admin/send-checkin-reminder?tag=<event-tag>&secret=<SECRET>&testEmail=you@example.com
  *
  *   Preview ONE named attendee's own real data, delivered to a different
@@ -73,25 +74,40 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: `No event found with tag "${tag}"` }, { status: 404 });
     }
 
-    let attendeesQuery = supabase
-        .from("attendees")
-        .select("id, email, first_name, ref")
-        .eq("event_id", event.id)
-        .not("ref", "is", null)
-        .order("created_at", { ascending: true });
+    const baseAttendeesQuery = () =>
+        supabase
+            .from("attendees")
+            .select("id, email, first_name, ref")
+            .eq("event_id", event.id)
+            .not("ref", "is", null)
+            .order("created_at", { ascending: true });
 
-    // Plain test mode (no onlyEmail) just needs any one real attendee's data.
-    if (testEmail && !onlyEmail) attendeesQuery = attendeesQuery.limit(1);
-    // onlyEmail scopes to exactly that attendee. Combined with testEmail this
-    // is a safe preview (their data, delivered elsewhere); alone it's a real
-    // send to their own address.
-    if (onlyEmail) attendeesQuery = attendeesQuery.eq("email", onlyEmail);
+    // Whichever specific email we were given (onlyEmail, or testEmail when
+    // used alone) — try to find THAT real attendee's own data first. This is
+    // what makes `testEmail=someone-who-is-actually-registered@x.com` show
+    // that person their own data instead of always defaulting to whoever
+    // registered first, which was confusing in practice.
+    const lookupEmail = onlyEmail || testEmail;
+    let attendees: { id: string; email: string; first_name: string | null; ref: string }[] = [];
+    let usedFallbackAttendee = false;
 
-    const { data: attendees, error: attErr } = await attendeesQuery;
-    if (attErr) {
-        return NextResponse.json({ error: attErr.message }, { status: 500 });
+    if (lookupEmail) {
+        const { data, error } = await baseAttendeesQuery().eq("email", lookupEmail);
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        attendees = data || [];
     }
-    if (!attendees || attendees.length === 0) {
+
+    // No real attendee at that address, and this is a design-only preview
+    // (testEmail with no onlyEmail) — fall back to whoever registered first,
+    // purely to have realistic sample data to render.
+    if (attendees.length === 0 && testEmail && !onlyEmail) {
+        const { data, error } = await baseAttendeesQuery().limit(1);
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        attendees = data || [];
+        usedFallbackAttendee = true;
+    }
+
+    if (attendees.length === 0) {
         return NextResponse.json({
             sent: 0,
             message: onlyEmail
@@ -150,7 +166,9 @@ export async function GET(req: NextRequest) {
         note = `Preview of ${onlyEmail}'s own reminder, delivered to ${testEmail} instead — nothing was sent to ${onlyEmail}.`;
     } else if (testEmail) {
         mode = "test";
-        note = `Test email sent to ${testEmail}, using real data from attendee ${attendees[0].email} (whoever registered first) — this is a design preview, not that attendee's real reminder.`;
+        note = usedFallbackAttendee
+            ? `${testEmail} isn't a registered attendee, so this used real data from ${attendees[0].email} (whoever registered first) instead — a design preview, not a real person's actual reminder.`
+            : `Sent to ${testEmail}, using their own real registration data — this is their actual reminder content, just re-delivered here for you to check first.`;
     } else if (onlyEmail) {
         mode = "single-real";
     } else {
