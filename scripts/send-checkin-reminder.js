@@ -54,6 +54,20 @@ async function sb(path) {
     return res.json();
 }
 
+async function sbUpdate(path, body) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+        method: "PATCH",
+        headers: {
+            apikey: SERVICE_KEY,
+            Authorization: `Bearer ${SERVICE_KEY}`,
+            "Content-Type": "application/json",
+            Prefer: "return=minimal",
+        },
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Supabase update ${path} -> ${res.status}: ${await res.text()}`);
+}
+
 function buildQrCodeUrl(data, size = 240) {
     return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(data)}`;
 }
@@ -109,13 +123,28 @@ async function main() {
         process.exit(1);
     }
 
-    let attendeesPath = `attendees?event_id=eq.${event.id}&ref=not.is.null&select=id,email,first_name,ref&order=created_at.asc`;
-    if (flag === "--only") attendeesPath += `&email=eq.${encodeURIComponent(flagValue)}`;
-
-    const attendees = await sb(attendeesPath);
-    if (attendees.length === 0) {
-        console.log(flag === "--only" ? `No registered attendee found with email "${flagValue}".` : "No attendees with a check-in ref found.");
-        return;
+    let attendees;
+    if (flag === "--only") {
+        // Deliberately NOT filtering out attendees with no ref here — if this
+        // real person exists but has no check-in ref (e.g. added before the
+        // QR feature existed), that's worth fixing, not treating as "not found".
+        attendees = await sb(`attendees?event_id=eq.${event.id}&email=eq.${encodeURIComponent(flagValue)}&select=id,email,first_name,ref&order=created_at.asc`);
+        if (attendees.length === 0) {
+            console.log(`No registered attendee found with email "${flagValue}".`);
+            return;
+        }
+        if (!attendees[0].ref) {
+            const newRef = `EF-${tag.toUpperCase().replace(/[^A-Z0-9]/g, "")}-${crypto.randomUUID().replace(/-/g, "").substring(0, 8).toUpperCase()}`;
+            await sbUpdate(`attendees?id=eq.${attendees[0].id}`, { ref: newRef });
+            attendees[0].ref = newRef;
+            console.log(`${flagValue} had no check-in ref — generated and saved ${newRef}.`);
+        }
+    } else {
+        attendees = await sb(`attendees?event_id=eq.${event.id}&ref=not.is.null&select=id,email,first_name,ref&order=created_at.asc`);
+        if (attendees.length === 0) {
+            console.log("No attendees with a check-in ref found.");
+            return;
+        }
     }
 
     let senderFrom = null;

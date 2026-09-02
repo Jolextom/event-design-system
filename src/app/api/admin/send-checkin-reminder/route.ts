@@ -79,7 +79,6 @@ export async function GET(req: NextRequest) {
             .from("attendees")
             .select("id, email, first_name, ref")
             .eq("event_id", event.id)
-            .not("ref", "is", null)
             .order("created_at", { ascending: true });
 
     // Whichever specific email we were given (onlyEmail, or testEmail when
@@ -87,21 +86,42 @@ export async function GET(req: NextRequest) {
     // what makes `testEmail=someone-who-is-actually-registered@x.com` show
     // that person their own data instead of always defaulting to whoever
     // registered first, which was confusing in practice.
+    //
+    // Deliberately NOT filtering out attendees with no `ref` here — a real
+    // attendee existing without one is a real bug worth surfacing (and
+    // fixing on the spot below), not a reason to silently treat them as
+    // unregistered and fall back to showing someone else's data instead.
     const lookupEmail = onlyEmail || testEmail;
-    let attendees: { id: string; email: string; first_name: string | null; ref: string }[] = [];
+    let attendees: { id: string; email: string; first_name: string | null; ref: string | null }[] = [];
     let usedFallbackAttendee = false;
+    let backfilledRef = false;
 
     if (lookupEmail) {
         const { data, error } = await baseAttendeesQuery().eq("email", lookupEmail);
         if (error) return NextResponse.json({ error: error.message }, { status: 500 });
         attendees = data || [];
+
+        // Found the real attendee, but they have no check-in ref (can happen
+        // for attendees created before the ref/QR feature existed, or added
+        // manually). Generate one now and save it, rather than treating a
+        // real person as "not found".
+        if (attendees.length > 0 && !attendees[0].ref) {
+            const newRef = `EF-${event.tag.toUpperCase().replace(/[^A-Z0-9]/g, "")}-${crypto.randomUUID().replace(/-/g, "").substring(0, 8).toUpperCase()}`;
+            const { error: updateErr } = await supabase
+                .from("attendees")
+                .update({ ref: newRef })
+                .eq("id", attendees[0].id);
+            if (updateErr) return NextResponse.json({ error: `Found the attendee but failed to assign a check-in ref: ${updateErr.message}` }, { status: 500 });
+            attendees[0].ref = newRef;
+            backfilledRef = true;
+        }
     }
 
-    // No real attendee at that address, and this is a design-only preview
-    // (testEmail with no onlyEmail) — fall back to whoever registered first,
-    // purely to have realistic sample data to render.
+    // Still nothing at that address — and this is a design-only preview
+    // (testEmail with no onlyEmail) — fall back to whoever registered first
+    // AND has a ref already, purely to have realistic sample data to render.
     if (attendees.length === 0 && testEmail && !onlyEmail) {
-        const { data, error } = await baseAttendeesQuery().limit(1);
+        const { data, error } = await baseAttendeesQuery().not("ref", "is", null).limit(1);
         if (error) return NextResponse.json({ error: error.message }, { status: 500 });
         attendees = data || [];
         usedFallbackAttendee = true;
@@ -146,8 +166,8 @@ export async function GET(req: NextRequest) {
             eventDate: eventDateStr,
             eventLocation,
             attendeeName: att.first_name || "there",
-            checkInRef: att.ref,
-            qrCodeUrl: buildQrCodeUrl(att.ref),
+            checkInRef: att.ref as string, // every entry here has one by this point — either it always did, or it was just backfilled above
+            qrCodeUrl: buildQrCodeUrl(att.ref as string),
             googleCalendarLink,
             outlookCalendarLink,
         });
@@ -173,6 +193,9 @@ export async function GET(req: NextRequest) {
         mode = "single-real";
     } else {
         mode = "real";
+    }
+    if (backfilledRef) {
+        note = `${note ? note + " " : ""}Note: this attendee had no check-in ref yet — one was generated and saved just now (${attendees[0].ref}), so this will work at the door going forward too.`;
     }
 
     return NextResponse.json({
