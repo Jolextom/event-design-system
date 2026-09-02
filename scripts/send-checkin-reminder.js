@@ -16,9 +16,13 @@
  *       Sends to exactly one real attendee, their own real data, their own
  *       real address. Safe to use as the test — it's just one email.
  *
- *   node scripts/send-checkin-reminder.js <event-tag> --all
- *       Sends to every registered attendee for real. Only run after a
- *       --only test looks right.
+ *   node scripts/send-checkin-reminder.js <event-tag> --all [--limit 50]
+ *       Sends to every registered attendee who hasn't already gotten one.
+ *       Tracked in the existing email_deliveries table (email_type
+ *       "checkin_reminder") — no new column needed — so re-running this
+ *       later, e.g. daily, only reaches NEW registrants and never re-sends
+ *       to anyone already covered. Capped to 50 per run by default
+ *       (Resend's free-plan daily cap); pass --limit to change it.
  */
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -28,6 +32,9 @@ const RESEND_KEY = process.env.RESEND_API_KEY;
 const tag = process.argv[2];
 const flag = process.argv[3];
 const flagValue = process.argv[4];
+const limitFlagIndex = process.argv.indexOf("--limit");
+const batchLimit = limitFlagIndex !== -1 && process.argv[limitFlagIndex + 1] ? parseInt(process.argv[limitFlagIndex + 1], 10) : 50;
+const EMAIL_TYPE = "checkin_reminder";
 
 if (!SUPABASE_URL || !SERVICE_KEY || !RESEND_KEY) {
     console.error("Missing one of: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY (set as environment variables before running).");
@@ -66,6 +73,20 @@ async function sbUpdate(path, body) {
         body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(`Supabase update ${path} -> ${res.status}: ${await res.text()}`);
+}
+
+async function sbInsert(path, body) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+        method: "POST",
+        headers: {
+            apikey: SERVICE_KEY,
+            Authorization: `Bearer ${SERVICE_KEY}`,
+            "Content-Type": "application/json",
+            Prefer: "return=minimal",
+        },
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Supabase insert ${path} -> ${res.status}: ${await res.text()}`);
 }
 
 function buildQrCodeUrl(data, size = 240) {
@@ -140,9 +161,27 @@ async function main() {
             console.log(`${flagValue} had no check-in ref — generated and saved ${newRef}.`);
         }
     } else {
-        attendees = await sb(`attendees?event_id=eq.${event.id}&ref=not.is.null&select=id,email,first_name,ref&order=created_at.asc`);
+        // --all: backfill any missing refs first, then skip whoever already
+        // has a "sent" checkin_reminder delivery record, then cap to batchLimit.
+        const all = await sb(`attendees?event_id=eq.${event.id}&select=id,email,first_name,ref&order=created_at.asc`);
+        for (const att of all) {
+            if (!att.ref) {
+                const newRef = `EF-${tag.toUpperCase().replace(/[^A-Z0-9]/g, "")}-${crypto.randomUUID().replace(/-/g, "").substring(0, 8).toUpperCase()}`;
+                await sbUpdate(`attendees?id=eq.${att.id}`, { ref: newRef });
+                att.ref = newRef;
+            }
+        }
+
+        const alreadySent = await sb(`email_deliveries?event_id=eq.${event.id}&email_type=eq.${EMAIL_TYPE}&status=eq.sent&select=attendee_id`);
+        const sentIds = new Set(alreadySent.map((d) => d.attendee_id));
+
+        const eligible = all.filter((att) => att.ref && !sentIds.has(att.id));
+        attendees = eligible.slice(0, batchLimit);
+
+        console.log(`${all.length} total attendees. ${sentIds.size} already sent. ${eligible.length} eligible. Sending up to ${batchLimit} this run.\n`);
+
         if (attendees.length === 0) {
-            console.log("No attendees with a check-in ref found.");
+            console.log(sentIds.size > 0 ? "Nothing to send — everyone eligible has already received it." : "No attendees with a check-in ref found.");
             return;
         }
     }
@@ -179,6 +218,17 @@ async function main() {
         if (result.success) {
             sentCount += 1;
             console.log(`Sent to ${att.email} (ref ${att.ref})`);
+            try {
+                await sbInsert("email_deliveries", {
+                    attendee_id: att.id,
+                    event_id: event.id,
+                    email_type: EMAIL_TYPE,
+                    status: "sent",
+                    resend_id: (result.data && result.data.id) || null,
+                });
+            } catch (err) {
+                console.error(`  (sent OK, but failed to record delivery for ${att.email} — a future run might re-send to them):`, err.message);
+            }
         } else {
             console.error(`FAILED for ${att.email}:`, JSON.stringify(result.error));
         }

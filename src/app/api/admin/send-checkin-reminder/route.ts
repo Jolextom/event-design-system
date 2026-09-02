@@ -30,8 +30,16 @@ import { generateGoogleCalendarLink, generateOutlookLink } from "@/lib/calendar"
  *   re-sending to someone who says they didn't get it):
  *     GET /api/admin/send-checkin-reminder?tag=<event-tag>&secret=<SECRET>&onlyEmail=someone@example.com&confirm=yes
  *
- *   Real send to everyone (only run after a test looks right):
+ *   Real send to everyone who hasn't already gotten one (only run after a
+ *   test looks right). Automatically skips anyone already sent — tracked in
+ *   the existing email_deliveries table (email_type "checkin_reminder"), no
+ *   new column needed — so re-running this later only reaches NEW
+ *   registrants, never re-sends to someone already covered. Capped to 50
+ *   per run by default (Resend's free-plan daily cap) — pass &limit= to
+ *   change it, or re-run daily to work through a bigger backlog over a few
+ *   days:
  *     GET /api/admin/send-checkin-reminder?tag=<event-tag>&secret=<SECRET>&confirm=yes
+ *     GET /api/admin/send-checkin-reminder?tag=<event-tag>&secret=<SECRET>&confirm=yes&limit=30
  */
 const SECRET = process.env.CHECKIN_REMINDER_SECRET;
 
@@ -42,6 +50,9 @@ export async function GET(req: NextRequest) {
     const testEmail = searchParams.get("testEmail");
     const onlyEmail = searchParams.get("onlyEmail");
     const confirm = searchParams.get("confirm") === "yes";
+    const limitParam = parseInt(searchParams.get("limit") || "50", 10);
+    const batchLimit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : 50;
+    const EMAIL_TYPE = "checkin_reminder";
 
     if (!SECRET || secret !== SECRET) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -127,12 +138,47 @@ export async function GET(req: NextRequest) {
         usedFallbackAttendee = true;
     }
 
+    // Real send to everyone (no onlyEmail, no testEmail — confirm=yes alone).
+    // Fetch the whole list, backfill any missing refs, skip whoever already
+    // has a "sent" checkin_reminder delivery record for this event, then cap
+    // to batchLimit so a run can't blow past Resend's daily send cap.
+    let totalEligible = 0;
+    let alreadySentCount = 0;
+    if (!lookupEmail && confirm) {
+        const { data: allAttendees, error: allErr } = await baseAttendeesQuery();
+        if (allErr) return NextResponse.json({ error: allErr.message }, { status: 500 });
+
+        for (const att of allAttendees || []) {
+            if (!att.ref) {
+                const newRef = `EF-${event.tag.toUpperCase().replace(/[^A-Z0-9]/g, "")}-${crypto.randomUUID().replace(/-/g, "").substring(0, 8).toUpperCase()}`;
+                const { error: updateErr } = await supabase.from("attendees").update({ ref: newRef }).eq("id", att.id);
+                if (!updateErr) att.ref = newRef;
+            }
+        }
+
+        const { data: alreadySent, error: deliveryErr } = await supabase
+            .from("email_deliveries")
+            .select("attendee_id")
+            .eq("event_id", event.id)
+            .eq("email_type", EMAIL_TYPE)
+            .eq("status", "sent");
+        if (deliveryErr) return NextResponse.json({ error: deliveryErr.message }, { status: 500 });
+        const sentIds = new Set((alreadySent || []).map((d) => d.attendee_id));
+
+        const eligible = (allAttendees || []).filter((att) => att.ref && !sentIds.has(att.id));
+        totalEligible = eligible.length;
+        alreadySentCount = sentIds.size;
+        attendees = eligible.slice(0, batchLimit);
+    }
+
     if (attendees.length === 0) {
         return NextResponse.json({
             sent: 0,
             message: onlyEmail
                 ? `No registered attendee found with email "${onlyEmail}" for this event.`
-                : "No attendees with a check-in ref found for this event.",
+                : (!lookupEmail && confirm && alreadySentCount > 0)
+                    ? `Nothing to send — all ${alreadySentCount} attendee(s) with a check-in ref have already received the reminder.`
+                    : "No attendees with a check-in ref found for this event.",
         });
     }
 
@@ -174,6 +220,19 @@ export async function GET(req: NextRequest) {
 
         if (result.success) {
             sent += 1;
+            // Only record a real delivery when this actually reached the
+            // attendee's own address — never for test/preview sends, since
+            // those didn't really notify that person and shouldn't make
+            // future bulk runs think they were covered.
+            if (!testEmail) {
+                await supabase.from("email_deliveries").insert({
+                    attendee_id: att.id,
+                    event_id: event.id,
+                    email_type: EMAIL_TYPE,
+                    status: "sent",
+                    resend_id: (result.data as any)?.id || null,
+                });
+            }
         } else {
             failures.push({ email: testEmail || att.email, error: JSON.stringify(result.error) });
         }
@@ -193,6 +252,8 @@ export async function GET(req: NextRequest) {
         mode = "single-real";
     } else {
         mode = "real";
+        const remaining = totalEligible - sent;
+        note = `Sent ${sent} this run (batch limit ${batchLimit}). ${alreadySentCount} already had it from a previous run. ${remaining} still remaining — re-run this same URL to send the next batch (it will never re-send to anyone already covered).`;
     }
     if (backfilledRef) {
         note = `${note ? note + " " : ""}Note: this attendee had no check-in ref yet — one was generated and saved just now (${attendees[0].ref}), so this will work at the door going forward too.`;
