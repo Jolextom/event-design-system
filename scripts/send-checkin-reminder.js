@@ -112,10 +112,16 @@ function renderReminderHtml({ eventTitle, eventDate, eventLocation, attendeeName
 <table role="presentation" style="background:#ffffff;border-radius:14px;padding:14px;"><tr><td><img src="${qrCodeUrl}" width="200" height="200" alt="Your check-in QR code" style="display:block;width:200px;height:200px;"></td></tr></table>
 <p style="margin:16px 0 0;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:13px;letter-spacing:0.5px;color:#ffffff;">${checkInRef}</p>
 </td></tr></table>
+<table role="presentation" style="width:100%;border-collapse:collapse;background:#d1fefb;border-radius:16px;margin-bottom:16px;border:1px solid rgba(1,18,60,0.12);"><tr><td style="padding:16px 20px;">
+<div style="display:inline-block;background:#1255fb;color:#ffffff;padding:4px 10px;border-radius:100px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Venue Update</div>
+<p style="margin:0 0 6px;font-size:14px;line-height:1.5;font-weight:800;color:#01123c;">Please note: The summit venue is the Faculty of Social Sciences Lecture Theatre, UNILAG.</p>
+<p style="margin:0 0 12px;font-size:13px;line-height:1.5;color:#01123c;opacity:0.85;">If your original confirmation listed the Faculty of Education, please head to the Faculty of Social Sciences Lecture Theatre instead.</p>
+<a href="https://www.google.com/maps/search/?api=1&query=Faculty+of+Social+Sciences+Lecture+Theatre,+University+of+Lagos,+Akoka" target="_blank" rel="noopener noreferrer" style="display:inline-block;font-size:12px;font-weight:800;color:#ffffff;background:#01123c;text-decoration:none;padding:8px 16px;border-radius:10px;">Open in Google Maps &rarr;</a>
+</td></tr></table>
 <table role="presentation" style="width:100%;border-collapse:collapse;background:#fffae3;border-radius:16px;margin-bottom:8px;"><tr><td style="padding:20px 22px;">
 <table role="presentation" style="width:100%;border-collapse:collapse;font-size:14px;color:#01123c;">
 <tr><td style="padding:5px 0;width:80px;font-weight:800;color:#01123c; opacity:0.6;vertical-align:top;">DATE</td><td style="padding:5px 0;font-weight:700;">${eventDate}</td></tr>
-<tr><td style="padding:5px 0;font-weight:800;color:#01123c; opacity:0.6;vertical-align:top;">VENUE</td><td style="padding:5px 0;font-weight:700;">${eventLocation}</td></tr>
+<tr><td style="padding:5px 0;font-weight:800;color:#01123c; opacity:0.6;vertical-align:top;">VENUE</td><td style="padding:5px 0;font-weight:700;">${eventLocation}<div style="margin-top:4px;"><a href="https://www.google.com/maps/search/?api=1&query=Faculty+of+Social+Sciences+Lecture+Theatre,+University+of+Lagos,+Akoka" target="_blank" rel="noopener noreferrer" style="font-size:12px;font-weight:700;color:#1255fb;text-decoration:underline;">View on Google Maps</a></div></td></tr>
 </table></td></tr></table>
 </td></tr></table></td></tr>
 <tr><td style="padding-top:24px;text-align:center;"><p style="margin:0;font-size:12px;color:#ffffff;">Kini AI &middot; <a href="https://www.kini-ai.com" style="color:#ffffff;">www.kini-ai.com</a></p></td></tr>

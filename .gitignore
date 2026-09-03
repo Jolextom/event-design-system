@@ -44,3 +44,4 @@ next-env.d.ts
 # security-gap audit. This repository is PUBLIC, so these are kept local.
 # If the repo is ever made private, this entry can be removed.
 /docs/handoff/
+.claude/

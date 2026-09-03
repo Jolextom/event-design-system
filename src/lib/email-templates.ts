@@ -516,6 +516,26 @@ export function renderKiniSummitReminderEmailHtml({
                     </tr>
                   </table>
 
+                  <!-- Venue Update Notice -->
+                  <table role="presentation" style="width:100%; border-collapse:collapse; background:#d1fefb; border-radius:16px; margin-bottom:16px; border:1px solid rgba(1,18,60,0.12);">
+                    <tr>
+                      <td style="padding:16px 20px;">
+                        <div style="display:inline-block; background:#1255fb; color:#ffffff; padding:4px 10px; border-radius:100px; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">
+                          Venue Update
+                        </div>
+                        <p style="margin:0 0 6px; font-size:14px; line-height:1.5; font-weight:800; color:#01123c;">
+                          Please note: The summit venue is the Faculty of Social Sciences Lecture Theatre, UNILAG.
+                        </p>
+                        <p style="margin:0 0 12px; font-size:13px; line-height:1.5; color:#01123c; opacity:0.85;">
+                          If your original confirmation listed the Faculty of Education, please head to the Faculty of Social Sciences Lecture Theatre instead.
+                        </p>
+                        <a href="https://www.google.com/maps/search/?api=1&query=Faculty+of+Social+Sciences+Lecture+Theatre,+University+of+Lagos,+Akoka" target="_blank" rel="noopener noreferrer" style="display:inline-block; font-size:12px; font-weight:800; color:#ffffff; background:#01123c; text-decoration:none; padding:8px 16px; border-radius:10px;">
+                          Open in Google Maps &rarr;
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
+
                   <table role="presentation" style="width:100%; border-collapse:collapse; background:#fffae3; border-radius:16px; margin-bottom:8px;">
                     <tr>
                       <td style="padding:20px 22px;">
@@ -526,7 +546,14 @@ export function renderKiniSummitReminderEmailHtml({
                           </tr>
                           <tr>
                             <td style="padding:5px 0; font-weight:800; color:#01123c; vertical-align:top; opacity:0.6;">VENUE</td>
-                            <td style="padding:5px 0; font-weight:700;">${eventLocation}</td>
+                            <td style="padding:5px 0; font-weight:700;">
+                              ${eventLocation}
+                              <div style="margin-top:4px;">
+                                <a href="https://www.google.com/maps/search/?api=1&query=Faculty+of+Social+Sciences+Lecture+Theatre,+University+of+Lagos,+Akoka" target="_blank" rel="noopener noreferrer" style="font-size:12px; font-weight:700; color:#1255fb; text-decoration:underline;">
+                                  View on Google Maps
+                                </a>
+                              </div>
+                            </td>
                           </tr>
                         </table>
                       </td>
