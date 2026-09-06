@@ -27,17 +27,18 @@
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const RESEND_KEY = process.env.RESEND_API_KEY;
+let RESEND_KEY = process.env.RESEND_API_KEY;
 
 const tag = process.argv[2];
 const flag = process.argv[3];
 const flagValue = process.argv[4];
 const limitFlagIndex = process.argv.indexOf("--limit");
 const batchLimit = limitFlagIndex !== -1 && process.argv[limitFlagIndex + 1] ? parseInt(process.argv[limitFlagIndex + 1], 10) : 50;
+const noRecord = process.argv.includes("--no-record");
 const EMAIL_TYPE = "checkin_reminder";
 
-if (!SUPABASE_URL || !SERVICE_KEY || !RESEND_KEY) {
-    console.error("Missing one of: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY (set as environment variables before running).");
+if (!SUPABASE_URL || !SERVICE_KEY) {
+    console.error("Missing one of: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (set as environment variables before running).");
     process.exit(1);
 }
 if (!tag || (flag !== "--only" && flag !== "--all")) {
@@ -193,9 +194,16 @@ async function main() {
     }
 
     let senderFrom = null;
-    const senders = await sb(`sender_identities?user_id=eq.${event.created_by}&status=eq.verified&select=from_name,from_email&order=created_at.desc&limit=1`);
+    const senders = await sb(`sender_identities?user_id=eq.${event.created_by}&status=eq.verified&select=from_name,from_email,resend_api_key&order=created_at.desc&limit=1`);
     if (senders.length > 0) {
         senderFrom = `${senders[0].from_name} <${senders[0].from_email}>`;
+        if (!RESEND_KEY && senders[0].resend_api_key) {
+            RESEND_KEY = senders[0].resend_api_key;
+        }
+    }
+    if (!RESEND_KEY) {
+        console.error("No RESEND_API_KEY available (neither in env nor in sender_identities).");
+        process.exit(1);
     }
 
     const eventDateStr = event.start_date
@@ -224,16 +232,20 @@ async function main() {
         if (result.success) {
             sentCount += 1;
             console.log(`Sent to ${att.email} (ref ${att.ref})`);
-            try {
-                await sbInsert("email_deliveries", {
-                    attendee_id: att.id,
-                    event_id: event.id,
-                    email_type: EMAIL_TYPE,
-                    status: "sent",
-                    resend_id: (result.data && result.data.id) || null,
-                });
-            } catch (err) {
-                console.error(`  (sent OK, but failed to record delivery for ${att.email} — a future run might re-send to them):`, err.message);
+            if (!noRecord) {
+                try {
+                    await sbInsert("email_deliveries", {
+                        attendee_id: att.id,
+                        event_id: event.id,
+                        email_type: EMAIL_TYPE,
+                        status: "sent",
+                        resend_id: (result.data && result.data.id) || null,
+                    });
+                } catch (err) {
+                    console.error(`  (sent OK, but failed to record delivery for ${att.email} — a future run might re-send to them):`, err.message);
+                }
+            } else {
+                console.log(`  (--no-record specified: skipped recording in email_deliveries)`);
             }
         } else {
             console.error(`FAILED for ${att.email}:`, JSON.stringify(result.error));
