@@ -170,7 +170,7 @@ async function main() {
     } else {
         // --all: backfill any missing refs first, then skip whoever already
         // has a "sent" checkin_reminder delivery record, then cap to batchLimit.
-        const all = await sb(`attendees?event_id=eq.${event.id}&select=id,email,first_name,ref&order=created_at.asc`);
+        const all = await sb(`attendees?event_id=eq.${event.id}&select=id,email,first_name,ref,properties&order=created_at.asc`);
         for (const att of all) {
             if (!att.ref) {
                 const newRef = `EF-${tag.toUpperCase().replace(/[^A-Z0-9]/g, "")}-${crypto.randomUUID().replace(/-/g, "").substring(0, 8).toUpperCase()}`;
@@ -179,16 +179,22 @@ async function main() {
             }
         }
 
-        const alreadySent = await sb(`email_deliveries?event_id=eq.${event.id}&email_type=eq.${EMAIL_TYPE}&status=eq.sent&select=attendee_id`);
-        const sentIds = new Set(alreadySent.map((d) => d.attendee_id));
+        let sentIds = new Set();
+        try {
+            const alreadySent = await sb(`email_deliveries?event_id=eq.${event.id}&email_type=eq.${EMAIL_TYPE}&status=eq.sent&select=attendee_id`);
+            sentIds = new Set(alreadySent.map((d) => d.attendee_id));
+        } catch {
+            // fallback to properties tracking
+        }
 
-        const eligible = all.filter((att) => att.ref && !sentIds.has(att.id));
+        const eligible = all.filter((att) => att.ref && !sentIds.has(att.id) && !att.properties?.checkin_reminder_sent);
         attendees = eligible.slice(0, batchLimit);
 
-        console.log(`${all.length} total attendees. ${sentIds.size} already sent. ${eligible.length} eligible. Sending up to ${batchLimit} this run.\n`);
+        const totalAlreadySent = all.filter((att) => sentIds.has(att.id) || att.properties?.checkin_reminder_sent).length;
+        console.log(`${all.length} total attendees. ${totalAlreadySent} already sent. ${eligible.length} eligible. Sending up to ${batchLimit} this run.\n`);
 
         if (attendees.length === 0) {
-            console.log(sentIds.size > 0 ? "Nothing to send — everyone eligible has already received it." : "No attendees with a check-in ref found.");
+            console.log(totalAlreadySent > 0 ? "Nothing to send — everyone eligible has already received it." : "No attendees with a check-in ref found.");
             return;
         }
     }
@@ -234,22 +240,21 @@ async function main() {
             console.log(`Sent to ${att.email} (ref ${att.ref})`);
             if (!noRecord) {
                 try {
-                    await sbInsert("email_deliveries", {
-                        attendee_id: att.id,
-                        event_id: event.id,
-                        email_type: EMAIL_TYPE,
-                        status: "sent",
-                        resend_id: (result.data && result.data.id) || null,
-                    });
+                    const now = new Date().toISOString();
+                    const updatedProps = { ...(att.properties || {}), checkin_reminder_sent: true, checkin_reminder_sent_at: now };
+                    await sbUpdate(`attendees?id=eq.${att.id}`, { properties: updatedProps, last_email_sent: now });
                 } catch (err) {
-                    console.error(`  (sent OK, but failed to record delivery for ${att.email} — a future run might re-send to them):`, err.message);
+                    console.error(`  (failed to record delivery in attendees.properties):`, err.message);
                 }
             } else {
-                console.log(`  (--no-record specified: skipped recording in email_deliveries)`);
+                console.log(`  (--no-record specified: skipped recording in properties)`);
             }
         } else {
             console.error(`FAILED for ${att.email}:`, JSON.stringify(result.error));
         }
+
+        // Throttle to stay safely within Resend's 2 req/sec rate limit
+        await new Promise((r) => setTimeout(r, 600));
     }
 
     console.log(`\nDone. ${sentCount}/${attendees.length} sent.`);
