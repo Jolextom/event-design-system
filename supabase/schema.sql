@@ -281,3 +281,26 @@ ALTER TABLE public.sender_identities ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users manage their own sender identities"
 ON public.sender_identities FOR ALL TO authenticated
 USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+-- ============================================================================
+-- Staff table (check-in desk access codes and door staff management)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.staff (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    event_id UUID REFERENCES public.events(id) ON DELETE CASCADE,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'Staff',
+    access_code TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'offline',
+    current_station TEXT,
+    last_active TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(event_id, access_code)
+);
+
+ALTER TABLE public.staff ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Enable all access for staff" ON public.staff
+FOR ALL USING (true) WITH CHECK (true);
+

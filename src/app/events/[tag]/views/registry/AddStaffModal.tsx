@@ -3,8 +3,8 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2, UserPlus, Shield, RefreshCw } from "lucide-react";
-import { createClient } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
+import { addStaffMember } from "@/app/actions";
 
 interface AddStaffModalProps {
     isOpen: boolean;
@@ -30,23 +30,16 @@ export function AddStaffModal({ isOpen, onClose, currentEventId, onSuccess }: Ad
         e.preventDefault();
         setLoading(true);
 
-        const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        );
-
-        const { error } = await supabase.from("staff").insert({
-            event_id: currentEventId,
-            first_name: firstName,
-            last_name: lastName,
-            role: role,
-            access_code: accessCode,
-            status: 'offline'
+        const res = await addStaffMember({
+            eventId: currentEventId,
+            firstName,
+            lastName,
+            role,
+            accessCode,
         });
 
-        if (error) {
-            console.error(error);
-            alert("Failed to add staff member. Code might be duplicate (rare), try regenerating.");
+        if (!res.success) {
+            alert(res.error || "Failed to add staff member.");
         } else {
             onSuccess();
             onClose();
@@ -58,6 +51,7 @@ export function AddStaffModal({ isOpen, onClose, currentEventId, onSuccess }: Ad
         }
         setLoading(false);
     };
+
 
     return (
         <AnimatePresence>

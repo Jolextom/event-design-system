@@ -483,3 +483,45 @@ export async function sendCampaignToAttendees({
         return { success: false, error: error.message || "Failed to send campaign." };
     }
 }
+
+export async function addStaffMember(params: {
+    eventId: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    accessCode: string;
+}) {
+    try {
+        const { data, error } = await adminSupabase.from("staff").insert({
+            event_id: params.eventId,
+            first_name: params.firstName.trim(),
+            last_name: params.lastName.trim(),
+            role: params.role || "Staff",
+            access_code: params.accessCode.trim(),
+            status: 'offline'
+        }).select().single();
+
+        if (error) {
+            console.error("addStaffMember error:", error);
+            if (error.code === '42P01' || error.message?.includes('staff') || error.message?.includes('schema cache')) {
+                return { 
+                    success: false, 
+                    error: "The 'staff' table does not exist in Supabase yet. Please run the SQL migration in the Supabase SQL Editor." 
+                };
+            }
+            if (error.code === '23505') {
+                return { 
+                    success: false, 
+                    error: "This access code is already assigned to a team member for this event. Please generate a new code." 
+                };
+            }
+            return { success: false, error: error.message };
+        }
+
+        return { success: true, data };
+    } catch (err: any) {
+        console.error("addStaffMember exception:", err);
+        return { success: false, error: err?.message || "Failed to add staff member." };
+    }
+}
+
