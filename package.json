@@ -27,6 +27,7 @@
     "date-fns": "^2.30.0",
     "framer-motion": "^12.26.2",
     "geist": "^1.5.1",
+    "html5-qrcode": "^2.3.8",
     "jsonwebtoken": "^9.0.3",
     "lodash": "^4.17.23",
     "lucide-react": "^0.562.0",
