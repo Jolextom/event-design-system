@@ -525,3 +525,15 @@ export async function addStaffMember(params: {
     }
 }
 
+export async function deleteStaffMember(staffId: string) {
+    try {
+        const { error } = await adminSupabase.from("staff").delete().eq("id", staffId);
+        if (error) throw error;
+        return { success: true };
+    } catch (err: any) {
+        console.error("deleteStaffMember error:", err);
+        return { success: false, error: err?.message || "Failed to remove staff member." };
+    }
+}
+
+

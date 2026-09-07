@@ -971,8 +971,8 @@ export default function CheckInPage() {
 
             {/* Footer Stats Bar */}
             <footer className="bg-white border-t border-gray-100 py-3 sticky bottom-0 z-30 shadow-md">
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 flex justify-between items-center text-xs">
-                    <span className="font-bold text-gray-400">
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs">
+                    <span className="font-bold text-gray-400 text-center sm:text-left">
                         Showing {filteredAttendees.length} of {attendees.length} guests
                     </span>
                     <div className="flex items-center gap-3">
