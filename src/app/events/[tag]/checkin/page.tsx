@@ -995,6 +995,12 @@ export default function CheckInPage() {
                 <QrCameraScanner
                     onScan={handleQrScan}
                     onClose={() => setIsScannerOpen(false)}
+                    lastNotification={scanNotification}
+                    onUndoCheckIn={handleUndoCheckIn}
+                    onViewDetails={(att) => {
+                        setSelectedAttendeeDetails(att as any);
+                        setIsScannerOpen(false);
+                    }}
                 />
             )}
 
