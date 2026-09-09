@@ -2,99 +2,93 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>AAES 2026 - Student Roster</title>
+  <title></title>
   <style>
     @page {
       size: A4 portrait;
-      margin: 15mm 15mm 15mm 15mm;
+      margin: 10mm 12mm 10mm 12mm;
     }
     * {
       box-sizing: border-box;
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-      font-size: 13px;
-      line-height: 1.5;
+      font-size: 12px;
+      line-height: 1.35;
       color: #000;
       margin: 0;
-      padding: 24px;
+      padding: 16px;
       background: #fff;
     }
     .no-print {
       background: #1255FB;
       color: #fff;
-      padding: 12px 18px;
-      margin-bottom: 24px;
-      border-radius: 8px;
+      padding: 10px 16px;
+      margin-bottom: 16px;
+      border-radius: 6px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      font-size: 12px;
     }
     .no-print button {
       background: #fff;
       color: #1255FB;
       font-weight: bold;
       border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
+      padding: 6px 14px;
+      border-radius: 4px;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 13px;
     }
     @media print {
       .no-print { display: none !important; }
       body { padding: 0; }
       .school-block { page-break-inside: avoid; }
     }
-    h1 {
-      font-size: 20px;
-      margin: 0 0 6px 0;
-      text-transform: uppercase;
-      border-bottom: 2px solid #000;
-      padding-bottom: 8px;
-    }
     .school-block {
-      margin-bottom: 24px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid #ccc;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #ddd;
     }
     .school-name {
-      font-size: 16px;
-      font-weight: bold;
-      margin-bottom: 10px;
-      color: #111;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: #000;
     }
     table {
       width: 100%;
       border-collapse: collapse;
     }
     td {
-      padding: 6px 4px;
+      padding: 3px 2px;
       vertical-align: middle;
-      border-bottom: 1px solid #f0f0f0;
+    }
+    .col-check {
+      width: 22px;
     }
     .check-box {
       display: inline-block;
-      width: 16px;
-      height: 16px;
-      border: 1.5px solid #222;
-      border-radius: 3px;
-      margin-right: 10px;
+      width: 13px;
+      height: 13px;
+      border: 1.2px solid #333;
+      border-radius: 2px;
       vertical-align: middle;
     }
     .num {
-      width: 32px;
-      color: #666;
-      font-weight: 500;
+      width: 26px;
+      color: #555;
+      font-size: 11.5px;
     }
     .name {
-      font-size: 13.5px;
+      font-size: 12.5px;
       font-weight: 500;
+      color: #111;
     }
-    .blank-line {
-      border-bottom: 1px dashed #999;
-      display: inline-block;
-      width: 80%;
-      height: 14px;
+    .blank-slot td {
+      height: 20px;
+      border-bottom: 1px solid #eee;
     }
   </style>
 </head>
@@ -102,57 +96,54 @@
 
   <div class="no-print">
     <div>
-      <strong>AAES 2026 — Student Attendance Roster</strong> (Simple Version)
+      <strong>Print Tip:</strong> In the browser print window, expand <em>"More settings"</em> and uncheck <strong>"Headers and footers"</strong> to remove page URLs and timestamps.
     </div>
     <button onclick="window.print()">🖨️ Print (Ctrl + P)</button>
   </div>
-
-  <h1>AAES 2026 — School Delegations & Student List</h1>
-  <p style="margin: 6px 0 20px 0; color: #555; font-size: 12px;">Tick the box when the student arrives at the venue entrance.</p>
 
   <div class="school-block">
     <div class="school-name">1. Epitome Day Nursery and Primary School</div>
     <table>
       <tbody>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">1.</td>
           <td class="name">Adeshoye Muadh</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">2.</td>
           <td class="name">Alaka Aisha</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">3.</td>
           <td class="name">Alaka Firdaus</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">4.</td>
           <td class="name">Ayinde Umar</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">5.</td>
           <td class="name">Awoshile Imran</td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
       </tbody>
     </table>
@@ -162,24 +153,24 @@
     <table>
       <tbody>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">1.</td>
           <td class="name">Aleshinloye Aisha</td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
       </tbody>
     </table>
@@ -189,44 +180,44 @@
     <table>
       <tbody>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">1.</td>
           <td class="name">Ibrahim Abdulbasit</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">2.</td>
           <td class="name">kadir Musfahiz</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">3.</td>
           <td class="name">Abdul Quadri Aisha</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">4.</td>
           <td class="name">Adigun Mariam</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">5.</td>
           <td class="name">Abdul lateef Adams</td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
       </tbody>
     </table>
@@ -236,24 +227,24 @@
     <table>
       <tbody>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">1.</td>
           <td class="name">Saheed Mubashirah Abidemi</td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
       </tbody>
     </table>
@@ -263,69 +254,69 @@
     <table>
       <tbody>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">1.</td>
           <td class="name">Dairo AbdQayyum</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">2.</td>
           <td class="name">Dairo Ar-rohees</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">3.</td>
           <td class="name">Dairo Roqeebah</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">4.</td>
           <td class="name">Obadina Nifemi</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">5.</td>
           <td class="name">Lasisi Ibrahim</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">6.</td>
           <td class="name">Osonoiki Abidemi</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">7.</td>
           <td class="name">Jimoh Hikmah</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">8.</td>
           <td class="name">Lasisi Fatimoh</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">9.</td>
           <td class="name">Aremu Maishat</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">10.</td>
           <td class="name">Ebaji Francis</td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
       </tbody>
     </table>
@@ -335,269 +326,269 @@
     <table>
       <tbody>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">1.</td>
           <td class="name">Ajayi Oluwaseun Adesoji</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">2.</td>
           <td class="name">Afuwape Oluwaseyi</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">3.</td>
           <td class="name">Okanlawon Micheal</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">4.</td>
           <td class="name">Eze Ifeanyichukwu Williams</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">5.</td>
           <td class="name">Akinboboye Zion Mayowa</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">6.</td>
           <td class="name">Osasa Precious</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">7.</td>
           <td class="name">Ibojo Excellence</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">8.</td>
           <td class="name">Babalola Richard</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">9.</td>
           <td class="name">Ajayi Oluwatimileyin</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">10.</td>
           <td class="name">Sanusi Halima</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">11.</td>
           <td class="name">Ogunmefun Gbolahun</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">12.</td>
           <td class="name">Olorunisola Odunayo</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">13.</td>
           <td class="name">Adebunmi Similoluwa</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">14.</td>
           <td class="name">Ayodele Ayomide</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">15.</td>
           <td class="name">Adenekan Mubarak</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">16.</td>
           <td class="name">Yusuf Aisha</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">17.</td>
           <td class="name">Yusuf opeyemi</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">18.</td>
           <td class="name">Ugboma Patricia</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">19.</td>
           <td class="name">Akinlabi Oluwadamilare</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">20.</td>
           <td class="name">Ajose Ayanfeoluwa</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">21.</td>
           <td class="name">Ajasa Balikis</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">22.</td>
           <td class="name">Miracle Donimic</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">23.</td>
           <td class="name">Ademo Iyanuoluwa</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">24.</td>
           <td class="name">Sulaiman Fareed</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">25.</td>
           <td class="name">Chima-francis Favour</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">26.</td>
           <td class="name">Aderie Victor</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">27.</td>
           <td class="name">Akinmade Omoniyi</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">28.</td>
           <td class="name">Olafemiwa Abdulazeez</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">29.</td>
           <td class="name">Nojimudeen mohammed</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">30.</td>
           <td class="name">williams Samuel</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">31.</td>
           <td class="name">Sojebe Oluwaseun</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">32.</td>
           <td class="name">Aina Esther</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">33.</td>
           <td class="name">Bademosi Rereloluwa</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">34.</td>
           <td class="name">George Ogooluwa</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">35.</td>
           <td class="name">Ajaude Emmanuel</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">36.</td>
           <td class="name">Bankojo Tioluwani</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">37.</td>
           <td class="name">Osadebe Noal</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">38.</td>
           <td class="name">Umar Abass Danjuma</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">39.</td>
           <td class="name">Odiagbe Joy</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">40.</td>
           <td class="name">Awojide Oluwatise</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">41.</td>
           <td class="name">Salako Fawaz</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">42.</td>
           <td class="name">Eiboghomhen Bright</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">43.</td>
           <td class="name">Aliyu Oluwapelumi</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">44.</td>
           <td class="name">Zechariah Jessy</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">45.</td>
           <td class="name">Andre Michael</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">46.</td>
           <td class="name">Honfoga Oluwagbemitan</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">47.</td>
           <td class="name">PRINCE KALU</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">48.</td>
           <td class="name">Onifade Shalom</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">49.</td>
           <td class="name">David Aremu Kehinde</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">50.</td>
           <td class="name">Adebule Marvelous Sina</td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
       </tbody>
     </table>
@@ -606,25 +597,20 @@
     <div class="school-name">7. AL-IKHLASS PRIVATE SCHOOL</div>
     <table>
       <tbody>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num">1.</td>
-          <td class="name">Nil</td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
-        </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
       </tbody>
     </table>
@@ -634,24 +620,24 @@
     <table>
       <tbody>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">1.</td>
           <td class="name">Ahmod Fasasi</td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
       </tbody>
     </table>
@@ -661,29 +647,29 @@
     <table>
       <tbody>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">1.</td>
           <td class="name">1. Zara Nafiu</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">2.</td>
           <td class="name">2. Hassan Saheed</td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
       </tbody>
     </table>
@@ -693,24 +679,24 @@
     <table>
       <tbody>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">1.</td>
           <td class="name">Adebowale Ifeoluwa Samuel</td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
       </tbody>
     </table>
@@ -720,344 +706,344 @@
     <table>
       <tbody>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">1.</td>
           <td class="name">1. AKINTUNDE ESTHER</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">2.</td>
           <td class="name">2. AKINTUNDE DORCAS</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">3.</td>
           <td class="name">3. ARABA TENIOLA</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">4.</td>
           <td class="name">4. OREGBESAN MERCY</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">5.</td>
           <td class="name">5. ADEBANJO IKEOLUWA</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">6.</td>
           <td class="name">6. IKECHUKWU PRAISE</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">7.</td>
           <td class="name">7. OLORODE SHINDARA</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">8.</td>
           <td class="name">8. OLANREWAJU KAMAL</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">9.</td>
           <td class="name">9. MICHAEL ANA</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">10.</td>
           <td class="name">10. OKEBOWALE ALIAMEEN</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">11.</td>
           <td class="name">11. OLUWAFEMI SUCCESS</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">12.</td>
           <td class="name">12. OKIKI DARAMOLA</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">13.</td>
           <td class="name">13. STEPHEN JOSHUA</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">14.</td>
           <td class="name">14. ABANBESHI PRAISE</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">15.</td>
           <td class="name">15. ADAM ALIAMEEN</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">16.</td>
           <td class="name">16. ADEDAPO IREOLUWA</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">17.</td>
           <td class="name">17. KABIR NANA</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">18.</td>
           <td class="name">18. ADAM MARIAM</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">19.</td>
           <td class="name">19. AHMED ZAINAB</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">20.</td>
           <td class="name">20. EZEKIEL REBBECA</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">21.</td>
           <td class="name">21. IMEH RUTH</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">22.</td>
           <td class="name">22. GBEMISOGO DUROJAIYE</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">23.</td>
           <td class="name">23. KOLADE ESTHER</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">24.</td>
           <td class="name">24. IMRAN SHAKUR</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">25.</td>
           <td class="name">25. OLUGBOGI OMOWUMI</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">26.</td>
           <td class="name">26. SAHEED LABEEBA</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">27.</td>
           <td class="name">27. SULAIMAN AHMAD</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">28.</td>
           <td class="name">28. OSABOA LIFTED</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">29.</td>
           <td class="name">29. OGBNONAYA DAVID</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">30.</td>
           <td class="name">30. GIDION EMMANUEL</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">31.</td>
           <td class="name">31.   ILESANMI PRAISE</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">32.</td>
           <td class="name">32. UCHE KALU CHIGOZIE</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">33.</td>
           <td class="name">33. UCHE KALU</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">34.</td>
           <td class="name">34. JOKE AYANDIRAN</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">35.</td>
           <td class="name">35. SHAKEERAH ALIU</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">36.</td>
           <td class="name">36. SAMOLAWALE</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">37.</td>
           <td class="name">37. CHIKA MADU</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">38.</td>
           <td class="name">38. STEPHEN TOCHI</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">39.</td>
           <td class="name">39. ARIGBEDE DARASIMI</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">40.</td>
           <td class="name">40. ANASTASIA ADIBIE</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">41.</td>
           <td class="name">41. MAZEEDAT ABDULHAMEED</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">42.</td>
           <td class="name">42. KINGSLEY</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">43.</td>
           <td class="name">43. EWE DIVINE</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">44.</td>
           <td class="name">44. OLORODE SHINDARA</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">45.</td>
           <td class="name">45. LAWAL FAREEDAT</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">46.</td>
           <td class="name">46. RABIU FAREEDAT</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">47.</td>
           <td class="name">47. TAIWO SAMAD</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">48.</td>
           <td class="name">48. OKIKI JOSHUA</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">49.</td>
           <td class="name">49. ONYEBUCHI CALEB</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">50.</td>
           <td class="name">50. WISDOM AKPAN</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">51.</td>
           <td class="name">51. IFESINACHI FAVOR</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">52.</td>
           <td class="name">52. NWANA LIFE</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">53.</td>
           <td class="name">53. OLAYIWOLA AISHAT</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">54.</td>
           <td class="name">54. CHARLES PRINCE</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">55.</td>
           <td class="name">55. NWIGWE PRINCE</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">56.</td>
           <td class="name">56.ONYEBUCHI  GOODNESS</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">57.</td>
           <td class="name">57. EBAH ELIZABETH</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">58.</td>
           <td class="name">58. YUSUF SAHADAT</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">59.</td>
           <td class="name">59. MAZEED ADEBIYI</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">60.</td>
           <td class="name">60. STEPHEN ANGBEYE</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">61.</td>
           <td class="name">61. IKECHUKWU ALL WELL</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">62.</td>
           <td class="name">62. AYENI KEHINDE</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">63.</td>
           <td class="name">63. ADIKWE HAPPINESS</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">64.</td>
           <td class="name">64. SAMUEL FAWEHINMI</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">65.</td>
           <td class="name">65. ORDIA ESTHER</td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
       </tbody>
     </table>
@@ -1067,34 +1053,34 @@
     <table>
       <tbody>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">1.</td>
           <td class="name">Abdulwasiu Abubakr</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">2.</td>
           <td class="name">Akande Abdullateef</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">3.</td>
           <td class="name">Maryam Abdulwasiu</td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
       </tbody>
     </table>
@@ -1104,69 +1090,69 @@
     <table>
       <tbody>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">1.</td>
           <td class="name">Ziyadat Adunmo</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">2.</td>
           <td class="name">Barakat Kareem</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">3.</td>
           <td class="name">Joshua Balogun</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">4.</td>
           <td class="name">Oluwajamisire Olajide</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">5.</td>
           <td class="name">Adisa Yusuf</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">6.</td>
           <td class="name">Hassan Giwa</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">7.</td>
           <td class="name">Sadat Adunmo</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">8.</td>
           <td class="name">Esther Balogun</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">9.</td>
           <td class="name">Ajiboye Mistura</td>
         </tr>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">10.</td>
           <td class="name">Fareed Ajiboye</td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
       </tbody>
     </table>
@@ -1176,24 +1162,24 @@
     <table>
       <tbody>
         <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
+          <td class="col-check"><span class="check-box"></span></td>
           <td class="num">1.</td>
           <td class="name">Mustapha qudus</td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
-        <tr>
-          <td style="width: 30px;"><span class="check-box"></span></td>
-          <td class="num" style="color:#aaa;">+</td>
-          <td><span class="blank-line"></span></td>
+        <tr class="blank-slot">
+          <td class="col-check"><span class="check-box"></span></td>
+          <td class="num"></td>
+          <td></td>
         </tr>
       </tbody>
     </table>
