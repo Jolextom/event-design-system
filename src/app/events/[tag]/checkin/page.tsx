@@ -21,11 +21,14 @@ import {
     Info,
     ChevronDown,
     Sparkles,
+    Trophy,
+    Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@supabase/supabase-js";
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import DelegationRosterModal, { DelegationStudent } from "./components/DelegationRosterModal";
 
 // Dynamic import for camera scanner (no SSR)
 const QrCameraScanner = dynamic(() => import("./components/QrCameraScanner"), {
@@ -64,6 +67,14 @@ interface Attendee {
     unipodTour?: string;
     hackathon?: string;
     gender?: string;
+    isSchoolDelegation?: boolean;
+    schoolName?: string;
+    pubPriv?: string;
+    declaredTeachersCount?: number;
+    declaredTeachersList?: string[];
+    declaredStudentsCount?: number;
+    studentsList?: DelegationStudent[];
+    properties?: Record<string, any>;
 }
 
 interface Staff {
@@ -127,16 +138,33 @@ function extractAttendeeDetails(raw: any): Attendee {
     let unipodTour = "";
     let hackathon = "";
     let gender = "";
+    let schoolName = "";
+    let pubPriv = "";
+    let rawTeachersText = "";
+    let rawStudentsText = "";
+    let declaredTeachersCount = 0;
+    let declaredStudentsCount = 0;
+
+    const passTitle = (Array.isArray(raw.pass) ? raw.pass[0]?.title : raw.pass?.title) || "";
+    let isSchoolDelegation = passTitle.toLowerCase().includes("school");
 
     for (const ans of answers) {
         const title = (ans.questions?.title || "").toLowerCase();
         const val = ans.answer_text?.trim() || "";
         if (!val) continue;
 
+        if (title.includes("how are you registering") && val.toLowerCase().includes("school")) {
+            isSchoolDelegation = true;
+        }
+
         if (title.includes("phone")) {
             phone = val;
-        } else if (title.includes("organisation") || title.includes("school name")) {
+        } else if (title.includes("school name")) {
+            schoolName = val;
+            if (!organization) organization = val;
+        } else if (title.includes("organisation")) {
             organization = val;
+            if (!schoolName) schoolName = val;
         } else if (title.includes("attending as") || title.includes("job title") || title.includes("role")) {
             role = val;
         } else if (title.includes("unipod")) {
@@ -145,18 +173,74 @@ function extractAttendeeDetails(raw: any): Attendee {
             hackathon = val;
         } else if (title.includes("gender")) {
             gender = val;
+        } else if (title.includes("public or private")) {
+            pubPriv = val;
+        } else if (title.includes("number of teachers")) {
+            declaredTeachersCount = parseInt(val.replace(/[^0-9]/g, ""), 10) || 0;
+        } else if (title.includes("full name of each teacher")) {
+            rawTeachersText = val;
+        } else if (title.includes("number of students")) {
+            declaredStudentsCount = parseInt(val.replace(/[^0-9]/g, ""), 10) || 0;
+        } else if (title.includes("full name of each student")) {
+            rawStudentsText = val;
         }
+    }
+
+    const declaredTeachersList = rawTeachersText
+        ? rawTeachersText.split("\n").map((s) => s.trim()).filter(Boolean)
+        : [];
+
+    if (declaredTeachersList.length > 0 && !declaredTeachersCount) {
+        declaredTeachersCount = declaredTeachersList.length;
+    }
+
+    // Parse students list
+    let studentsList: DelegationStudent[] = [];
+    if (
+        raw.properties?.schoolDelegation?.students &&
+        Array.isArray(raw.properties.schoolDelegation.students)
+    ) {
+        studentsList = raw.properties.schoolDelegation.students;
+    } else if (rawStudentsText) {
+        const lines = rawStudentsText
+            .split("\n")
+            .map((s) => s.trim().replace(/^[0-9]+[.,\s-]+/, "").trim())
+            .filter(
+                (s) =>
+                    s &&
+                    s.toLowerCase() !== "nil" &&
+                    s.toLowerCase() !== "none" &&
+                    s !== "-"
+            );
+
+        studentsList = lines.map((name, i) => ({
+            id: `student-${i + 1}`,
+            name,
+            present: false,
+        }));
+    }
+
+    if (studentsList.length > 0 && !declaredStudentsCount) {
+        declaredStudentsCount = studentsList.length;
     }
 
     return {
         ...raw,
         answers,
         phone,
-        organization,
+        organization: organization || schoolName,
         role,
         unipodTour,
         hackathon,
         gender,
+        isSchoolDelegation,
+        schoolName: schoolName || organization,
+        pubPriv,
+        declaredTeachersCount: declaredTeachersCount || (isSchoolDelegation ? 1 : 0),
+        declaredTeachersList,
+        declaredStudentsCount,
+        studentsList,
+        properties: raw.properties || {},
     };
 }
 
@@ -181,6 +265,11 @@ export default function CheckInPage() {
     const [loading, setLoading] = useState(false);
     const [checkingIn, setCheckingIn] = useState<string | null>(null);
     const [successId, setSuccessId] = useState<string | null>(null);
+
+    // Delegation Check-In State
+    const [activeMode, setActiveMode] = useState<"individuals" | "schools" | "all">("individuals");
+    const [selectedDelegationAttendee, setSelectedDelegationAttendee] = useState<Attendee | null>(null);
+    const [savingDelegation, setSavingDelegation] = useState(false);
 
     // Scanner & Details State
     const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -305,7 +394,7 @@ export default function CheckInPage() {
         const { data: attendeesData, error } = await supabase
             .from("attendees")
             .select(
-                "id, first_name, last_name, email, ref, check_in, check_in_time, checked_in_by, email_status, pass:passes(title), answers(question_id, answer_text, questions(title))"
+                "id, first_name, last_name, email, ref, check_in, check_in_time, checked_in_by, email_status, properties, pass:passes(title), answers(question_id, answer_text, questions(title))"
             )
             .eq("event_id", eventId)
             .eq("email_status", "registered")
@@ -333,9 +422,85 @@ export default function CheckInPage() {
         setLoading(false);
     };
 
+    // Save School Delegation Attendance
+    const handleSaveDelegation = async (students: DelegationStudent[], notes: string) => {
+        if (!selectedDelegationAttendee) return;
+        setSavingDelegation(true);
+
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+
+        const now = new Date().toISOString();
+        const staffName = staff ? `${staff.first_name} ${staff.last_name}` : null;
+        const presentCount = students.filter((s) => s.present).length;
+
+        const updatedProperties = {
+            ...(selectedDelegationAttendee.properties || {}),
+            schoolDelegation: {
+                checkedIn: true,
+                checkedInAt: now,
+                checkedInBy: staffName,
+                students,
+                presentCount,
+                totalCount: students.length,
+                notes: notes || "",
+            },
+        };
+
+        const updates = {
+            check_in: true,
+            check_in_time: selectedDelegationAttendee.check_in_time || now,
+            checked_in_by_staff_id: staff?.id || null,
+            checked_in_by: selectedDelegationAttendee.checked_in_by || staffName,
+            properties: updatedProperties,
+        };
+
+        const { error } = await supabase
+            .from("attendees")
+            .update(updates)
+            .eq("id", selectedDelegationAttendee.id);
+
+        if (!error) {
+            playScanSound("success");
+            setAttendees((prev) =>
+                prev.map((a) =>
+                    a.id === selectedDelegationAttendee.id
+                        ? {
+                              ...a,
+                              ...updates,
+                              studentsList: students,
+                          }
+                        : a
+                )
+            );
+            setSuccessId(selectedDelegationAttendee.id);
+            setScanNotification({
+                type: "success",
+                title: "Delegation Check-In Confirmed!",
+                message: `Checked in ${selectedDelegationAttendee.schoolName || selectedDelegationAttendee.first_name} (${presentCount} of ${students.length} students present).`,
+            });
+            setTimeout(() => setSuccessId(null), 3000);
+            setSelectedDelegationAttendee(null);
+        } else {
+            console.error("Error saving delegation:", error);
+            playScanSound("warning");
+            alert("Failed to save delegation attendance: " + error.message);
+        }
+        setSavingDelegation(false);
+    };
+
     // Search and Filter logic
     useEffect(() => {
         let result = attendees;
+
+        // 0. Active Mode Filter
+        if (activeMode === "individuals") {
+            result = result.filter((a) => !a.isSchoolDelegation);
+        } else if (activeMode === "schools") {
+            result = result.filter((a) => a.isSchoolDelegation);
+        }
 
         // 1. Pass Filter
         if (selectedPassFilter) {
@@ -360,13 +525,15 @@ export default function CheckInPage() {
                     a.email.toLowerCase().includes(query) ||
                     (a.ref && a.ref.toLowerCase().includes(query)) ||
                     (a.organization && a.organization.toLowerCase().includes(query)) ||
+                    (a.schoolName && a.schoolName.toLowerCase().includes(query)) ||
                     (a.phone && a.phone.toLowerCase().includes(query)) ||
-                    (a.role && a.role.toLowerCase().includes(query))
+                    (a.role && a.role.toLowerCase().includes(query)) ||
+                    (a.studentsList && a.studentsList.some((s) => s.name.toLowerCase().includes(query)))
             );
         }
 
         setFilteredAttendees(result);
-    }, [searchQuery, selectedPassFilter, filterTourOnly, attendees]);
+    }, [searchQuery, selectedPassFilter, filterTourOnly, activeMode, attendees]);
 
     // Check In Action
     const handleCheckIn = async (attendeeId: string) => {
@@ -455,6 +622,20 @@ export default function CheckInPage() {
             return;
         }
 
+        // If it's a school delegation, open the delegation roster modal directly!
+        if (match.isSchoolDelegation) {
+            playScanSound("success");
+            setSelectedDelegationAttendee(match);
+            setIsScannerOpen(false);
+            setScanNotification({
+                type: "success",
+                title: "School Delegation Detected!",
+                message: `Opened student roster for ${match.schoolName || match.organization || match.first_name}.`,
+                attendee: match,
+            });
+            return;
+        }
+
         if (match.check_in) {
             playScanSound("warning");
             const timeStr = match.check_in_time
@@ -510,6 +691,23 @@ export default function CheckInPage() {
         () => attendees.filter((a) => a.unipodTour?.toLowerCase() === "yes").length,
         [attendees]
     );
+    const individualCount = useMemo(
+        () => attendees.filter((a) => !a.isSchoolDelegation).length,
+        [attendees]
+    );
+    const schoolCount = useMemo(
+        () => attendees.filter((a) => a.isSchoolDelegation).length,
+        [attendees]
+    );
+    const totalStudentsPresent = useMemo(() => {
+        let count = 0;
+        attendees.forEach((a) => {
+            if (a.isSchoolDelegation && a.studentsList) {
+                count += a.studentsList.filter((s) => s.present).length;
+            }
+        });
+        return count;
+    }, [attendees]);
 
     // =========================================================================
     // 1. AUTH SCREEN
@@ -707,6 +905,97 @@ export default function CheckInPage() {
                     )}
                 </AnimatePresence>
 
+                {/* Mode Switcher: Individuals vs School Delegations */}
+                <div className="grid grid-cols-3 gap-2 bg-gray-100/90 p-1.5 rounded-2xl border border-gray-200/60">
+                    <button
+                        onClick={() => setActiveMode("individuals")}
+                        className={cn(
+                            "py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5",
+                            activeMode === "individuals"
+                                ? "bg-white text-gray-900 shadow-sm"
+                                : "text-gray-500 hover:text-gray-900"
+                        )}
+                    >
+                        <span>Individuals</span>
+                        <span
+                            className={cn(
+                                "px-2 py-0.5 rounded-full text-[10px]",
+                                activeMode === "individuals"
+                                    ? "bg-blue-100 text-blue-700"
+                                    : "bg-gray-200 text-gray-600"
+                            )}
+                        >
+                            {individualCount}
+                        </span>
+                    </button>
+                    <button
+                        onClick={() => setActiveMode("schools")}
+                        className={cn(
+                            "py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5",
+                            activeMode === "schools"
+                                ? "bg-blue-600 text-white shadow-sm"
+                                : "text-gray-500 hover:text-gray-900"
+                        )}
+                    >
+                        <Building2 className="w-3.5 h-3.5" />
+                        <span>Schools</span>
+                        <span
+                            className={cn(
+                                "px-2 py-0.5 rounded-full text-[10px]",
+                                activeMode === "schools"
+                                    ? "bg-white text-blue-700 font-bold"
+                                    : "bg-blue-100 text-blue-700"
+                            )}
+                        >
+                            {schoolCount}
+                        </span>
+                    </button>
+                    <button
+                        onClick={() => setActiveMode("all")}
+                        className={cn(
+                            "py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5",
+                            activeMode === "all"
+                                ? "bg-white text-gray-900 shadow-sm"
+                                : "text-gray-500 hover:text-gray-900"
+                        )}
+                    >
+                        <span>All</span>
+                        <span
+                            className={cn(
+                                "px-2 py-0.5 rounded-full text-[10px]",
+                                activeMode === "all"
+                                    ? "bg-gray-900 text-white"
+                                    : "bg-gray-200 text-gray-600"
+                            )}
+                        >
+                            {attendees.length}
+                        </span>
+                    </button>
+                </div>
+
+                {/* School Delegations Highlight Banner when in schools mode */}
+                {activeMode === "schools" && (
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                                <Users className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <div className="font-black text-gray-900 text-sm">
+                                    {schoolCount} Registered School Delegations
+                                </div>
+                                <div className="font-bold text-gray-500 mt-0.5">
+                                    Check in schools by delegation and mark student attendance directly.
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 self-start sm:self-auto bg-white/80 border border-blue-200 rounded-xl px-3 py-1.5 font-black text-blue-900">
+                            <span>Students Checked In:</span>
+                            <span className="text-emerald-600">{totalStudentsPresent} present</span>
+                        </div>
+                    </div>
+                )}
+
                 {/* Search Bar & Filter Controls */}
                 <div className="bg-white p-3 sm:p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
                     <div className="relative">
@@ -790,6 +1079,212 @@ export default function CheckInPage() {
                         </div>
                     ) : (
                         filteredAttendees.map((attendee) => {
+                            // If this is a school delegation, render dedicated delegation card
+                            if (attendee.isSchoolDelegation) {
+                                const presentStudents =
+                                    attendee.studentsList?.filter((s) => s.present).length || 0;
+                                const totalStudents =
+                                    attendee.studentsList?.length || attendee.declaredStudentsCount || 0;
+                                const pct =
+                                    totalStudents > 0
+                                        ? Math.round((presentStudents / totalStudents) * 100)
+                                        : 0;
+                                const isHackathon = attendee.hackathon?.toLowerCase() === "yes";
+                                const isUnipod = attendee.unipodTour?.toLowerCase() === "yes";
+
+                                return (
+                                    <div
+                                        key={attendee.id}
+                                        className={cn(
+                                            "p-4 sm:p-5 rounded-2xl border transition-all bg-white flex flex-col gap-3.5",
+                                            attendee.check_in
+                                                ? "border-emerald-300 bg-emerald-50/20 shadow-xs"
+                                                : "border-blue-200/80 hover:border-blue-400 bg-white shadow-xs hover:shadow-sm"
+                                        )}
+                                    >
+                                        {/* School Card Top: School Name, Badges & Check-in / Roster CTA */}
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                            <div className="flex items-start gap-3 min-w-0">
+                                                <div
+                                                    className={cn(
+                                                        "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border",
+                                                        attendee.check_in
+                                                            ? "bg-emerald-100 border-emerald-300 text-emerald-700"
+                                                            : "bg-blue-50 border-blue-200 text-blue-700"
+                                                    )}
+                                                >
+                                                    {attendee.check_in ? (
+                                                        <Check className="w-6 h-6 stroke-[2.5]" />
+                                                    ) : (
+                                                        <Building2 className="w-6 h-6" />
+                                                    )}
+                                                </div>
+
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <h3 className="text-base sm:text-lg font-black text-gray-900 leading-tight">
+                                                            {attendee.schoolName ||
+                                                                attendee.organization ||
+                                                                `${attendee.first_name}'s Delegation`}
+                                                        </h3>
+                                                        {attendee.pubPriv && (
+                                                            <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-gray-100 text-gray-600 rounded-md">
+                                                                {attendee.pubPriv}
+                                                            </span>
+                                                        )}
+                                                        <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-blue-100 text-blue-700 rounded-md">
+                                                            School Delegation
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Contact Lead Details */}
+                                                    <div className="text-xs text-gray-500 font-bold mt-1 flex items-center gap-2 flex-wrap">
+                                                        <span>
+                                                            Lead:{" "}
+                                                            <strong className="text-gray-800">
+                                                                {attendee.first_name} {attendee.last_name}
+                                                            </strong>
+                                                        </span>
+                                                        <span>&middot;</span>
+                                                        <span>{attendee.email}</span>
+                                                        {attendee.phone && (
+                                                            <>
+                                                                <span>&middot;</span>
+                                                                <a
+                                                                    href={`tel:${attendee.phone}`}
+                                                                    className="inline-flex items-center gap-1 text-emerald-600 hover:text-emerald-800 hover:underline font-black"
+                                                                >
+                                                                    <Phone className="w-3 h-3" />
+                                                                    <span>{attendee.phone}</span>
+                                                                </a>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Main Action CTA Button: Open Student Roster */}
+                                            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                                                {attendee.check_in && (
+                                                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-100 px-3 py-2 rounded-xl border border-emerald-200">
+                                                        Checked In
+                                                    </span>
+                                                )}
+                                                <button
+                                                    onClick={() => setSelectedDelegationAttendee(attendee)}
+                                                    className={cn(
+                                                        "flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all shadow-md active:scale-95",
+                                                        attendee.check_in
+                                                            ? "bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
+                                                            : "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20"
+                                                    )}
+                                                >
+                                                    <Users className="w-4 h-4" />
+                                                    <span>
+                                                        {attendee.check_in
+                                                            ? "Manage Student Roster"
+                                                            : `Check In Students (${totalStudents})`}
+                                                    </span>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Middle Section: Live Student Turnout Bar */}
+                                        <div className="bg-gray-50/90 rounded-xl p-3 border border-gray-100 space-y-2">
+                                            <div className="flex items-center justify-between text-xs">
+                                                <div className="flex items-center gap-1.5 font-black text-gray-800">
+                                                    <Users className="w-3.5 h-3.5 text-blue-600" />
+                                                    <span>Student Attendance:</span>
+                                                    <span
+                                                        className={cn(
+                                                            "px-2 py-0.5 rounded-md text-[11px]",
+                                                            presentStudents > 0
+                                                                ? "bg-emerald-100 text-emerald-800"
+                                                                : "bg-gray-200 text-gray-700"
+                                                        )}
+                                                    >
+                                                        {presentStudents} / {totalStudents} Present ({pct}%)
+                                                    </span>
+                                                </div>
+
+                                                <span className="text-[11px] font-bold text-gray-500">
+                                                    {attendee.declaredTeachersCount || 1} Teacher
+                                                    {(attendee.declaredTeachersCount || 1) > 1 ? "s" : ""}
+                                                </span>
+                                            </div>
+
+                                            {/* Progress bar */}
+                                            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                <div
+                                                    className={cn(
+                                                        "h-full rounded-full transition-all duration-300",
+                                                        presentStudents === totalStudents && totalStudents > 0
+                                                            ? "bg-emerald-500"
+                                                            : "bg-blue-600"
+                                                    )}
+                                                    style={{ width: `${pct}%` }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Bottom Badges Strip: Hackathon, UNIPOD, Code, Details */}
+                                        <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-gray-100 text-xs">
+                                            {isHackathon && (
+                                                <span className="inline-flex items-center gap-1 text-[11px] font-black bg-purple-50 border border-purple-200 text-purple-700 px-2.5 py-1 rounded-lg">
+                                                    <Trophy className="w-3 h-3 text-purple-600" />
+                                                    <span>Hackathon Registered</span>
+                                                </span>
+                                            )}
+
+                                            {isUnipod && (
+                                                <span className="inline-flex items-center gap-1 text-[11px] font-black bg-emerald-50 border border-emerald-300 text-emerald-800 px-2.5 py-1 rounded-lg">
+                                                    <Sparkles className="w-3 h-3 text-emerald-600" />
+                                                    <span>UNIPOD Tour: Yes (8:00 AM)</span>
+                                                </span>
+                                            )}
+
+                                            {attendee.ref && (
+                                                <button
+                                                    onClick={() => copyToClipboard(attendee.ref!)}
+                                                    className="inline-flex items-center gap-1 text-[10px] font-mono text-gray-400 hover:text-gray-700 px-2 py-1 bg-gray-50 rounded-lg border border-gray-200"
+                                                    title="Click to copy delegation code"
+                                                >
+                                                    <span>Code: {attendee.ref}</span>
+                                                    <Copy className="w-2.5 h-2.5" />
+                                                    {copiedRef === attendee.ref && (
+                                                        <span className="text-emerald-600 font-sans font-bold text-[9px]">
+                                                            Copied!
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            )}
+
+                                            {attendee.check_in_time && (
+                                                <span className="text-[10px] font-sans font-bold text-gray-400 ml-auto">
+                                                    Checked in at{" "}
+                                                    {new Date(attendee.check_in_time).toLocaleTimeString([], {
+                                                        hour: "2-digit",
+                                                        minute: "2-digit",
+                                                    })}
+                                                    {attendee.checked_in_by ? ` by ${attendee.checked_in_by}` : ""}
+                                                </span>
+                                            )}
+
+                                            <button
+                                                onClick={() => setSelectedAttendeeDetails(attendee)}
+                                                className={cn(
+                                                    "inline-flex items-center gap-1 text-[11px] font-black text-blue-600 hover:text-blue-800 hover:underline py-1",
+                                                    !attendee.check_in_time && "ml-auto"
+                                                )}
+                                            >
+                                                <Info className="w-3 h-3" />
+                                                <span>School Details</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            }
+
                             const passTitle = Array.isArray(attendee.pass)
                                 ? attendee.pass[0]?.title
                                 : attendee.pass?.title || "General Admission";
@@ -1132,6 +1627,32 @@ export default function CheckInPage() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Modal: School Delegation Student Attendance Roster */}
+            {selectedDelegationAttendee && (
+                <DelegationRosterModal
+                    isOpen={Boolean(selectedDelegationAttendee)}
+                    onClose={() => setSelectedDelegationAttendee(null)}
+                    schoolName={
+                        selectedDelegationAttendee.schoolName ||
+                        selectedDelegationAttendee.organization ||
+                        "School Delegation"
+                    }
+                    pubPriv={selectedDelegationAttendee.pubPriv}
+                    leadName={`${selectedDelegationAttendee.first_name} ${selectedDelegationAttendee.last_name}`}
+                    leadEmail={selectedDelegationAttendee.email}
+                    leadPhone={selectedDelegationAttendee.phone}
+                    leadRole={selectedDelegationAttendee.role}
+                    hackathon={selectedDelegationAttendee.hackathon?.toLowerCase() === "yes"}
+                    unipodTour={selectedDelegationAttendee.unipodTour?.toLowerCase() === "yes"}
+                    declaredTeachersCount={selectedDelegationAttendee.declaredTeachersCount || 1}
+                    declaredTeachersList={selectedDelegationAttendee.declaredTeachersList || []}
+                    initialStudents={selectedDelegationAttendee.studentsList || []}
+                    initialNotes={selectedDelegationAttendee.properties?.schoolDelegation?.notes || ""}
+                    onSave={handleSaveDelegation}
+                    saving={savingDelegation}
+                />
             )}
         </div>
     );
