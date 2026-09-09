@@ -1,0 +1,3237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AAES 2026 - School Delegations Physical Check-in Roster</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 12mm 12mm 12mm 12mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      font-size: 11px;
+      line-height: 1.35;
+      color: #111;
+      margin: 0;
+      padding: 16px;
+      background: #fff;
+    }
+    .no-print-bar {
+      background: #1255FB;
+      color: #fff;
+      padding: 12px 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .print-btn {
+      background: #fff;
+      color: #1255FB;
+      font-weight: bold;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    @media print {
+      .no-print-bar { display: none !important; }
+      body { padding: 0; }
+      .school-card { page-break-inside: avoid; margin-bottom: 24px !important; }
+      .page-break { page-break-before: always; }
+    }
+    .header-box {
+      border-bottom: 2px solid #000;
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+    }
+    .header-box h1 {
+      margin: 0 0 4px;
+      font-size: 18px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .header-box .sub {
+      font-size: 11px;
+      color: #444;
+    }
+    .legend {
+      background: #f4f5f7;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin-bottom: 18px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 10.5px;
+    }
+    .legend-item strong {
+      color: #000;
+    }
+    .school-card {
+      border: 1.5px solid #222;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      overflow: hidden;
+      page-break-inside: avoid;
+    }
+    .school-header {
+      background: #f0f4ff;
+      border-bottom: 1.5px solid #222;
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .school-title {
+      font-size: 14px;
+      font-weight: bold;
+      color: #002b80;
+    }
+    .school-meta {
+      font-size: 10.5px;
+      color: #333;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      font-size: 9.5px;
+      font-weight: bold;
+      border-radius: 4px;
+      border: 1px solid #999;
+      background: #fff;
+      margin-left: 4px;
+    }
+    .badge-pub { background: #e6f4ea; border-color: #34a853; color: #137333; }
+    .badge-priv { background: #fce8e6; border-color: #ea4335; color: #c5221f; }
+    .badge-tour { background: #e8f0fe; border-color: #4285f4; color: #174ea6; }
+    .contact-row {
+      padding: 6px 12px;
+      background: #fafafa;
+      border-bottom: 1px solid #ddd;
+      font-size: 10.5px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .table-section-title {
+      background: #eaeaea;
+      font-weight: bold;
+      padding: 4px 12px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-top: 1px solid #ccc;
+      border-bottom: 1px solid #ccc;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10.5px;
+    }
+    th {
+      background: #f8f9fa;
+      text-align: left;
+      padding: 5px 8px;
+      border-bottom: 1px solid #ccc;
+      font-size: 9.5px;
+      text-transform: uppercase;
+      color: #555;
+    }
+    td {
+      padding: 5px 8px;
+      border-bottom: 1px solid #eee;
+      vertical-align: middle;
+    }
+    .col-box {
+      width: 48px;
+      text-align: center;
+    }
+    .check-box {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 1.5px solid #444;
+      border-radius: 3px;
+      vertical-align: middle;
+    }
+    .col-swag {
+      width: 110px;
+      text-align: center;
+    }
+    .walkin-row td {
+      background: #fffdf5;
+      height: 24px;
+      color: #888;
+      font-style: italic;
+    }
+    .walkin-row .line {
+      border-bottom: 1px dashed #bbb;
+      display: inline-block;
+      width: 95%;
+      height: 12px;
+    }
+    .footer-summary {
+      padding: 6px 12px;
+      background: #f9f9f9;
+      border-top: 1px solid #ddd;
+      display: flex;
+      justify-content: space-between;
+      font-weight: bold;
+      font-size: 10.5px;
+    }
+    .blank-sheet {
+      border: 2px dashed #666;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 30px;
+      page-break-before: always;
+    }
+    .blank-sheet h2 {
+      margin-top: 0;
+      color: #1255FB;
+      font-size: 16px;
+      border-bottom: 1.5px solid #1255FB;
+      padding-bottom: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="no-print-bar">
+    <div>
+      <strong style="font-size:15px;">AAES 2026 — School Delegations Check-in Master Roster</strong><br>
+      <span style="opacity:0.9; font-size:12px;">Ready for printing. Use double-check workflow: Box 1 = Door (✓), Box 2 = Synced to Database (✓✓).</span>
+    </div>
+    <button class="print-btn" onclick="window.print()">🖨️ Print Roster (Ctrl + P)</button>
+  </div>
+
+  <div class="header-box">
+    <h1>AI FOR AFRICA'S EDUCATION SUMMIT (AAES 2026)</h1>
+    <div class="sub">
+      <strong>OFFICIAL SCHOOL DELEGATIONS DESK ROSTER</strong> &bull; Thursday, Sept 10, 2026 &bull; Faculty of Social Sciences Lecture Theatre, UNILAG
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><strong>Step 1: Door Arrival [ ✓ ]</strong> &rarr; Student/Teacher is physically present at the entrance. Hand badge + Pink/Blue book.</div>
+    <div class="legend-item"><strong>Step 2: Database Sync [ ✓✓ ]</strong> &rarr; Mark checked on the digital check-in tablet/phone app.</div>
+    <div class="legend-item"><strong>Swag Rule:</strong> Pink Book = Students | Blue Book = Teachers / Adult Leads</div>
+  </div>
+
+  <div class="school-card">
+    <div class="school-header">
+      <div>
+        <span class="school-title">1. Epitome Day Nursery and Primary School</span>
+        <span class="badge badge-priv">Private</span>
+        <span class="badge badge-tour">UNIPOD Tour: YES</span>
+        <span class="badge" style="background:#f3e8fd; border-color:#9333ea; color:#6b21a8;">Hackathon Team: YES</span>
+      </div>
+      <div class="school-meta">
+        <strong>Expected:</strong> 5 Students &bull; 7 Staff
+      </div>
+    </div>
+
+    <div class="contact-row">
+      <div><strong>Lead / Rep:</strong> Ibrahim Ayinde (Head of Department )</div>
+      <div><strong>Email:</strong> ayindeibrahim73@gmail.com</div>
+    </div>
+
+    <!-- Accompanying Teachers Table -->
+    <div class="table-section-title">Accompanying Teachers & Staff</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Staff / Teacher Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>Ayinde Ibrahim</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">2</td>
+          <td><strong>Muslim Waliu</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">3</td>
+          <td><strong>Isiaq Musa</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">4</td>
+          <td><strong>Salami AbdulMalik</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">5</td>
+          <td><strong>Mustapha Nofisat</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">6</td>
+          <td><strong>Olajide Taiwo</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">7</td>
+          <td><strong>Adeshoye Marufdeen</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">8</td>
+          <td><strong>Ibrahim UmmulKhayr</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">9</td>
+          <td><strong>Abdul-Azeez Tawalkalt</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr class="walkin-row">
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#999;">+</td>
+          <td><span class="line"></span> <em>(Extra / Substitute Teacher write-in)</em></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Students Table -->
+    <div class="table-section-title">Registered Students</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Student Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>Adeshoye Muadh</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">2</td>
+          <td><strong>Alaka Aisha</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">3</td>
+          <td><strong>Alaka Firdaus</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">4</td>
+          <td><strong>Ayinde Umar</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">5</td>
+          <td><strong>Awoshile Imran</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+1</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+2</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+3</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      </tbody>
+    </table>
+
+    <div class="footer-summary">
+      <div>Actual Headcount Present: ________ Students &bull; ________ Teachers</div>
+      <div>Verified By (Staff Initials): ____________ &nbsp;&bull;&nbsp; Digital Synced By: ____________</div>
+    </div>
+  </div>
+  <div class="school-card">
+    <div class="school-header">
+      <div>
+        <span class="school-title">2. GTC IKOTUN</span>
+        <span class="badge badge-pub">Public</span>
+        <span class="badge badge-tour">UNIPOD Tour: YES</span>
+        <span class="badge" style="background:#f3e8fd; border-color:#9333ea; color:#6b21a8;">Hackathon Team: YES</span>
+      </div>
+      <div class="school-meta">
+        <strong>Expected:</strong> 1 Students &bull; 1 Staff
+      </div>
+    </div>
+
+    <div class="contact-row">
+      <div><strong>Lead / Rep:</strong> Hammed Rukayat Adeola (Education officer )</div>
+      <div><strong>Email:</strong> rukayathammed3@gmail.com</div>
+    </div>
+
+    <!-- Accompanying Teachers Table -->
+    <div class="table-section-title">Accompanying Teachers & Staff</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Staff / Teacher Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>Hammed Rukayat Adeola</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr class="walkin-row">
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#999;">+</td>
+          <td><span class="line"></span> <em>(Extra / Substitute Teacher write-in)</em></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Students Table -->
+    <div class="table-section-title">Registered Students</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Student Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>Aleshinloye Aisha</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+1</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+2</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+3</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+4</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+5</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      </tbody>
+    </table>
+
+    <div class="footer-summary">
+      <div>Actual Headcount Present: ________ Students &bull; ________ Teachers</div>
+      <div>Verified By (Staff Initials): ____________ &nbsp;&bull;&nbsp; Digital Synced By: ____________</div>
+    </div>
+  </div>
+  <div class="school-card">
+    <div class="school-header">
+      <div>
+        <span class="school-title">3. Gulfcoast international school</span>
+        <span class="badge badge-priv">Private</span>
+        <span class="badge badge-tour">UNIPOD Tour: YES</span>
+        
+      </div>
+      <div class="school-meta">
+        <strong>Expected:</strong> 5 Students &bull; 6 Staff
+      </div>
+    </div>
+
+    <div class="contact-row">
+      <div><strong>Lead / Rep:</strong> Quadri basirat (school head)</div>
+      <div><strong>Email:</strong> basiratqueen@gmail.com</div>
+    </div>
+
+    <!-- Accompanying Teachers Table -->
+    <div class="table-section-title">Accompanying Teachers & Staff</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Staff / Teacher Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>Quadri Basirat</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">2</td>
+          <td><strong>Jimoh Jamiu</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">3</td>
+          <td><strong>Adewale Isika</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">4</td>
+          <td><strong>peace Emmanuel</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">5</td>
+          <td><strong>Blessing okafor</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr class="walkin-row">
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#999;">+</td>
+          <td><span class="line"></span> <em>(Extra / Substitute Teacher write-in)</em></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Students Table -->
+    <div class="table-section-title">Registered Students</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Student Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>Ibrahim Abdulbasit</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">2</td>
+          <td><strong>kadir Musfahiz</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">3</td>
+          <td><strong>Abdul Quadri Aisha</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">4</td>
+          <td><strong>Adigun Mariam</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">5</td>
+          <td><strong>Abdul lateef Adams</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+1</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+2</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+3</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      </tbody>
+    </table>
+
+    <div class="footer-summary">
+      <div>Actual Headcount Present: ________ Students &bull; ________ Teachers</div>
+      <div>Verified By (Staff Initials): ____________ &nbsp;&bull;&nbsp; Digital Synced By: ____________</div>
+    </div>
+  </div>
+  <div class="school-card">
+    <div class="school-header">
+      <div>
+        <span class="school-title">4. Abqareeyah Model School</span>
+        <span class="badge badge-priv">Private</span>
+        <span class="badge badge-tour">UNIPOD Tour: YES</span>
+        
+      </div>
+      <div class="school-meta">
+        <strong>Expected:</strong> 1 Students &bull; 5 Staff
+      </div>
+    </div>
+
+    <div class="contact-row">
+      <div><strong>Lead / Rep:</strong> Rizqah Saheed (Director )</div>
+      <div><strong>Email:</strong> rizqahatinuke@gmail.com</div>
+    </div>
+
+    <!-- Accompanying Teachers Table -->
+    <div class="table-section-title">Accompanying Teachers & Staff</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Staff / Teacher Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>Mustapha Aremu Sulaiman</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">2</td>
+          <td><strong>Mubarak Adedamola Adeboye</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">3</td>
+          <td><strong>Aisha Titilayo  Akintola</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">4</td>
+          <td><strong>Ayodele Khadijah Alaba</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">5</td>
+          <td><strong>Ayo Ade  Abiodun Zainab</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr class="walkin-row">
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#999;">+</td>
+          <td><span class="line"></span> <em>(Extra / Substitute Teacher write-in)</em></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Students Table -->
+    <div class="table-section-title">Registered Students</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Student Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>Saheed Mubashirah Abidemi</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+1</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+2</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+3</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+4</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+5</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      </tbody>
+    </table>
+
+    <div class="footer-summary">
+      <div>Actual Headcount Present: ________ Students &bull; ________ Teachers</div>
+      <div>Verified By (Staff Initials): ____________ &nbsp;&bull;&nbsp; Digital Synced By: ____________</div>
+    </div>
+  </div>
+  <div class="school-card">
+    <div class="school-header">
+      <div>
+        <span class="school-title">5. Children's World Schools</span>
+        <span class="badge badge-priv">Private</span>
+        <span class="badge badge-tour">UNIPOD Tour: YES</span>
+        <span class="badge" style="background:#f3e8fd; border-color:#9333ea; color:#6b21a8;">Hackathon Team: YES</span>
+      </div>
+      <div class="school-meta">
+        <strong>Expected:</strong> 10 Students &bull; 5 Staff
+      </div>
+    </div>
+
+    <div class="contact-row">
+      <div><strong>Lead / Rep:</strong> Yetunde Dairo (Proprietress )</div>
+      <div><strong>Email:</strong> yetonline4u@yahoo.com</div>
+    </div>
+
+    <!-- Accompanying Teachers Table -->
+    <div class="table-section-title">Accompanying Teachers & Staff</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Staff / Teacher Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>Dairo Yetunde</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">2</td>
+          <td><strong>Amodu Idris</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">3</td>
+          <td><strong>Shittu Bilkisu</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">4</td>
+          <td><strong>Okorie Elizabeth</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">5</td>
+          <td><strong>Atafo Plato</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr class="walkin-row">
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#999;">+</td>
+          <td><span class="line"></span> <em>(Extra / Substitute Teacher write-in)</em></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Students Table -->
+    <div class="table-section-title">Registered Students</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Student Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>Dairo AbdQayyum</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">2</td>
+          <td><strong>Dairo Ar-rohees</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">3</td>
+          <td><strong>Dairo Roqeebah</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">4</td>
+          <td><strong>Obadina Nifemi</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">5</td>
+          <td><strong>Lasisi Ibrahim</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">6</td>
+          <td><strong>Osonoiki Abidemi</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">7</td>
+          <td><strong>Jimoh Hikmah</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">8</td>
+          <td><strong>Lasisi Fatimoh</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">9</td>
+          <td><strong>Aremu Maishat</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">10</td>
+          <td><strong>Ebaji Francis</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+1</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+2</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+3</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      </tbody>
+    </table>
+
+    <div class="footer-summary">
+      <div>Actual Headcount Present: ________ Students &bull; ________ Teachers</div>
+      <div>Verified By (Staff Initials): ____________ &nbsp;&bull;&nbsp; Digital Synced By: ____________</div>
+    </div>
+  </div>
+  <div class="school-card">
+    <div class="school-header">
+      <div>
+        <span class="school-title">6. COMMUNITY INNOVATION HUB</span>
+        <span class="badge badge-priv">Private</span>
+        <span class="badge badge-tour">UNIPOD Tour: YES</span>
+        <span class="badge" style="background:#f3e8fd; border-color:#9333ea; color:#6b21a8;">Hackathon Team: YES</span>
+      </div>
+      <div class="school-meta">
+        <strong>Expected:</strong> 51 Students &bull; 13 Staff
+      </div>
+    </div>
+
+    <div class="contact-row">
+      <div><strong>Lead / Rep:</strong> ADEWALE OSENI (CENTRE MANAGER)</div>
+      <div><strong>Email:</strong> teenpreneurshub@gmail.com</div>
+    </div>
+
+    <!-- Accompanying Teachers Table -->
+    <div class="table-section-title">Accompanying Teachers & Staff</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Staff / Teacher Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>Adewale Oseni</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">2</td>
+          <td><strong>Kosemani Temilola</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">3</td>
+          <td><strong>Hope Ogulawei</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">4</td>
+          <td><strong>Chikaodi Happiness</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">5</td>
+          <td><strong>Augustine Favour</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">6</td>
+          <td><strong>Babalola Daniel</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">7</td>
+          <td><strong>Ikechukwu Egbeke</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">8</td>
+          <td><strong>Mohammed Farida</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">9</td>
+          <td><strong>Hofonga Temitayo</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">10</td>
+          <td><strong>Ajayi Esther</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">11</td>
+          <td><strong>Glory Odoemelam</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">12</td>
+          <td><strong>Olaewe Semilore</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr class="walkin-row">
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#999;">+</td>
+          <td><span class="line"></span> <em>(Extra / Substitute Teacher write-in)</em></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Students Table -->
+    <div class="table-section-title">Registered Students</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Student Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>Ajayi Oluwaseun Adesoji</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">2</td>
+          <td><strong>Afuwape Oluwaseyi</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">3</td>
+          <td><strong>Okanlawon Micheal</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">4</td>
+          <td><strong>Eze Ifeanyichukwu Williams</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">5</td>
+          <td><strong>Akinboboye Zion Mayowa</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">6</td>
+          <td><strong>Osasa Precious</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">7</td>
+          <td><strong>Ibojo Excellence</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">8</td>
+          <td><strong>Babalola Richard</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">9</td>
+          <td><strong>Ajayi Oluwatimileyin</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">10</td>
+          <td><strong>Sanusi Halima</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">11</td>
+          <td><strong>Ogunmefun Gbolahun</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">12</td>
+          <td><strong>Olorunisola Odunayo</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">13</td>
+          <td><strong>Adebunmi Similoluwa</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">14</td>
+          <td><strong>Ayodele Ayomide</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">15</td>
+          <td><strong>Adenekan Mubarak</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">16</td>
+          <td><strong>Yusuf Aisha</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">17</td>
+          <td><strong>Yusuf opeyemi</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">18</td>
+          <td><strong>Ugboma Patricia</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">19</td>
+          <td><strong>Akinlabi Oluwadamilare</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">20</td>
+          <td><strong>Ajose Ayanfeoluwa</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">21</td>
+          <td><strong>Ajasa Balikis</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">22</td>
+          <td><strong>Miracle Donimic</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">23</td>
+          <td><strong>Ademo Iyanuoluwa</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">24</td>
+          <td><strong>Sulaiman Fareed</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">25</td>
+          <td><strong>Chima-francis Favour</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">26</td>
+          <td><strong>Aderie Victor</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">27</td>
+          <td><strong>Akinmade Omoniyi</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">28</td>
+          <td><strong>Olafemiwa Abdulazeez</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">29</td>
+          <td><strong>Nojimudeen mohammed</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">30</td>
+          <td><strong>williams Samuel</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">31</td>
+          <td><strong>Sojebe Oluwaseun</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">32</td>
+          <td><strong>Aina Esther</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">33</td>
+          <td><strong>Bademosi Rereloluwa</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">34</td>
+          <td><strong>George Ogooluwa</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">35</td>
+          <td><strong>Ajaude Emmanuel</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">36</td>
+          <td><strong>Bankojo Tioluwani</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">37</td>
+          <td><strong>Osadebe Noal</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">38</td>
+          <td><strong>Umar Abass Danjuma</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">39</td>
+          <td><strong>Odiagbe Joy</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">40</td>
+          <td><strong>Awojide Oluwatise</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">41</td>
+          <td><strong>Salako Fawaz</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">42</td>
+          <td><strong>Eiboghomhen Bright</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">43</td>
+          <td><strong>Aliyu Oluwapelumi</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">44</td>
+          <td><strong>Zechariah Jessy</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">45</td>
+          <td><strong>Andre Michael</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">46</td>
+          <td><strong>Honfoga Oluwagbemitan</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">47</td>
+          <td><strong>PRINCE KALU</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">48</td>
+          <td><strong>Onifade Shalom</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">49</td>
+          <td><strong>David Aremu Kehinde</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">50</td>
+          <td><strong>Adebule Marvelous Sina</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+1</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+2</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+3</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      </tbody>
+    </table>
+
+    <div class="footer-summary">
+      <div>Actual Headcount Present: ________ Students &bull; ________ Teachers</div>
+      <div>Verified By (Staff Initials): ____________ &nbsp;&bull;&nbsp; Digital Synced By: ____________</div>
+    </div>
+  </div>
+  <div class="school-card">
+    <div class="school-header">
+      <div>
+        <span class="school-title">7. AL-IKHLASS PRIVATE SCHOOL</span>
+        <span class="badge badge-priv">Private</span>
+        <span class="badge badge-tour">UNIPOD Tour: YES</span>
+        
+      </div>
+      <div class="school-meta">
+        <strong>Expected:</strong> 0 Students &bull; 1 Staff
+      </div>
+    </div>
+
+    <div class="contact-row">
+      <div><strong>Lead / Rep:</strong> Ghaniyah Abiodun (Teaching/Administrator )</div>
+      <div><strong>Email:</strong> abiodunaka1981@gmail.com</div>
+    </div>
+
+    <!-- Accompanying Teachers Table -->
+    <div class="table-section-title">Accompanying Teachers & Staff</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Staff / Teacher Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>Ghaniyah Abiodun Aka-Shittu</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">2</td>
+          <td><strong>Fauziyah Abdulkareem-Hussain</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">3</td>
+          <td><strong>Hameedah Lawal</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">4</td>
+          <td><strong>Kehinde Aworekun-Sanusi</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">5</td>
+          <td><strong>Shukrah  Titilope  Ahmad</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">6</td>
+          <td><strong>Blessing Pius</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">7</td>
+          <td><strong>Rasheedah Adegboyega</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">8</td>
+          <td><strong>Mariam Abdulsalam</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr class="walkin-row">
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#999;">+</td>
+          <td><span class="line"></span> <em>(Extra / Substitute Teacher write-in)</em></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Students Table -->
+    <div class="table-section-title">Registered Students</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Student Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>Nil</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+1</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+2</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+3</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+4</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+5</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      </tbody>
+    </table>
+
+    <div class="footer-summary">
+      <div>Actual Headcount Present: ________ Students &bull; ________ Teachers</div>
+      <div>Verified By (Staff Initials): ____________ &nbsp;&bull;&nbsp; Digital Synced By: ____________</div>
+    </div>
+  </div>
+  <div class="school-card">
+    <div class="school-header">
+      <div>
+        <span class="school-title">8. AN'NURR The light children School</span>
+        <span class="badge badge-priv">Private</span>
+        <span class="badge badge-tour">UNIPOD Tour: YES</span>
+        <span class="badge" style="background:#f3e8fd; border-color:#9333ea; color:#6b21a8;">Hackathon Team: YES</span>
+      </div>
+      <div class="school-meta">
+        <strong>Expected:</strong> 0 Students &bull; 1 Staff
+      </div>
+    </div>
+
+    <div class="contact-row">
+      <div><strong>Lead / Rep:</strong> Fatimah Moibi (Proprietress )</div>
+      <div><strong>Email:</strong> thelightschool2020@gmail.com</div>
+    </div>
+
+    <!-- Accompanying Teachers Table -->
+    <div class="table-section-title">Accompanying Teachers & Staff</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Staff / Teacher Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>Mr Khalid Zubair</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr class="walkin-row">
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#999;">+</td>
+          <td><span class="line"></span> <em>(Extra / Substitute Teacher write-in)</em></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Students Table -->
+    <div class="table-section-title">Registered Students</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Student Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>Ahmod Fasasi</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+1</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+2</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+3</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+4</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+5</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      </tbody>
+    </table>
+
+    <div class="footer-summary">
+      <div>Actual Headcount Present: ________ Students &bull; ________ Teachers</div>
+      <div>Verified By (Staff Initials): ____________ &nbsp;&bull;&nbsp; Digital Synced By: ____________</div>
+    </div>
+  </div>
+  <div class="school-card">
+    <div class="school-header">
+      <div>
+        <span class="school-title">9. The Sustainer Children Academy</span>
+        <span class="badge badge-priv">Private</span>
+        <span class="badge badge-tour">UNIPOD Tour: YES</span>
+        
+      </div>
+      <div class="school-meta">
+        <strong>Expected:</strong> 2 Students &bull; 2 Staff
+      </div>
+    </div>
+
+    <div class="contact-row">
+      <div><strong>Lead / Rep:</strong> Qudrat Salahu (Director of School )</div>
+      <div><strong>Email:</strong> qudrat.folashade@gmail.com</div>
+    </div>
+
+    <!-- Accompanying Teachers Table -->
+    <div class="table-section-title">Accompanying Teachers & Staff</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Staff / Teacher Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>1, Mrs Eva Abu</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">2</td>
+          <td><strong>2, Mr Ahmad Salah</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr class="walkin-row">
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#999;">+</td>
+          <td><span class="line"></span> <em>(Extra / Substitute Teacher write-in)</em></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Students Table -->
+    <div class="table-section-title">Registered Students</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Student Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>1. Zara Nafiu</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">2</td>
+          <td><strong>2. Hassan Saheed</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+1</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+2</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+3</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+4</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+5</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      </tbody>
+    </table>
+
+    <div class="footer-summary">
+      <div>Actual Headcount Present: ________ Students &bull; ________ Teachers</div>
+      <div>Verified By (Staff Initials): ____________ &nbsp;&bull;&nbsp; Digital Synced By: ____________</div>
+    </div>
+  </div>
+  <div class="school-card">
+    <div class="school-header">
+      <div>
+        <span class="school-title">10. Ladilak primary School</span>
+        <span class="badge badge-pub">Public</span>
+        <span class="badge badge-tour">UNIPOD Tour: YES</span>
+        <span class="badge" style="background:#f3e8fd; border-color:#9333ea; color:#6b21a8;">Hackathon Team: YES</span>
+      </div>
+      <div class="school-meta">
+        <strong>Expected:</strong> 1 Students &bull; 2 Staff
+      </div>
+    </div>
+
+    <div class="contact-row">
+      <div><strong>Lead / Rep:</strong> Oluwabimpe.O. Adebowale (Teaching)</div>
+      <div><strong>Email:</strong> bimpetfc@yahoo.com</div>
+    </div>
+
+    <!-- Accompanying Teachers Table -->
+    <div class="table-section-title">Accompanying Teachers & Staff</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Staff / Teacher Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>Adebowale Onaolapo Oluwabimpe</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">2</td>
+          <td><strong>Olotu David Oboye</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr class="walkin-row">
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#999;">+</td>
+          <td><span class="line"></span> <em>(Extra / Substitute Teacher write-in)</em></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Students Table -->
+    <div class="table-section-title">Registered Students</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Student Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>Adebowale Ifeoluwa Samuel</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+1</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+2</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+3</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+4</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+5</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      </tbody>
+    </table>
+
+    <div class="footer-summary">
+      <div>Actual Headcount Present: ________ Students &bull; ________ Teachers</div>
+      <div>Verified By (Staff Initials): ____________ &nbsp;&bull;&nbsp; Digital Synced By: ____________</div>
+    </div>
+  </div>
+  <div class="school-card">
+    <div class="school-header">
+      <div>
+        <span class="school-title">11. IDEAL CRYSTAL SCHOOL</span>
+        <span class="badge badge-priv">Private</span>
+        <span class="badge badge-tour">UNIPOD Tour: YES</span>
+        <span class="badge" style="background:#f3e8fd; border-color:#9333ea; color:#6b21a8;">Hackathon Team: YES</span>
+      </div>
+      <div class="school-meta">
+        <strong>Expected:</strong> 65 Students &bull; 9 Staff
+      </div>
+    </div>
+
+    <div class="contact-row">
+      <div><strong>Lead / Rep:</strong> Adeleke Abass (TEACHING / PROPRIETOR)</div>
+      <div><strong>Email:</strong> idealcrystalschool2019@gmail.com</div>
+    </div>
+
+    <!-- Accompanying Teachers Table -->
+    <div class="table-section-title">Accompanying Teachers & Staff</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Staff / Teacher Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>MR. ADELEKE ABBAS</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">2</td>
+          <td><strong>MRS. LILIAN AGBEREBI</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">3</td>
+          <td><strong>MR. ADEDAYO ADEBOWALE</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">4</td>
+          <td><strong>MR. OJEDOKUN AKOLADE</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">5</td>
+          <td><strong>MISS. CHARLES OKORO</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">6</td>
+          <td><strong>MISS PRECIOUS JONAS</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">7</td>
+          <td><strong>MR. PAUL IFEANYI</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">8</td>
+          <td><strong>MR. ADEDAPO IFEOLUWA</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">9</td>
+          <td><strong>MISS. MARIAM KOGI</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr class="walkin-row">
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#999;">+</td>
+          <td><span class="line"></span> <em>(Extra / Substitute Teacher write-in)</em></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Students Table -->
+    <div class="table-section-title">Registered Students</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Student Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>1. AKINTUNDE ESTHER</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">2</td>
+          <td><strong>2. AKINTUNDE DORCAS</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">3</td>
+          <td><strong>3. ARABA TENIOLA</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">4</td>
+          <td><strong>4. OREGBESAN MERCY</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">5</td>
+          <td><strong>5. ADEBANJO IKEOLUWA</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">6</td>
+          <td><strong>6. IKECHUKWU PRAISE</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">7</td>
+          <td><strong>7. OLORODE SHINDARA</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">8</td>
+          <td><strong>8. OLANREWAJU KAMAL</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">9</td>
+          <td><strong>9. MICHAEL ANA</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">10</td>
+          <td><strong>10. OKEBOWALE ALIAMEEN</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">11</td>
+          <td><strong>11. OLUWAFEMI SUCCESS</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">12</td>
+          <td><strong>12. OKIKI DARAMOLA</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">13</td>
+          <td><strong>13. STEPHEN JOSHUA</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">14</td>
+          <td><strong>14. ABANBESHI PRAISE</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">15</td>
+          <td><strong>15. ADAM ALIAMEEN</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">16</td>
+          <td><strong>16. ADEDAPO IREOLUWA</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">17</td>
+          <td><strong>17. KABIR NANA</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">18</td>
+          <td><strong>18. ADAM MARIAM</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">19</td>
+          <td><strong>19. AHMED ZAINAB</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">20</td>
+          <td><strong>20. EZEKIEL REBBECA</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">21</td>
+          <td><strong>21. IMEH RUTH</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">22</td>
+          <td><strong>22. GBEMISOGO DUROJAIYE</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">23</td>
+          <td><strong>23. KOLADE ESTHER</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">24</td>
+          <td><strong>24. IMRAN SHAKUR</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">25</td>
+          <td><strong>25. OLUGBOGI OMOWUMI</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">26</td>
+          <td><strong>26. SAHEED LABEEBA</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">27</td>
+          <td><strong>27. SULAIMAN AHMAD</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">28</td>
+          <td><strong>28. OSABOA LIFTED</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">29</td>
+          <td><strong>29. OGBNONAYA DAVID</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">30</td>
+          <td><strong>30. GIDION EMMANUEL</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">31</td>
+          <td><strong>31.   ILESANMI PRAISE</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">32</td>
+          <td><strong>32. UCHE KALU CHIGOZIE</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">33</td>
+          <td><strong>33. UCHE KALU</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">34</td>
+          <td><strong>34. JOKE AYANDIRAN</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">35</td>
+          <td><strong>35. SHAKEERAH ALIU</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">36</td>
+          <td><strong>36. SAMOLAWALE</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">37</td>
+          <td><strong>37. CHIKA MADU</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">38</td>
+          <td><strong>38. STEPHEN TOCHI</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">39</td>
+          <td><strong>39. ARIGBEDE DARASIMI</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">40</td>
+          <td><strong>40. ANASTASIA ADIBIE</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">41</td>
+          <td><strong>41. MAZEEDAT ABDULHAMEED</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">42</td>
+          <td><strong>42. KINGSLEY</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">43</td>
+          <td><strong>43. EWE DIVINE</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">44</td>
+          <td><strong>44. OLORODE SHINDARA</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">45</td>
+          <td><strong>45. LAWAL FAREEDAT</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">46</td>
+          <td><strong>46. RABIU FAREEDAT</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">47</td>
+          <td><strong>47. TAIWO SAMAD</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">48</td>
+          <td><strong>48. OKIKI JOSHUA</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">49</td>
+          <td><strong>49. ONYEBUCHI CALEB</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">50</td>
+          <td><strong>50. WISDOM AKPAN</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">51</td>
+          <td><strong>51. IFESINACHI FAVOR</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">52</td>
+          <td><strong>52. NWANA LIFE</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">53</td>
+          <td><strong>53. OLAYIWOLA AISHAT</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">54</td>
+          <td><strong>54. CHARLES PRINCE</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">55</td>
+          <td><strong>55. NWIGWE PRINCE</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">56</td>
+          <td><strong>56.ONYEBUCHI  GOODNESS</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">57</td>
+          <td><strong>57. EBAH ELIZABETH</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">58</td>
+          <td><strong>58. YUSUF SAHADAT</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">59</td>
+          <td><strong>59. MAZEED ADEBIYI</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">60</td>
+          <td><strong>60. STEPHEN ANGBEYE</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">61</td>
+          <td><strong>61. IKECHUKWU ALL WELL</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">62</td>
+          <td><strong>62. AYENI KEHINDE</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">63</td>
+          <td><strong>63. ADIKWE HAPPINESS</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">64</td>
+          <td><strong>64. SAMUEL FAWEHINMI</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">65</td>
+          <td><strong>65. ORDIA ESTHER</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+1</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+2</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+3</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      </tbody>
+    </table>
+
+    <div class="footer-summary">
+      <div>Actual Headcount Present: ________ Students &bull; ________ Teachers</div>
+      <div>Verified By (Staff Initials): ____________ &nbsp;&bull;&nbsp; Digital Synced By: ____________</div>
+    </div>
+  </div>
+  <div class="school-card">
+    <div class="school-header">
+      <div>
+        <span class="school-title">12. Skye-view College</span>
+        <span class="badge badge-priv">Private</span>
+        <span class="badge badge-tour">UNIPOD Tour: YES</span>
+        <span class="badge" style="background:#f3e8fd; border-color:#9333ea; color:#6b21a8;">Hackathon Team: YES</span>
+      </div>
+      <div class="school-meta">
+        <strong>Expected:</strong> 3 Students &bull; 6 Staff
+      </div>
+    </div>
+
+    <div class="contact-row">
+      <div><strong>Lead / Rep:</strong> Abdulwasiu Kolapo (Principal )</div>
+      <div><strong>Email:</strong> kabdwasiu@gmail.com</div>
+    </div>
+
+    <!-- Accompanying Teachers Table -->
+    <div class="table-section-title">Accompanying Teachers & Staff</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Staff / Teacher Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>1. Akintunde Fatai Ayinla</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">2</td>
+          <td><strong>2. Idris Alimot Sadia</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">3</td>
+          <td><strong>3. Paul Odufu</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">4</td>
+          <td><strong>4. Abdulkabir Muhammad</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">5</td>
+          <td><strong>5. Komolafe Muhinat</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">6</td>
+          <td><strong>6. Nusaybah Maruf Adenike</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr class="walkin-row">
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#999;">+</td>
+          <td><span class="line"></span> <em>(Extra / Substitute Teacher write-in)</em></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Students Table -->
+    <div class="table-section-title">Registered Students</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Student Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>Abdulwasiu Abubakr</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">2</td>
+          <td><strong>Akande Abdullateef</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">3</td>
+          <td><strong>Maryam Abdulwasiu</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+1</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+2</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+3</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+4</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+5</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      </tbody>
+    </table>
+
+    <div class="footer-summary">
+      <div>Actual Headcount Present: ________ Students &bull; ________ Teachers</div>
+      <div>Verified By (Staff Initials): ____________ &nbsp;&bull;&nbsp; Digital Synced By: ____________</div>
+    </div>
+  </div>
+  <div class="school-card">
+    <div class="school-header">
+      <div>
+        <span class="school-title">13. LA GRACIA DIVINA SCHOOL</span>
+        <span class="badge badge-priv">Private</span>
+        <span class="badge badge-tour">UNIPOD Tour: YES</span>
+        
+      </div>
+      <div class="school-meta">
+        <strong>Expected:</strong> 10 Students &bull; 5 Staff
+      </div>
+    </div>
+
+    <div class="contact-row">
+      <div><strong>Lead / Rep:</strong> Oluwapelumi Ikotun (School Administrator/STEM Educator )</div>
+      <div><strong>Email:</strong> lagraciadivinaschool@gmail.com</div>
+    </div>
+
+    <!-- Accompanying Teachers Table -->
+    <div class="table-section-title">Accompanying Teachers & Staff</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Staff / Teacher Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>Ikotun Oluwapelumi</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">2</td>
+          <td><strong>Omowunmi Alimi</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">3</td>
+          <td><strong>Bankole Folake</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">4</td>
+          <td><strong>Lateef Kazeem</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">5</td>
+          <td><strong>Francis Alomore</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr class="walkin-row">
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#999;">+</td>
+          <td><span class="line"></span> <em>(Extra / Substitute Teacher write-in)</em></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Students Table -->
+    <div class="table-section-title">Registered Students</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Student Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>Ziyadat Adunmo</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">2</td>
+          <td><strong>Barakat Kareem</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">3</td>
+          <td><strong>Joshua Balogun</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">4</td>
+          <td><strong>Oluwajamisire Olajide</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">5</td>
+          <td><strong>Adisa Yusuf</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">6</td>
+          <td><strong>Hassan Giwa</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">7</td>
+          <td><strong>Sadat Adunmo</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">8</td>
+          <td><strong>Esther Balogun</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">9</td>
+          <td><strong>Ajiboye Mistura</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">10</td>
+          <td><strong>Fareed Ajiboye</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+1</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+2</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+3</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      </tbody>
+    </table>
+
+    <div class="footer-summary">
+      <div>Actual Headcount Present: ________ Students &bull; ________ Teachers</div>
+      <div>Verified By (Staff Initials): ____________ &nbsp;&bull;&nbsp; Digital Synced By: ____________</div>
+    </div>
+  </div>
+  <div class="school-card">
+    <div class="school-header">
+      <div>
+        <span class="school-title">14. Ajumoni senior secondary school</span>
+        <span class="badge badge-pub">Public</span>
+        <span class="badge badge-tour">UNIPOD Tour: YES</span>
+        <span class="badge" style="background:#f3e8fd; border-color:#9333ea; color:#6b21a8;">Hackathon Team: YES</span>
+      </div>
+      <div class="school-meta">
+        <strong>Expected:</strong> 1 Students &bull; 1 Staff
+      </div>
+    </div>
+
+    <div class="contact-row">
+      <div><strong>Lead / Rep:</strong> Mustapha Qudus (Student )</div>
+      <div><strong>Email:</strong> oyewolekafilat@gmail.com</div>
+    </div>
+
+    <!-- Accompanying Teachers Table -->
+    <div class="table-section-title">Accompanying Teachers & Staff</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Staff / Teacher Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>Miss ogunowo</strong></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+        <tr class="walkin-row">
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#999;">+</td>
+          <td><span class="line"></span> <em>(Extra / Substitute Teacher write-in)</em></td>
+          <td class="col-swag">Blue Book [ &nbsp; ]</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Students Table -->
+    <div class="table-section-title">Registered Students</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Student Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td class="col-box"><span class="check-box"></span></td>
+          <td style="color:#777;">1</td>
+          <td><strong>Mustapha qudus</strong></td>
+          <td class="col-swag">Pink Book [ &nbsp; ]</td>
+        </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+1</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+2</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+3</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+4</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#999;">+5</td>
+        <td><span class="line"></span> <em>(Walk-in / replacement student write-in)</em></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      </tbody>
+    </table>
+
+    <div class="footer-summary">
+      <div>Actual Headcount Present: ________ Students &bull; ________ Teachers</div>
+      <div>Verified By (Staff Initials): ____________ &nbsp;&bull;&nbsp; Digital Synced By: ____________</div>
+    </div>
+  </div>
+  <div class="blank-sheet">
+    <h2>EMERGENCY / UNREGISTERED SCHOOL DELEGATION SHEET</h2>
+    <p style="margin:0 0 12px; color:#555; font-size:11px;">
+      Use this sheet if a school delegation arrives that did not pre-register online. Have the lead teacher fill out the contact box, then check students in below.
+    </p>
+
+    <div style="display:grid; grid-template-columns: 2fr 1fr; gap:12px; margin-bottom:14px;">
+      <div style="border:1px solid #bbb; padding:10px; border-radius:4px; background:#fafafa;">
+        <strong>School Name:</strong> ___________________________________________________________<br><br>
+        <strong>School Type:</strong> [ &nbsp; ] Public &nbsp;&nbsp;&nbsp; [ &nbsp; ] Private &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <strong>Hackathon Team:</strong> [ &nbsp; ] Yes &nbsp;&nbsp; [ &nbsp; ] No
+      </div>
+      <div style="border:1px solid #bbb; padding:10px; border-radius:4px; background:#fafafa;">
+        <strong>Lead Teacher Name:</strong> _________________________________<br><br>
+        <strong>Phone Number:</strong> _____________________________________<br><br>
+        <strong>Email:</strong> ____________________________________________
+      </div>
+    </div>
+
+    <div class="table-section-title">Walk-In Delegation Student List</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-box">Door [✓]</th>
+          <th class="col-box">Sync [✓✓]</th>
+          <th style="width: 30px;">#</th>
+          <th>Student Full Name</th>
+          <th class="col-swag">Swag Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr class="walkin-row" style="height:26px;">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#777;">1</td>
+        <td><span class="line"></span></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row" style="height:26px;">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#777;">2</td>
+        <td><span class="line"></span></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row" style="height:26px;">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#777;">3</td>
+        <td><span class="line"></span></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row" style="height:26px;">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#777;">4</td>
+        <td><span class="line"></span></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row" style="height:26px;">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#777;">5</td>
+        <td><span class="line"></span></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row" style="height:26px;">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#777;">6</td>
+        <td><span class="line"></span></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row" style="height:26px;">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#777;">7</td>
+        <td><span class="line"></span></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row" style="height:26px;">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#777;">8</td>
+        <td><span class="line"></span></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row" style="height:26px;">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#777;">9</td>
+        <td><span class="line"></span></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row" style="height:26px;">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#777;">10</td>
+        <td><span class="line"></span></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row" style="height:26px;">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#777;">11</td>
+        <td><span class="line"></span></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row" style="height:26px;">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#777;">12</td>
+        <td><span class="line"></span></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row" style="height:26px;">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#777;">13</td>
+        <td><span class="line"></span></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row" style="height:26px;">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#777;">14</td>
+        <td><span class="line"></span></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      <tr class="walkin-row" style="height:26px;">
+        <td class="col-box"><span class="check-box"></span></td>
+        <td class="col-box"><span class="check-box"></span></td>
+        <td style="color:#777;">15</td>
+        <td><span class="line"></span></td>
+        <td class="col-swag">Pink Book [ &nbsp; ]</td>
+      </tr>
+      </tbody>
+    </table>
+
+    <div class="footer-summary" style="margin-top:12px;">
+      <div>Total Walk-in Count: ________ Students &bull; ________ Teachers</div>
+      <div>Desk Volunteer Initials: ____________ &bull; Time of Arrival: ____________</div>
+    </div>
+  </div>
+
+</body>
+</html>

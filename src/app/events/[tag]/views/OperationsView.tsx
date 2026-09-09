@@ -79,7 +79,7 @@ export function OperationsView() {
             .from("attendees")
             .select("id, first_name, last_name, check_in, check_in_time, email_status, checked_in_by_staff_id, checked_in_by, referred_by_collaborator_id")
             .eq("event_id", eventData.id)
-            .eq("email_status", "registered");
+            .neq("email_status", "invited");
 
         if (attendeesData) {
             // Referral Counts

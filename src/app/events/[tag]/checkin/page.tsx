@@ -397,7 +397,7 @@ export default function CheckInPage() {
                 "id, first_name, last_name, email, ref, check_in, check_in_time, checked_in_by, email_status, properties, pass:passes(title), answers(question_id, answer_text, questions(title))"
             )
             .eq("event_id", eventId)
-            .eq("email_status", "registered")
+            .neq("email_status", "invited")
             .order("first_name", { ascending: true });
 
         if (error) {

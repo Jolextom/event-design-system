@@ -56,7 +56,7 @@ export async function POST(
             .from("attendees")
             .select("id, first_name, last_name, email, ref, check_in, email_status, referred_by_collaborator_id, pass:passes(title)")
             .eq("event_id", event.id)
-            .eq("email_status", "registered")
+            .neq("email_status", "invited")
             .order("first_name", { ascending: true });
 
         if (collaborator.view_scope === "own_only") {
