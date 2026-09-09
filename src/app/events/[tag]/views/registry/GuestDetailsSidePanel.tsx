@@ -455,8 +455,30 @@ export function GuestDetailsSidePanel({
                                                     <div className="flex items-center gap-3 text-sm font-bold text-gray-600">
                                                         <Ticket className="w-4 h-4 text-gray-400" />
                                                         <span className="text-gray-400 min-w-[80px]">Ticket</span>
-                                                        <span>{pass?.title || "Unknown Pass"}</span>
+                                                        <span className={cn(
+                                                            attendee.properties?.livestream && "text-purple-700 font-black"
+                                                        )}>
+                                                            {pass?.title || (
+                                                                attendee.properties?.livestream || attendee.properties?.type === 'livestream'
+                                                                    ? "Virtual Livestream"
+                                                                    : attendee.properties?.waitlist || attendee.properties?.type === 'waitlist'
+                                                                        ? "In-Person Waitlist"
+                                                                        : "General Admission"
+                                                            )}
+                                                        </span>
                                                     </div>
+                                                    {attendee.properties?.organization && (
+                                                        <div className="flex items-center gap-3 text-sm font-bold text-gray-600">
+                                                            <span className="text-gray-400 min-w-[80px]">School / Org</span>
+                                                            <span className="text-gray-900">{attendee.properties.organization}</span>
+                                                        </div>
+                                                    )}
+                                                    {attendee.properties?.role && (
+                                                        <div className="flex items-center gap-3 text-sm font-bold text-gray-600">
+                                                            <span className="text-gray-400 min-w-[80px]">Role</span>
+                                                            <span className="text-gray-900">{attendee.properties.role}</span>
+                                                        </div>
+                                                    )}
                                                     <div className="flex items-center gap-3 text-sm font-bold text-gray-600">
                                                         <Calendar className="w-4 h-4 text-gray-400" />
                                                         <span className="text-gray-400 min-w-[80px]">Registered</span>
@@ -544,7 +566,17 @@ export function GuestDetailsSidePanel({
                                                 <p className="text-sm text-gray-400 italic text-center py-8">No custom questions for this event.</p>
                                             )}
                                             {questions.map(q => {
-                                                const answer = (attendee as any).responses?.[q.id];
+                                                let answer = (attendee as any).responses?.[q.id];
+                                                if (!answer && attendee.properties) {
+                                                    const qTitle = q.title.toLowerCase();
+                                                    if (qTitle.includes("school") || qTitle.includes("organisation") || qTitle.includes("organization")) {
+                                                        answer = attendee.properties.organization || attendee.properties.school_name;
+                                                    } else if (qTitle.includes("role") || qTitle.includes("job") || qTitle.includes("designation")) {
+                                                        answer = attendee.properties.role;
+                                                    } else if (qTitle.includes("phone")) {
+                                                        answer = attendee.properties.phone;
+                                                    }
+                                                }
                                                 return (
                                                     <div key={q.id} className="p-4 border border-gray-100 rounded-2xl space-y-2">
                                                         <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{q.title}</p>

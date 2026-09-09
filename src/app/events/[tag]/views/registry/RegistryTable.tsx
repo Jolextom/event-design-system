@@ -2,7 +2,7 @@
 
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Clock, ShieldCheck, CheckCircle2, MoreHorizontal, User, Ticket, Users, Trash2, Calendar, Hash } from "lucide-react";
+import { Search, Clock, ShieldCheck, CheckCircle2, MoreHorizontal, User, Ticket, Users, Trash2, Calendar, Hash, Video } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Attendee, Question, Pass } from "../../types";
 import { cn } from "@/lib/utils";
@@ -133,8 +133,10 @@ export function RegistryTable({
                             </tr>
                         ) : (
                             attendees.map((attendee) => {
-                                const ticketName = passes.find(p => p.id === attendee.pass_id)?.title || "-";
+                                const isLivestream = attendee.properties?.type === 'livestream' || attendee.properties?.livestream;
+                                const isWaitlist = attendee.properties?.type === 'waitlist' || attendee.properties?.waitlist;
                                 const pass = passes.find(p => p.id === attendee.pass_id);
+                                const ticketName = pass?.title || (isLivestream ? "Virtual Livestream" : isWaitlist ? "Waitlist" : "-");
                                 const isGroup = pass?.type === 'group';
                                 const isPrimary = isGroup && attendee.order?.email === attendee.email;
                                 const groupSize = pass?.group_size || 0;
@@ -180,6 +182,13 @@ export function RegistryTable({
                                                         <div className="flex items-center gap-2">
                                                             {/* ICON RENDER LOGIC */}
                                                             {(() => {
+                                                                if (isLivestream) {
+                                                                    return (
+                                                                        <div className="w-5 h-5 rounded-md bg-purple-50 text-purple-600 flex items-center justify-center ring-1 ring-purple-100">
+                                                                            <Video className="w-2.5 h-2.5" />
+                                                                        </div>
+                                                                    );
+                                                                }
                                                                 if (isPrimary) {
                                                                     return (
                                                                         <div className="w-5 h-5 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center ring-1 ring-blue-100">
@@ -201,7 +210,10 @@ export function RegistryTable({
                                                                 );
                                                             })()}
 
-                                                            <span className="text-[11px] font-bold text-gray-600 truncate max-w-[140px]" title={ticketName}>
+                                                            <span className={cn(
+                                                                "text-[11px] font-bold truncate max-w-[140px]",
+                                                                isLivestream ? "text-purple-700 font-black" : isWaitlist ? "text-amber-700 font-black" : "text-gray-600"
+                                                            )} title={ticketName}>
                                                                 {ticketName}
                                                             </span>
 
@@ -255,7 +267,19 @@ export function RegistryTable({
 
                                                 if (col.type === 'question') {
                                                     // Standard questions use ID in responses
-                                                    value = (attendee as any).responses?.[col.id] || "-";
+                                                    value = (attendee as any).responses?.[col.id];
+                                                    // Fallback: Check attendee.properties for virtual registrants
+                                                    if (!value && attendee.properties) {
+                                                        const qTitle = col.label.toLowerCase();
+                                                        if (qTitle.includes("school") || qTitle.includes("organisation") || qTitle.includes("organization")) {
+                                                            value = attendee.properties.organization || attendee.properties.school_name;
+                                                        } else if (qTitle.includes("role") || qTitle.includes("job") || qTitle.includes("designation")) {
+                                                            value = attendee.properties.role;
+                                                        } else if (qTitle.includes("phone")) {
+                                                            value = attendee.properties.phone;
+                                                        }
+                                                    }
+                                                    if (!value) value = "-";
                                                 } else if (col.type === 'variable' || col.type === 'custom') {
                                                     // Variables use label (name) in properties
                                                     value = attendee.properties?.[col.label] ||
