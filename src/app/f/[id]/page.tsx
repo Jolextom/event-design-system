@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
-import { Loader2, CheckCircle2, Star, ArrowRight, ArrowLeft, AlertCircle, HelpCircle } from "lucide-react";
+import { Loader2, CheckCircle2, Star, ArrowRight, ArrowLeft, AlertCircle, HelpCircle, Check, Search, Menu, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Campaign, Question } from "../../events/[tag]/types";
 import { motion } from "framer-motion";
@@ -173,23 +173,23 @@ export default function PublicFormPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8FAFC]">
-                <Loader2 className="w-8 h-8 animate-spin text-[#1255FB] mb-3" />
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Loading Survey...</p>
+            <div className="min-h-screen flex flex-col items-center justify-center bg-white text-gray-900">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-3" />
+                <p className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Loading Survey...</p>
             </div>
         );
     }
 
     if (notFound || !campaign) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] px-4">
-                <div className="bg-white border border-slate-200/80 rounded-3xl p-8 max-w-md w-full text-center shadow-xl shadow-slate-200/50">
-                    <div className="w-14 h-14 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <div className="min-h-screen flex items-center justify-center bg-white px-4 text-gray-900">
+                <div className="bg-white border-2 border-gray-100 rounded-[32px] p-8 max-w-md w-full text-center shadow-lg">
+                    <div className="w-14 h-14 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-100">
                         <AlertCircle className="w-7 h-7" />
                     </div>
-                    <h1 className="text-lg font-bold text-slate-900">Survey Not Found</h1>
-                    <p className="text-sm text-slate-500 font-medium mt-2">
-                        This link may be expired, closed, or incomplete.
+                    <h1 className="text-xl font-black text-gray-900 tracking-tight">Survey Not Available</h1>
+                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mt-2">
+                        This survey link may be expired, closed, or incomplete.
                     </p>
                 </div>
             </div>
@@ -198,13 +198,13 @@ export default function PublicFormPage() {
 
     if (notPublished) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] px-4">
-                <div className="bg-white border border-slate-200/80 rounded-3xl p-8 max-w-md w-full text-center shadow-xl shadow-slate-200/50">
-                    <div className="w-14 h-14 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <div className="min-h-screen flex items-center justify-center bg-white px-4 text-gray-900">
+                <div className="bg-white border-2 border-gray-100 rounded-[32px] p-8 max-w-md w-full text-center shadow-lg">
+                    <div className="w-14 h-14 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-100">
                         <HelpCircle className="w-7 h-7" />
                     </div>
-                    <h1 className="text-lg font-bold text-slate-900">Draft Survey</h1>
-                    <p className="text-sm text-slate-500 font-medium mt-2">
+                    <h1 className="text-xl font-black text-gray-900 tracking-tight">Draft Survey</h1>
+                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mt-2">
                         "{campaign.name}" is currently in draft mode. Publish the campaign in the dashboard to make it active.
                     </p>
                 </div>
@@ -214,23 +214,21 @@ export default function PublicFormPage() {
 
     if (submitted) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] px-4 py-12">
+            <div className="min-h-screen flex items-center justify-center bg-white px-4 py-12 text-gray-900 selection:bg-blue-100">
                 <motion.div 
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="bg-white border border-slate-200/80 rounded-3xl p-8 sm:p-10 max-w-md w-full text-center shadow-xl shadow-slate-200/50"
+                    className="bg-white border-2 border-gray-100 rounded-[32px] p-8 sm:p-10 max-w-md w-full text-center shadow-xl"
                 >
-                    <div className="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-inner">
+                    <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-[24px] flex items-center justify-center mx-auto mb-5 border border-blue-100">
                         <CheckCircle2 className="w-9 h-9" />
                     </div>
-                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Thank You!</h1>
-                    <p className="text-sm text-slate-600 font-medium mt-2 leading-relaxed">
-                        Your response has been successfully recorded. We appreciate your insights!
+                    <h1 className="text-3xl font-black text-gray-900 tracking-tight">Thank You!</h1>
+                    <p className="text-sm font-bold text-gray-500 mt-3 leading-relaxed">
+                        Your response has been successfully recorded. We appreciate your valuable insights!
                     </p>
-                    <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-center gap-2 text-xs font-bold text-slate-400">
+                    <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
                         <span>AI FOR AFRICA'S EDUCATION SUMMIT</span>
-                        <span>•</span>
-                        <span className="text-[#1255FB]">KINI AI</span>
                     </div>
                 </motion.div>
             </div>
@@ -238,274 +236,301 @@ export default function PublicFormPage() {
     }
 
     const isLastPage = resolveNextPage() > pageCount;
-    const progressPercent = Math.round((currentPage / pageCount) * 100);
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC] py-8 sm:py-14 px-4 relative overflow-hidden" style={{
-            backgroundImage: "radial-gradient(circle at 50% 0%, rgba(18, 85, 251, 0.08) 0%, rgba(248, 250, 252, 1) 70%)"
-        }}>
-            <div className="max-w-xl mx-auto space-y-6 relative z-10">
-                
-                {/* Brand Banner Badge */}
-                <div className="flex items-center justify-between px-2">
-                    <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-[#1255FB] animate-pulse" />
-                        <span className="text-[11px] font-bold tracking-wider text-slate-500 uppercase">
-                            AI FOR AFRICA'S EDUCATION SUMMIT
-                        </span>
-                    </div>
-                    <span className="text-[11px] font-extrabold text-[#1255FB] tracking-wide">
-                        KINI AI
+        <div className="min-h-screen bg-white text-[#111827] flex flex-col justify-between selection:bg-blue-100 relative">
+            
+            {/* Top Navigation Bar (Summit EventFlow style) */}
+            <header className="w-full p-6 md:px-10 md:py-6 flex items-center justify-between z-50 bg-white/80 backdrop-blur-md sticky top-0 border-b border-gray-50">
+                <div className="flex items-center gap-2 group cursor-pointer">
+                    <div className="w-7 h-7 flex items-center justify-center font-black text-xs bg-red-50 text-red-600 rounded-lg border border-red-100">❤</div>
+                    <span className="font-black tracking-tighter text-gray-900 text-base">EventFlow</span>
+                </div>
+                <div className="flex items-center gap-3">
+                    <span className="px-3 py-1 bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-[0.2em] rounded-full border border-blue-100">
+                        Official Survey
                     </span>
                 </div>
+            </header>
 
-                {/* Progress Bar */}
-                {pageCount > 1 && (
-                    <div className="bg-white/80 backdrop-blur border border-slate-200/80 rounded-2xl p-4 shadow-sm">
-                        <div className="flex items-center justify-between text-xs font-bold text-slate-600 mb-2">
-                            <span>Step {currentPage} of {pageCount}</span>
-                            <span className="text-[#1255FB]">{progressPercent}%</span>
+            {/* Main Content Body */}
+            <main className="flex-1 py-8 sm:py-14 px-4 flex flex-col items-center">
+                <div className="max-w-2xl w-full space-y-8">
+                    
+                    {/* Campaign Header & Badges */}
+                    <div className="text-center space-y-3">
+                        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-[0.2em] rounded-full border border-blue-100">
+                            AI Readiness Survey
                         </div>
-                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                            <div 
-                                className="h-full bg-[#1255FB] rounded-full transition-all duration-500 ease-out"
-                                style={{ width: `${progressPercent}%` }}
-                            />
-                        </div>
+                        <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-gray-900 leading-tight">
+                            {campaign.name}
+                        </h1>
+                        <p className="text-xs sm:text-sm font-bold text-gray-400 max-w-md mx-auto uppercase tracking-wider leading-relaxed">
+                            Help us understand AI readiness across Lagos schools.
+                        </p>
                     </div>
-                )}
 
-                {/* Main Card Header */}
-                <div className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-sm">
-                    <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight leading-snug">
-                        {campaign.name}
-                    </h1>
-                </div>
+                    {/* Stepper Progress Bar */}
+                    {pageCount > 1 && (
+                        <div className="space-y-2 max-w-lg mx-auto">
+                            <div className="flex items-center gap-1.5">
+                                {Array.from({ length: pageCount }, (_, i) => i + 1).map(p => (
+                                    <div 
+                                        key={p} 
+                                        className={cn(
+                                            "h-1.5 flex-1 rounded-full transition-all duration-300",
+                                            p <= currentPage ? "bg-blue-600" : "bg-gray-100"
+                                        )} 
+                                    />
+                                ))}
+                            </div>
+                            <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+                                <span>Step {currentPage} of {pageCount}</span>
+                                <span className="text-blue-600 font-black">{Math.round((currentPage / pageCount) * 100)}% Completed</span>
+                            </div>
+                        </div>
+                    )}
 
-                {/* Error Banner */}
-                {error && (
-                    <motion.div 
-                        initial={{ opacity: 0, y: -6 }} 
-                        animate={{ opacity: 1, y: 0 }}
-                        className="p-4 bg-red-50/90 border border-red-200 rounded-2xl text-xs sm:text-sm text-red-600 font-semibold flex items-center gap-2.5 shadow-sm"
-                    >
-                        <AlertCircle className="w-4 h-4 shrink-0" />
-                        <span>{error}</span>
-                    </motion.div>
-                )}
+                    {/* Error Banner */}
+                    {error && (
+                        <motion.div 
+                            initial={{ opacity: 0, y: -6 }} 
+                            animate={{ opacity: 1, y: 0 }}
+                            className="p-4 bg-red-50 border-2 border-red-100 rounded-[20px] text-xs sm:text-sm text-red-600 font-black flex items-center gap-2.5 shadow-sm"
+                        >
+                            <AlertCircle className="w-4.5 h-4.5 shrink-0" />
+                            <span>{error}</span>
+                        </motion.div>
+                    )}
 
-                {/* Questions List */}
-                <div className="space-y-4">
-                    {questionsOnPage.map((q) => (
-                        <div key={q.id} className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-7 shadow-sm space-y-4">
-                            <label className="text-sm sm:text-base font-bold text-slate-900 block leading-snug">
-                                {q.title} {q.is_required && <span className="text-red-500 font-bold">*</span>}
-                            </label>
+                    {/* Questions Card */}
+                    <div className="bg-white border-2 border-gray-100 rounded-[32px] p-6 sm:p-10 shadow-sm space-y-8">
+                        {questionsOnPage.map((q) => (
+                            <div key={q.id} className="space-y-4">
+                                <label className="text-base sm:text-lg font-black text-gray-900 block leading-snug tracking-tight">
+                                    {q.title} {q.is_required && <span className="text-blue-600">*</span>}
+                                </label>
 
-                            {/* Text Input */}
-                            {q.question_type === "text" && (
-                                <input
-                                    type="text"
-                                    value={(answers[q.id] as string) || ""}
-                                    onChange={(e) => setAnswer(q.id, e.target.value)}
-                                    placeholder="Type your response here..."
-                                    className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm font-medium text-slate-900 outline-none focus:bg-white focus:border-[#1255FB] focus:ring-4 focus:ring-blue-500/10 transition-all"
-                                />
-                            )}
+                                {/* Text Input */}
+                                {q.question_type === "text" && (
+                                    <input
+                                        type="text"
+                                        value={(answers[q.id] as string) || ""}
+                                        onChange={(e) => setAnswer(q.id, e.target.value)}
+                                        placeholder="Type your response here..."
+                                        className="w-full bg-gray-50/50 border-2 border-gray-100 rounded-[20px] px-5 py-4 text-sm font-semibold text-gray-900 placeholder:text-gray-400 outline-none focus:border-blue-600 focus:bg-white transition-all"
+                                    />
+                                )}
 
-                            {/* Long Text Input */}
-                            {q.question_type === "long_text" && (
-                                <textarea
-                                    rows={4}
-                                    value={(answers[q.id] as string) || ""}
-                                    onChange={(e) => setAnswer(q.id, e.target.value)}
-                                    placeholder="Type your response here..."
-                                    className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm font-medium text-slate-900 outline-none focus:bg-white focus:border-[#1255FB] focus:ring-4 focus:ring-blue-500/10 transition-all resize-none"
-                                />
-                            )}
+                                {/* Long Text Input */}
+                                {q.question_type === "long_text" && (
+                                    <textarea
+                                        rows={4}
+                                        value={(answers[q.id] as string) || ""}
+                                        onChange={(e) => setAnswer(q.id, e.target.value)}
+                                        placeholder="Type your response here..."
+                                        className="w-full bg-gray-50/50 border-2 border-gray-100 rounded-[20px] px-5 py-4 text-sm font-semibold text-gray-900 placeholder:text-gray-400 outline-none focus:border-blue-600 focus:bg-white transition-all resize-none"
+                                    />
+                                )}
 
-                            {/* Single Select (Radio options) */}
-                            {q.question_type === "select" && (
-                                <div className="space-y-2.5">
-                                    {q.options?.map(opt => {
-                                        const isSelected = answers[q.id] === opt.option_text;
-                                        return (
-                                            <button
-                                                key={opt.id}
-                                                type="button"
-                                                onClick={() => setAnswer(q.id, opt.option_text)}
-                                                className={cn(
-                                                    "w-full text-left px-4 py-3.5 rounded-2xl border-2 text-xs sm:text-sm font-semibold transition-all flex items-center justify-between gap-3",
-                                                    isSelected 
-                                                        ? "bg-blue-50/80 border-[#1255FB] text-[#00133F] shadow-sm ring-2 ring-blue-500/10" 
-                                                        : "bg-slate-50/50 border-slate-200/80 text-slate-700 hover:bg-slate-100/80 hover:border-slate-300"
-                                                )}
-                                            >
-                                                <span>{opt.option_text}</span>
-                                                <div className={cn(
-                                                    "w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-all",
-                                                    isSelected ? "border-[#1255FB] bg-[#1255FB]" : "border-slate-300"
-                                                )}>
-                                                    {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
+                                {/* Dropdown or Select */}
+                                {q.question_type === "dropdown" && (
+                                    <select
+                                        value={(answers[q.id] as string) || ""}
+                                        onChange={(e) => setAnswer(q.id, e.target.value)}
+                                        className="w-full bg-gray-50/50 border-2 border-gray-100 rounded-[20px] px-5 py-4 text-sm font-semibold text-gray-900 outline-none focus:border-blue-600 focus:bg-white transition-all"
+                                    >
+                                        <option value="" disabled className="text-gray-400">Select an option...</option>
+                                        {q.options?.map(opt => (
+                                            <option key={opt.id} value={opt.option_text} className="text-gray-900">
+                                                {opt.option_text}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
 
-                            {/* Dropdown */}
-                            {q.question_type === "dropdown" && (
-                                <select
-                                    value={(answers[q.id] as string) || ""}
-                                    onChange={(e) => setAnswer(q.id, e.target.value)}
-                                    className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm font-medium text-slate-900 outline-none focus:bg-white focus:border-[#1255FB] focus:ring-4 focus:ring-blue-500/10 transition-all"
-                                >
-                                    <option value="" disabled>Select an option...</option>
-                                    {q.options?.map(opt => (
-                                        <option key={opt.id} value={opt.option_text}>{opt.option_text}</option>
-                                    ))}
-                                </select>
-                            )}
-
-                            {/* Multi-select Checkbox */}
-                            {q.question_type === "checkbox" && (
-                                <div className="space-y-2.5">
-                                    {q.options?.map(opt => {
-                                        const checked = ((answers[q.id] as string[]) || []).includes(opt.option_text);
-                                        return (
-                                            <button
-                                                key={opt.id}
-                                                type="button"
-                                                onClick={() => toggleCheckbox(q.id, opt.option_text)}
-                                                className={cn(
-                                                    "w-full flex items-center justify-between text-left px-4 py-3.5 rounded-2xl border-2 text-xs sm:text-sm font-semibold transition-all",
-                                                    checked 
-                                                        ? "bg-blue-50/80 border-[#1255FB] text-[#00133F] shadow-sm ring-2 ring-blue-500/10" 
-                                                        : "bg-slate-50/50 border-slate-200/80 text-slate-700 hover:bg-slate-100/80 hover:border-slate-300"
-                                                )}
-                                            >
-                                                <span>{opt.option_text}</span>
-                                                <div className={cn(
-                                                    "w-4 h-4 rounded-md border-2 flex items-center justify-center shrink-0 transition-all",
-                                                    checked ? "bg-[#1255FB] border-[#1255FB]" : "border-slate-300"
-                                                )}>
-                                                    {checked && <CheckCircle2 className="w-3 h-3 text-white" />}
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
-
-                            {/* Linear Scale */}
-                            {q.question_type === "linear_scale" && (() => {
-                                const min = q.scale_config?.min ?? 1;
-                                const max = q.scale_config?.max ?? 5;
-                                const values = Array.from({ length: Math.max(1, max - min + 1) }, (_, i) => min + i);
-                                return (
-                                    <div className="space-y-3 pt-1">
-                                        <div className="flex items-center gap-2">
-                                            {values.map(n => (
+                                {/* Radio Options (Select) */}
+                                {q.question_type === "select" && (
+                                    <div className="space-y-3">
+                                        {q.options?.map(opt => {
+                                            const isSelected = answers[q.id] === opt.option_text;
+                                            return (
                                                 <button
-                                                    key={n}
+                                                    key={opt.id}
                                                     type="button"
-                                                    onClick={() => setAnswer(q.id, n)}
+                                                    onClick={() => setAnswer(q.id, opt.option_text)}
                                                     className={cn(
-                                                        "flex-1 py-3 rounded-xl border-2 text-sm font-bold transition-all",
-                                                        answers[q.id] === n 
-                                                            ? "bg-[#1255FB] border-[#1255FB] text-white shadow-md shadow-blue-500/20" 
-                                                            : "bg-slate-50/80 border-slate-200/80 text-slate-700 hover:border-slate-300"
+                                                        "w-full text-left p-5 rounded-[24px] border-2 transition-all flex items-center justify-between gap-3 group",
+                                                        isSelected 
+                                                            ? "bg-blue-50/50 border-blue-600 shadow-sm" 
+                                                            : "bg-white border-gray-100 hover:border-gray-200"
                                                     )}
                                                 >
-                                                    {n}
+                                                    <span className={cn("text-sm font-black transition-colors", isSelected ? "text-blue-700" : "text-gray-900")}>
+                                                        {opt.option_text}
+                                                    </span>
+                                                    <div className={cn(
+                                                        "w-7 h-7 rounded-xl flex items-center justify-center transition-colors shrink-0",
+                                                        isSelected ? "bg-blue-600 text-white" : "bg-gray-50 text-gray-300 group-hover:bg-blue-50 group-hover:text-blue-500"
+                                                    )}>
+                                                        {isSelected ? <Check className="w-4 h-4 stroke-[3]" /> : <ChevronRight className="w-4 h-4" />}
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
+                                {/* Multi-select Checkboxes */}
+                                {q.question_type === "checkbox" && (
+                                    <div className="space-y-3">
+                                        {q.options?.map(opt => {
+                                            const checked = ((answers[q.id] as string[]) || []).includes(opt.option_text);
+                                            return (
+                                                <button
+                                                    key={opt.id}
+                                                    type="button"
+                                                    onClick={() => toggleCheckbox(q.id, opt.option_text)}
+                                                    className={cn(
+                                                        "w-full text-left p-5 rounded-[24px] border-2 transition-all flex items-center justify-between gap-3 group",
+                                                        checked 
+                                                            ? "bg-blue-50/50 border-blue-600 shadow-sm" 
+                                                            : "bg-white border-gray-100 hover:border-gray-200"
+                                                    )}
+                                                >
+                                                    <span className={cn("text-sm font-black transition-colors", checked ? "text-blue-700" : "text-gray-900")}>
+                                                        {opt.option_text}
+                                                    </span>
+                                                    <div className={cn(
+                                                        "w-7 h-7 rounded-xl flex items-center justify-center transition-colors shrink-0",
+                                                        checked ? "bg-blue-600 text-white" : "bg-gray-50 text-gray-300 group-hover:bg-blue-50 group-hover:text-blue-500"
+                                                    )}>
+                                                        {checked ? <Check className="w-4 h-4 stroke-[3]" /> : <ChevronRight className="w-4 h-4" />}
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
+                                {/* Linear Scale */}
+                                {q.question_type === "linear_scale" && (() => {
+                                    const min = q.scale_config?.min ?? 1;
+                                    const max = q.scale_config?.max ?? 5;
+                                    const values = Array.from({ length: Math.max(1, max - min + 1) }, (_, i) => min + i);
+                                    return (
+                                        <div className="space-y-3 pt-1">
+                                            <div className="flex items-center gap-2">
+                                                {values.map(n => (
+                                                    <button
+                                                        key={n}
+                                                        type="button"
+                                                        onClick={() => setAnswer(q.id, n)}
+                                                        className={cn(
+                                                            "flex-1 py-4 rounded-[20px] border-2 text-sm font-black transition-all",
+                                                            answers[q.id] === n 
+                                                                ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/20" 
+                                                                : "bg-white border-gray-100 text-gray-700 hover:border-gray-200 hover:bg-gray-50"
+                                                        )}
+                                                    >
+                                                        {n}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            {(q.scale_config?.min_label || q.scale_config?.max_label) && (
+                                                <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-gray-400 px-1">
+                                                    <span>{q.scale_config?.min_label}</span>
+                                                    <span>{q.scale_config?.max_label}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
+
+                                {/* Star Rating */}
+                                {q.question_type === "star_rating" && (() => {
+                                    const min = q.scale_config?.min ?? 1;
+                                    const max = q.scale_config?.max ?? 5;
+                                    const values = Array.from({ length: Math.max(1, max - min + 1) }, (_, i) => min + i);
+                                    const val = (answers[q.id] as number) || 0;
+                                    return (
+                                        <div className="flex items-center gap-2 py-1">
+                                            {values.map(n => (
+                                                <button 
+                                                    key={n} 
+                                                    type="button" 
+                                                    onClick={() => setAnswer(q.id, n)} 
+                                                    className="p-2 rounded-2xl hover:bg-gray-50 transition-all group"
+                                                >
+                                                    <Star className={cn(
+                                                        "w-8 h-8 transition-all", 
+                                                        n <= val ? "fill-amber-400 text-amber-400 scale-110" : "text-gray-200 group-hover:text-amber-300"
+                                                    )} />
                                                 </button>
                                             ))}
                                         </div>
-                                        {(q.scale_config?.min_label || q.scale_config?.max_label) && (
-                                            <div className="flex items-center justify-between text-xs font-semibold text-slate-500 px-1">
-                                                <span>{q.scale_config?.min_label}</span>
-                                                <span>{q.scale_config?.max_label}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })()}
+                                    );
+                                })()}
+                            </div>
+                        ))}
 
-                            {/* Star Rating */}
-                            {q.question_type === "star_rating" && (() => {
-                                const min = q.scale_config?.min ?? 1;
-                                const max = q.scale_config?.max ?? 5;
-                                const values = Array.from({ length: Math.max(1, max - min + 1) }, (_, i) => min + i);
-                                const val = (answers[q.id] as number) || 0;
-                                return (
-                                    <div className="flex items-center gap-2 py-1">
-                                        {values.map(n => (
-                                            <button 
-                                                key={n} 
-                                                type="button" 
-                                                onClick={() => setAnswer(q.id, n)} 
-                                                className="p-1.5 rounded-xl hover:bg-amber-50 transition-all group"
-                                            >
-                                                <Star className={cn(
-                                                    "w-8 h-8 transition-all", 
-                                                    n <= val ? "fill-amber-400 text-amber-400 scale-110" : "text-slate-200 group-hover:text-amber-200"
-                                                )} />
-                                            </button>
-                                        ))}
-                                    </div>
-                                );
-                            })()}
-                        </div>
-                    ))}
-
-                    {/* Anonymous Email Capture */}
-                    {!attendeeId && isLastPage && (
-                        <div className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-7 shadow-sm space-y-3">
-                            <label className="text-sm font-bold text-slate-900 block">
-                                Your Email Address <span className="text-slate-400 font-medium text-xs">(optional)</span>
-                            </label>
-                            <input
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                placeholder="you@example.com"
-                                className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm font-medium text-slate-900 outline-none focus:bg-white focus:border-[#1255FB] focus:ring-4 focus:ring-blue-500/10 transition-all"
-                            />
-                        </div>
-                    )}
-                </div>
-
-                {/* Bottom Navigation */}
-                <div className="flex items-center gap-3 pt-2">
-                    {currentPage > 1 && (
-                        <button 
-                            onClick={handleBack} 
-                            className="flex items-center gap-2 px-5 py-3.5 rounded-2xl text-xs font-bold text-slate-600 bg-white border border-slate-200/80 hover:bg-slate-50 transition-all shadow-sm"
-                        >
-                            <ArrowLeft className="w-4 h-4" /> Back
-                        </button>
-                    )}
-                    <button
-                        onClick={handleNext}
-                        disabled={submitting}
-                        className="flex-1 flex items-center justify-center gap-2 py-4 bg-[#1255FB] hover:bg-[#0047E1] text-white rounded-2xl text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-blue-500/20 active:scale-[0.99] disabled:opacity-50"
-                    >
-                        {submitting ? (
-                            <Loader2 className="w-4 h-4 animate-spin text-white" />
-                        ) : (
-                            <>{isLastPage ? "Submit Survey" : "Next Step"} <ArrowRight className="w-4 h-4" /></>
+                        {/* Anonymous Email Capture */}
+                        {!attendeeId && isLastPage && (
+                            <div className="space-y-3 pt-4 border-t border-gray-100">
+                                <label className="text-sm font-black text-gray-900 block">
+                                    Your Email Address <span className="text-gray-400 font-bold text-xs uppercase tracking-wider">(optional)</span>
+                                </label>
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    placeholder="you@example.com"
+                                    className="w-full bg-gray-50/50 border-2 border-gray-100 rounded-[20px] px-5 py-4 text-sm font-semibold text-gray-900 placeholder:text-gray-400 outline-none focus:border-blue-600 focus:bg-white transition-all"
+                                />
+                            </div>
                         )}
-                    </button>
-                </div>
 
-                {/* Footer Attribution */}
-                <div className="text-center pt-6 text-[11px] font-bold text-slate-400 tracking-wider">
-                    AI FOR AFRICA'S EDUCATION SUMMIT &middot; KINI AI
-                </div>
+                        {/* Bottom Actions */}
+                        <div className="flex items-center gap-3 pt-6 border-t border-gray-100">
+                            {currentPage > 1 && (
+                                <button 
+                                    onClick={handleBack} 
+                                    className="flex items-center gap-2 px-6 py-4 rounded-[24px] text-xs font-black text-gray-600 bg-gray-50 border-2 border-gray-100 hover:bg-gray-100 transition-all uppercase tracking-widest"
+                                >
+                                    <ArrowLeft className="w-4 h-4" /> Back
+                                </button>
+                            )}
+                            <button
+                                onClick={handleNext}
+                                disabled={submitting}
+                                className="flex-1 flex items-center justify-center gap-2 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-[24px] text-xs sm:text-sm font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-500/20 active:scale-[0.99] disabled:opacity-50"
+                            >
+                                {submitting ? (
+                                    <Loader2 className="w-5 h-5 animate-spin text-white" />
+                                ) : (
+                                    <>{isLastPage ? "Submit Survey" : "Next"} <ArrowRight className="w-4 h-4" /></>
+                                )}
+                            </button>
+                        </div>
+                    </div>
 
-            </div>
+                </div>
+            </main>
+
+            {/* Footer */}
+            <footer className="w-full border-t border-gray-100 bg-white py-8 px-4 text-gray-400 text-xs">
+                <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                        <span className="font-black tracking-tighter text-gray-900 text-sm">EventFlow</span>
+                    </div>
+                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+                        AI FOR AFRICA'S EDUCATION SUMMIT 2026
+                    </div>
+                </div>
+            </footer>
+
         </div>
     );
 }
+
 
