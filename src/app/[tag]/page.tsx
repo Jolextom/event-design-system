@@ -5,37 +5,29 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
+import { Ubuntu } from "next/font/google";
 import {
-    Calendar,
-    MapPin,
-    Clock,
-    ChevronRight,
-    Check,
-    Ticket,
-    ChevronLeft,
-    Sparkles,
-    Share2,
-    CalendarPlus,
-    MessageCircle,
-    Heart,
-    ExternalLink,
-    Map as MapIcon,
-    ArrowRight,
     ArrowLeft,
-    Plus,
-    Minus,
-    Mail,
-    PlusCircle,
+    ArrowUpRight,
+    Check,
+    CheckCircle2,
+    ChevronDown,
+    Globe,
     Loader2,
     AlertCircle,
+    MapPin,
+    Share2,
     Star,
-    CheckCircle2
+    Ticket,
+    X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Event, Pass, Question } from "../events/[tag]/types";
 import { initializeTransaction } from "@/app/actions";
 import { fulfillOrder } from "@/lib/registrations";
-import Script from "next/script";
+import { resolveTheme, themeStyle } from "./theme";
+
+const ubuntu = Ubuntu({ subsets: ["latin"], weight: ["300", "400", "500", "700"], display: "swap" });
 
 export default function RegistrationPage() {
     const params = useParams();
@@ -56,6 +48,7 @@ export default function RegistrationPage() {
     const [quantity, setQuantity] = useState(1);
     const [guests, setGuests] = useState([{ firstName: "", lastName: "", email: "", isInvite: false, answers: {} as Record<string, string | string[] | number> }]);
     const [submitting, setSubmitting] = useState(false);
+    const [linkCopied, setLinkCopied] = useState(false);
 
     // --- Trigger Question Logic (Dynamic Track Selection) ---
     const [triggerAnswers, setTriggerAnswers] = useState<Record<string, string>>({});
@@ -214,6 +207,29 @@ export default function RegistrationPage() {
             return newGuests.map(g => ({ ...g, answers: { ...g.answers, ...triggerAnswerTexts } }));
         });
     }, [totalGuests, triggerAnswerTexts]);
+
+    // Esc closes the registration dialog.
+    useEffect(() => {
+        if (step !== 2) return;
+        const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setStep(1); };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [step]);
+
+    const handleShare = async () => {
+        const url = window.location.href;
+        try {
+            if (navigator.share) {
+                await navigator.share({ title: event?.event_title, url });
+            } else {
+                await navigator.clipboard.writeText(url);
+                setLinkCopied(true);
+                setTimeout(() => setLinkCopied(false), 2000);
+            }
+        } catch {
+            // Share sheet dismissed, or clipboard blocked — nothing to do.
+        }
+    };
 
     const handleRegister = async () => {
         if (!event || !selectedTicket) return;
@@ -449,1005 +465,719 @@ export default function RegistrationPage() {
 
     if (error || !event) {
         return (
-            <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center">
-                <div className="w-20 h-20 bg-red-50 rounded-[32px] flex items-center justify-center mb-8 border border-red-100">
-                    <AlertCircle className="w-10 h-10 text-red-600" />
+            <div className={cn(ubuntu.className, "flex min-h-screen flex-col items-center justify-center bg-white p-6 text-center text-[#131517]")}>
+                <div className="mb-6 grid h-14 w-14 place-items-center rounded-full bg-red-50 text-red-600">
+                    <AlertCircle className="h-7 w-7" />
                 </div>
-                <h1 className="text-3xl font-black text-gray-900 mb-4">{error || "Event not found"}</h1>
-                <p className="text-gray-500 font-bold max-w-sm mb-10">We couldn't find the event you're looking for. Please check the URL and try again.</p>
-                <Link href="/" className="px-8 py-4 bg-gray-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-gray-100">
-                    Go Back Home
+                <h1 className="mb-2 text-2xl font-bold">{error || "Event not found"}</h1>
+                <p className="mb-8 max-w-sm text-[15px] text-[#6b6f76]">We couldn&apos;t find the event you&apos;re looking for. Please check the link and try again.</p>
+                <Link href="/" className="rounded-lg bg-[#131517] px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90">
+                    Go home
                 </Link>
             </div>
         );
     }
 
-    const TicketSelector = ({ isMobile = false, passes: passesProp = [] }: { isMobile?: boolean, passes?: Pass[] }) => {
+    // --- Presentation helpers ---
+    const theme = resolveTheme(event.tag ?? tag);
+    const isPaid = !currentTicket?.is_free && (currentTicket?.price ?? 0) > 0;
+    const isSoldOut = (p: Pass) => (p.quantity_available || 0) - (p.quantity_sold || 0) <= 0;
+    const priceLabel = (p: Pass) => (p.is_free ? "Free" : `₦${(p.price ?? 0).toLocaleString()}`);
+    const canRegister = !!currentTicket && !isSoldOut(currentTicket);
+
+    const startDate = event.start_date ? new Date(event.start_date) : null;
+    const endDate = event.end_date ? new Date(event.end_date) : null;
+    const isMultiDay = !!(startDate && endDate && startDate.toDateString() !== endDate.toDateString());
+    const showYear = !!startDate && startDate.getFullYear() !== new Date().getFullYear();
+    const fmt = (d: Date, o: Intl.DateTimeFormatOptions) => d.toLocaleDateString("en-US", o);
+
+    const dateTitle = !startDate
+        ? "Date to be announced"
+        : isMultiDay && endDate
+            ? `${fmt(startDate, { weekday: "short", month: "short", day: "numeric" })} – ${fmt(endDate, { weekday: "short", month: "short", day: "numeric", ...(showYear ? { year: "numeric" } : {}) })}`
+            : fmt(startDate, { weekday: "long", month: "long", day: "numeric", ...(showYear ? { year: "numeric" } : {}) });
+    const timeLine = event.start_time
+        ? `${formatClock(event.start_time)}${event.end_time ? ` – ${formatClock(event.end_time)}` : ""}`
+        : "Time to be announced";
+
+    const isVirtual = event.event_format === "virtual";
+    const isHybrid = event.event_format === "hybrid";
+    const locationTitle = isVirtual ? (event.virtual_platform || "Online event") : (event.location || "Location to be announced");
+    const mapsUrl = !isVirtual && event.location
+        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`
+        : null;
+
+    // Shared class strings
+    const muted = "text-[color:var(--pg-muted)]";
+    const hairline = "border-[color:var(--pg-border)]";
+    const tile = cn("grid h-11 w-11 shrink-0 place-items-center rounded-lg border bg-[color:var(--pg-surface)]", hairline);
+    const inputCls = cn(
+        "w-full rounded-lg border bg-[color:var(--pg-input)] px-3.5 text-[15px] text-[color:var(--pg-text)] outline-none transition",
+        "placeholder:text-[color:var(--pg-muted)] focus:border-[color:var(--pg-accent)] focus:ring-4 focus:ring-[color:var(--pg-ring)]",
+        hairline
+    );
+    const choiceCls = (selected: boolean, disabled = false) => cn(
+        "flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-[15px] transition",
+        selected ? "border-[color:var(--pg-accent)] bg-[color:var(--pg-selected)]" : cn(hairline, "hover:bg-[color:var(--pg-surface)]"),
+        disabled && "cursor-not-allowed opacity-50 hover:bg-transparent"
+    );
+    const primaryBtn = "flex w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--pg-btn)] font-medium text-[color:var(--pg-btn-fg)] transition hover:opacity-90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40";
+
+    const TicketSelector = ({ passes: passesProp = [] }: { passes?: Pass[] }) => {
         const displayPasses = passesProp && passesProp.length > 0 ? passesProp : (passes || []);
         const currentTrigger = triggerQuestions[currentTriggerIndex];
 
         if (!allTriggersAnswered && currentTrigger) {
             return (
-                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-                    <div className="flex justify-between items-center mb-6">
-                        <div className="space-y-1">
-                            <h3 className={cn(
-                                "font-black uppercase tracking-[0.3em] text-blue-600/40",
-                                isMobile ? "text-[12px]" : "text-[10px]"
-                            )}>
-                                Preference {currentTriggerIndex + 1}/{triggerQuestions.length}
-                            </h3>
-                            <div className="h-1 w-12 bg-blue-600/10 rounded-full" />
-                        </div>
+                <div className="space-y-3">
+                    <div className={cn("flex items-center justify-between text-sm", muted)}>
+                        <span>Question {currentTriggerIndex + 1} of {triggerQuestions.length}</span>
                         {currentTriggerIndex > 0 && (
-                             <button 
-                             onClick={() => setCurrentTriggerIndex(prev => prev - 1)}
-                             className="px-4 py-2 rounded-xl bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-gray-900 hover:bg-gray-100 transition-all border border-gray-100"
-                         >
-                             Back
-                         </button>
+                            <button type="button" onClick={() => setCurrentTriggerIndex(prev => prev - 1)} className="font-medium transition hover:text-[color:var(--pg-text)]">
+                                Back
+                            </button>
                         )}
                     </div>
-                    
-                    <div className="space-y-4">
-                        <h2 className="text-xl font-black text-gray-900 tracking-tight leading-tight">
-                            {currentTrigger.title}
-                        </h2>
-                        <div className="space-y-3">
-                            {currentTrigger.options?.map(opt => {
-                                const isSelected = triggerAnswers[currentTrigger.id] === opt.id;
-                                return (
-                                    <button
-                                        key={opt.id}
-                                        onClick={() => {
-                                            // Guest answers are kept in sync via the totalGuests
-                                            // effect (keyed on triggerAnswerTexts) — covers every
-                                            // guest, not just guest 0.
-                                            setTriggerAnswers({ ...triggerAnswers, [currentTrigger.id]: opt.id });
+                    <h3 className="text-base font-medium">{currentTrigger.title}</h3>
+                    <div className="space-y-2">
+                        {currentTrigger.options?.map(opt => {
+                            const isSelected = triggerAnswers[currentTrigger.id] === opt.id;
+                            return (
+                                <button
+                                    key={opt.id}
+                                    type="button"
+                                    onClick={() => {
+                                        // Guest answers are kept in sync via the totalGuests
+                                        // effect (keyed on triggerAnswerTexts) — covers every
+                                        // guest, not just guest 0.
+                                        setTriggerAnswers({ ...triggerAnswers, [currentTrigger.id]: opt.id });
 
-                                            // Auto-advance to next trigger or show tickets
-                                            if (currentTriggerIndex < triggerQuestions.length - 1) {
-                                                setCurrentTriggerIndex(prev => prev + 1);
-                                            }
-                                        }}
-                                        className={cn(
-                                            "w-full p-5 rounded-[24px] border-2 transition-all flex items-center justify-between group",
-                                            isSelected 
-                                                ? "bg-blue-50/50 border-blue-600 shadow-sm" 
-                                                : "bg-white border-gray-100 hover:border-gray-200"
-                                        )}
-                                    >
-                                        <span className={cn("text-sm font-black transition-colors", isSelected ? "text-blue-700" : "text-gray-900")}>
-                                            {opt.option_text}
-                                        </span>
-                                        <div className={cn(
-                                            "w-8 h-8 rounded-xl flex items-center justify-center transition-colors",
-                                            isSelected ? "bg-blue-600 text-white" : "bg-gray-50 text-gray-300 group-hover:bg-blue-50 group-hover:text-blue-500"
-                                        )}>
-                                            {isSelected ? <Check className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                                        </div>
-                                    </button>
-                                );
-                            })}
-                        </div>
+                                        // Auto-advance to next trigger or show tickets
+                                        if (currentTriggerIndex < triggerQuestions.length - 1) {
+                                            setCurrentTriggerIndex(prev => prev + 1);
+                                        }
+                                    }}
+                                    className={choiceCls(isSelected)}
+                                >
+                                    <Radio selected={isSelected} />
+                                    <span className="flex-1">{opt.option_text}</span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
             );
         }
-        
+
         return (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex items-center justify-between mb-8">
-                    <div className="space-y-1">
-                        <h3 className={cn(
-                            "font-black uppercase tracking-[0.3em] text-blue-600/40",
-                            isMobile ? "text-[12px]" : "text-[10px]"
-                        )}>
-                            Available Passes
-                        </h3>
-                        <div className="h-1 w-12 bg-blue-600/10 rounded-full" />
-                    </div>
-                    {triggerQuestions.length > 0 && (
-                        <button 
-                            onClick={() => {
-                                setTriggerAnswers({});
-                                setCurrentTriggerIndex(0);
-                            }}
-                                                        className="text-[9px] font-black text-gray-400 uppercase tracking-widest hover:text-blue-600 transition-colors flex items-center gap-1.5"
-                        >
-                            <ArrowLeft className="w-3 h-3" /> Change Language
-                        </button>
-                    )}
-                </div>
-                <div className="space-y-3">
+            <div className="space-y-3">
+                {triggerQuestions.length > 0 && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setTriggerAnswers({});
+                            setCurrentTriggerIndex(0);
+                        }}
+                        className={cn("flex items-center gap-1.5 text-sm font-medium transition hover:text-[color:var(--pg-text)]", muted)}
+                    >
+                        <ArrowLeft className="h-3.5 w-3.5" /> Change my answers
+                    </button>
+                )}
+                <div className="space-y-2">
                     {displayPasses.map(ticket => {
-                    const isSelected = selectedTicket === ticket.id;
-                    return (
-                        <div key={ticket.id} className="space-y-2">
+                        const isSelected = selectedTicket === ticket.id;
+                        const soldOut = isSoldOut(ticket);
+                        return (
                             <button
+                                key={ticket.id}
+                                type="button"
+                                disabled={soldOut}
                                 onClick={() => {
                                     setSelectedTicket(ticket.id);
                                     if (ticket.type === "group") setQuantity(1);
                                 }}
-                                className={cn(
-                                    "w-full px-5 py-4 rounded-[24px] border-2 transition-all flex items-center justify-between group text-left",
-                                    isSelected
-                                        ? "bg-blue-50/30 border-blue-600 shadow-[0_8px_24px_-12px_rgba(59,130,246,0.2)]"
-                                        : "bg-white border-gray-100/80 hover:border-gray-200"
-                                )}
+                                className={choiceCls(isSelected && !soldOut, soldOut)}
                             >
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <div className={cn("text-sm font-black transition-colors leading-none", isSelected ? "text-blue-600" : "text-gray-900")}>
-                                            {ticket.title}
-                                        </div>
+                                <Radio selected={isSelected && !soldOut} />
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-medium">{ticket.title}</span>
                                         {ticket.type === "group" && (
-                                            <span className="px-1 py-0.5 bg-gray-900 text-white text-[7px] font-black uppercase tracking-wider rounded-md">Group</span>
+                                            <span className="rounded-md bg-[color:var(--pg-selected)] px-1.5 py-0.5 text-[11px] font-medium">Group</span>
                                         )}
                                     </div>
-                                    <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none">{ticket.description}</div>
+                                    {ticket.description && <div className={cn("text-sm", muted)}>{ticket.description}</div>}
                                 </div>
-                                <div className="text-right ml-4">
-                                    <div className="text-lg font-black text-gray-900 tracking-tight">{ticket.is_free ? 'FREE' : `₦${(ticket.price ?? 0).toLocaleString()}`}</div>
-                                </div>
+                                <div className="font-medium">{soldOut ? "Sold out" : priceLabel(ticket)}</div>
                             </button>
-
-
-                        </div>
-                    );
-                })}
-            </div>
-            {displayPasses.length === 0 && (
-                <div className="py-10 text-center space-y-3">
-                    <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto text-gray-200">
-                        <Ticket className="w-6 h-6" />
-                    </div>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">No tickets available for these choices.</p>
+                        );
+                    })}
                 </div>
-            )}
+                {displayPasses.length === 0 && (
+                    <p className={cn("py-4 text-center text-sm", muted)}>No tickets available for these choices.</p>
+                )}
+            </div>
+        );
+    };
+
+    const hostBlock = theme.hostName ? (
+        <div>
+            <div className={cn("border-b pb-2 text-sm font-medium", hairline, muted)}>Hosted By</div>
+            <div className="flex items-center gap-2.5 pt-3">
+                <span className="grid h-6 w-6 place-items-center rounded-full bg-[color:var(--pg-accent)] text-[11px] font-bold text-[color:var(--pg-btn-fg)]">
+                    {theme.hostName.charAt(0)}
+                </span>
+                <span className="text-[15px] font-medium">{theme.hostName}</span>
+            </div>
         </div>
-    );
-};
-
-    const titleParts = (event?.event_title || "").split(' ');
-    const displayTitleMain = titleParts.slice(0, -1).join(' ');
-    const displayTitleLast = titleParts[titleParts.length - 1];
-
-    const displayDate = (() => {
-        if (!event.start_date) return "Date TBA";
-
-        const startDate = new Date(event.start_date);
-        const startYear = startDate.getFullYear();
-        const startMonth = startDate.toLocaleDateString('en-US', { month: 'short' });
-        const startDay = startDate.getDate();
-        const startWeekday = startDate.toLocaleDateString('en-US', { weekday: 'short' });
-
-        let dateStr = `${startWeekday}, ${startMonth} ${startDay}, ${startYear}`;
-
-        if (event.end_date) {
-            const endDate = new Date(event?.end_date || "");
-            const isSameDay = startDate.toDateString() === endDate.toDateString();
-
-            if (!isSameDay) {
-                const endYear = endDate.getFullYear();
-                const endMonth = endDate.toLocaleDateString('en-US', { month: 'short' });
-                const endDay = endDate.getDate();
-
-                // Format: Jan 22 - 25, 2026
-                if (startYear !== endYear) {
-                    dateStr = `${startMonth} ${startDay}, ${startYear} – ${endMonth} ${endDay}, ${endYear}`;
-                } else if (startMonth !== endMonth) {
-                    dateStr = `${startMonth} ${startDay} – ${endMonth} ${endDay}, ${startYear}`;
-                } else {
-                    dateStr = `${startMonth} ${startDay} – ${endDay}, ${startYear}`;
-                }
-            }
-        }
-        return dateStr;
-    })();
+    ) : null;
 
     return (
-        <div className="min-h-screen bg-white text-[#111827] selection:bg-blue-100 pb-32 relative">
-            {/* Redirection / Submitting Overlay */}
+        <div
+            className={cn(ubuntu.className, "relative min-h-screen overflow-x-hidden pb-28 selection:bg-[color:var(--pg-accent)] selection:text-[color:var(--pg-btn-fg)] md:pb-20")}
+            style={{ ...themeStyle(theme), background: "var(--pg-bg)", color: "var(--pg-text)" }}
+        >
+            {/* Ambient background: the cover image, heavily blurred, plus the theme's glow */}
+            <div aria-hidden className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+                {event.image && (
+                    <img
+                        src={event.image}
+                        alt=""
+                        className="absolute inset-0 h-full w-full scale-150 object-cover blur-[90px] saturate-150"
+                        style={{ opacity: theme.ambientOpacity }}
+                    />
+                )}
+                {theme.glow && (
+                    <>
+                        <div className="absolute -left-40 -top-40 h-[520px] w-[520px] rounded-full opacity-40 blur-[130px]" style={{ background: theme.glow[0] }} />
+                        <div className="absolute -right-40 top-1/3 h-[460px] w-[460px] rounded-full opacity-25 blur-[130px]" style={{ background: theme.glow[1] }} />
+                    </>
+                )}
+                <div className="absolute inset-0" style={{ background: theme.veil }} />
+            </div>
+
+            {/* Processing overlay (shown while redirecting to receipt / payment) */}
             <AnimatePresence>
                 {submitting && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[100] bg-white/90 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center"
+                        className="fixed inset-0 z-[120] flex flex-col items-center justify-center gap-4 bg-[color:var(--pg-bg)]/90 p-6 text-center backdrop-blur-md"
                     >
-                        <motion.div
-                            initial={{ scale: 0.8, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            className="space-y-8"
-                        >
-                            <div className="relative inline-block">
-                                <div className="w-24 h-24 bg-gray-900 rounded-[32px] flex items-center justify-center shadow-2xl relative z-10 mx-auto">
-                                    <Loader2 className="w-10 h-10 text-white animate-spin stroke-[3]" />
-                                </div>
-                                <div className="absolute inset-0 bg-blue-100 blur-3xl opacity-50 scale-150 animate-pulse" />
-                            </div>
-                            
-                            <div className="space-y-3">
-                                <h2 className="text-3xl font-black text-gray-900 tracking-tight leading-none uppercase italic">
-                                    Securely Processing<br />
-                                    <span className="text-blue-600">Your Registration</span>
-                                </h2>
-                                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">
-                                    {(currentTicket as any) && !(currentTicket as any).is_free && ((currentTicket as any).price ?? 0) > 0 
-                                        ? "Preparing secure payment gateway..." 
-                                        : "Finalizing your spot and ticket..."}
-                                </p>
-                            </div>
-
-                            <div className="flex items-center justify-center gap-1.5 pt-4">
-                                {[0, 1, 2].map((i) => (
-                                    <motion.div
-                                        key={i}
-                                        animate={{ scale: [1, 1.2, 1], opacity: [0.3, 1, 0.3] }}
-                                        transition={{ repeat: Infinity, duration: 1.5, delay: i * 0.2 }}
-                                        className="w-1.5 h-1.5 bg-blue-600 rounded-full"
-                                    />
-                                ))}
-                            </div>
-                        </motion.div>
+                        <Loader2 className="h-8 w-8 animate-spin text-[color:var(--pg-accent)]" />
+                        <div>
+                            <h2 className="text-lg font-medium">Processing your registration</h2>
+                            <p className={cn("mt-1 text-sm", muted)}>
+                                {isPaid ? "Preparing secure payment…" : "Finalizing your spot…"}
+                            </p>
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            {/* Top Navigation */}
-            <header className="w-full p-6 md:px-10 md:py-8 flex items-center justify-between z-50 bg-white/80 backdrop-blur-md sticky top-0 border-b border-gray-50">
-                <div className="flex items-center gap-2 group cursor-pointer">
-                    <div className="w-7 h-7 flex items-center justify-center font-black text-xs bg-red-50 text-red-600 rounded-lg border border-red-100">❤</div>
-                    <span className="font-black tracking-tighter text-gray-900 text-base">EventFlow</span>
-                </div>
-                <div className="flex items-center gap-3">
-                    <button className="p-2 rounded-full hover:bg-gray-100 transition-colors">
-                        <Share2 className="w-5 h-5 text-gray-400" />
+            <div className="relative z-10">
+                {/* Top bar */}
+                <header className="mx-auto flex h-14 max-w-[880px] items-center justify-between px-4">
+                    <span className="text-[15px] font-bold tracking-tight">EventFlow</span>
+                    <button
+                        type="button"
+                        onClick={handleShare}
+                        aria-label="Share event"
+                        className={cn("flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium transition hover:bg-[color:var(--pg-surface)] hover:text-[color:var(--pg-text)]", muted)}
+                    >
+                        {linkCopied ? <><Check className="h-4 w-4" /> Link copied</> : <Share2 className="h-4 w-4" />}
                     </button>
-                </div>
-            </header>
-
-            <main className="max-w-6xl mx-auto px-0 lg:px-10 pt-10 md:pt-14 overflow-x-hidden">
-                {/* Content wrapper for things that SHOULD have padding */}
-                <div className="px-6 lg:px-0">
-
-                {/* --- HEADER ARCHITECTURE (Integrated & Airy) --- */}
-                <header className="max-w-3xl mb-10 space-y-6">
-                    {/* Pre-header Badges */}
-                    <div className="flex items-center gap-3">
-                        <span className="px-3.5 py-1.5 bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-[0.2em] rounded-full border border-blue-100">
-                            {event?.event_format === 'virtual' ? 'Virtual Event' : event?.event_format === 'hybrid' ? 'Hybrid Event' : 'Physical Event'}
-                        </span>
-                        <div className="flex items-center gap-2 px-3.5 py-1.5 bg-green-50 text-green-600 text-[9px] font-black uppercase tracking-[0.2em] rounded-full border border-green-100">
-                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                            Live
-                        </div>
-                    </div>
-
-                    {/* Main Title */}
-                    <h1 className="text-4xl md:text-6xl font-black tracking-tight text-gray-900 leading-[0.85]">
-                        {displayTitleMain} <br />
-                        <span className="text-gray-900/20">{displayTitleLast}</span>
-                    </h1>
-
-                    {/* Host Interaction */}
-                    <div className="flex items-center gap-4">
-                        <div className="w-11 h-11 bg-gray-50 text-gray-400 rounded-2xl flex items-center justify-center font-black text-sm border border-gray-100 shadow-inner">
-                            {event?.event_title?.charAt(0)}
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-1.5 leading-none mb-1">
-                                <span className="text-base font-black text-gray-900">Hosted by Team {event?.event_title?.split(' ')[0]}</span>
-                                <Check className="w-3.5 h-3.5 text-blue-500 fill-blue-500" />
-                            </div>
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em] block">Verified Partner</span>
-                        </div>
-                    </div>
                 </header>
-            </div>
 
-                {/* --- CENTERED CARD HERO --- */}
-                <section className="mb-16">
-                    <div className="lg:rounded-[48px] overflow-hidden relative group shadow-2xl shadow-gray-100 border border-gray-50">
-                        {event?.image ? (
-                            <div className="aspect-[16/9] md:aspect-[21/9] md:max-h-[520px] w-full relative overflow-hidden">
+                <main className="mx-auto grid max-w-[880px] gap-x-8 gap-y-6 px-4 pt-2 md:grid-cols-[340px_minmax(0,1fr)] md:pt-6">
+                    {/* LEFT: cover + host */}
+                    <aside className="space-y-6">
+                        <div className={cn("relative mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-2xl border bg-[color:var(--pg-surface)] shadow-2xl shadow-black/15 md:mx-0 md:max-w-none", hairline)}>
+                            {event.image ? (
                                 <img
                                     src={event.image}
-                                    alt="Event Cover"
-                                    className="w-full h-full object-cover"
-                                    style={{
-                                        objectPosition: `50% ${event.image_focus_y ?? 50}%`
-                                    }}
+                                    alt={`${event.event_title} cover`}
+                                    className="h-full w-full object-cover"
+                                    style={{ objectPosition: `50% ${event.image_focus_y ?? 50}%` }}
                                 />
-                                <div className="absolute inset-0 bg-gradient-to-t from-gray-900/10 to-transparent" />
-                            </div>
-                        ) : (
-                            <div className="aspect-[16/9] md:aspect-[21/9] md:max-h-[520px] w-full bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center">
-                                <Sparkles className="w-16 h-16 text-gray-200" />
-                            </div>
-                        )}
-                    </div>
-                </section>
-
-                <div className="px-6 lg:px-0">
-
-
-
-                {/* --- NARRATIVE FIRST: The Story --- */}
-                <section className="mb-20 max-w-4xl">
-                    <div className="space-y-8">
-                        <h2 className="text-[9px] font-black uppercase tracking-[0.4em] text-gray-300">The Narrative</h2>
-                        <div
-                            className="max-w-none [&_p]:text-xl [&_p]:md:text-3xl [&_p]:font-medium [&_p]:text-gray-600 [&_p]:leading-relaxed [&_strong]:text-gray-900 [&_strong]:font-black [&_em]:italic [&_ul]:list-disc [&_ul]:ml-6 [&_ol]:list-decimal [&_ol]:ml-6 [&_li]:text-xl [&_li]:md:text-2xl [&_a]:text-blue-600 [&_a]:underline"
-                            dangerouslySetInnerHTML={{ __html: event?.description || "<p>Join us for this exclusive event.</p>" }}
-                        />
-                    </div>
-                </section>
-
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 md:gap-20">
-                    {/* LEFT COL: LOGISTICS */}
-                    <div className="lg:col-span-7 space-y-6 md:space-y-20">
-                        {/* Info Tiles */}
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-y-10 gap-x-6 md:gap-8">
-                            <div className="space-y-2.5">
-                                <div className="flex items-center gap-2 text-[9px] font-black text-gray-300 uppercase tracking-widest mb-1">
-                                    <Calendar className="w-3 h-3" /> Date
+                            ) : (
+                                <div className={cn("grid h-full w-full place-items-center", muted)}>
+                                    <Ticket className="h-12 w-12 opacity-40" />
                                 </div>
-                                <div className="text-[15px] font-black text-gray-900 leading-tight">
-                                    {displayDate}
-                                </div>
-                            </div>
-                            <div className="space-y-2.5 md:border-x px-0 md:px-8 border-gray-100">
-                                <div className="flex items-center gap-2 text-[9px] font-black text-gray-300 uppercase tracking-widest mb-1">
-                                    <Clock className="w-3 h-3" /> Time
-                                </div>
-                                <div className="text-[15px] font-black text-gray-900 leading-tight">
-                                    {event.start_time}
-                                </div>
-                            </div>
-                            <div className="space-y-2.5 col-span-2 md:col-span-1 border-t md:border-t-0 pt-8 md:pt-0 border-gray-50">
-                                <div className="flex items-center justify-between mb-1">
-                                    <div className="flex items-center gap-2 text-[9px] font-black text-gray-300 uppercase tracking-widest">
-                                        <MapPin className="w-3 h-3" /> Location
-                                    </div>
-                                    {event.event_format !== 'virtual' && (
-                                        <button className="text-[8px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors flex items-center gap-1.5 px-2 py-1 bg-blue-50 rounded-lg">
-                                            <MapIcon className="w-2.5 h-2.5" /> Map
-                                        </button>
-                                    )}
-                                </div>
-                                <div className="text-[15px] font-black text-gray-900 leading-tight">
-                                    {event?.event_format === 'virtual' 
-                                        ? (event?.virtual_platform || 'Google Meet') 
-                                        : event?.event_format === 'hybrid' 
-                                            ? `${event?.location} (and Online)` 
-                                            : event?.location}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* UNIFIED TICKET SELECTOR */}
-                        <div id="tickets-section" className="py-6 md:py-10 border-y border-gray-50 space-y-6 scroll-mt-32">
-                            <TicketSelector isMobile={false} passes={filteredPasses} />
-                            
-                            {allTriggersAnswered && passes.length > 0 && (
-                                <button
-                                    onClick={() => setStep(2)}
-                                    className="w-full py-5 bg-gray-900 text-white rounded-[24px] font-black text-base shadow-[0_20px_40px_-12px_rgba(0,0,0,0.15)] hover:bg-gray-800 active:scale-95 transition-all flex items-center justify-center gap-3"
-                                >
-                                    Next step <ArrowRight className="w-5 h-5" />
-                                </button>
                             )}
                         </div>
+                        <div className="hidden md:block">{hostBlock}</div>
+                    </aside>
 
+                    {/* RIGHT: details, registration, about */}
+                    <div className="min-w-0">
+                        <h1 className="text-[32px] font-bold leading-[1.1] tracking-tight md:text-[44px]">{event.event_title}</h1>
 
-                        {/* Footer Vibe (Commented out for now)
-                        <div className="flex items-center gap-10 pt-10">
-                            <div className="flex items-center gap-3 group cursor-pointer">
-                                <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center border border-gray-100 group-hover:bg-red-50 group-hover:border-red-100 transition-all">
-                                    <Heart className="w-5 h-5 text-gray-300 group-hover:text-red-500" />
+                        <div className="mt-6 space-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className={cn(tile, "content-center")}>
+                                    <span className={cn("text-[10px] font-medium uppercase leading-none", muted)}>
+                                        {startDate ? fmt(startDate, { month: "short" }) : "TBA"}
+                                    </span>
+                                    <span className="text-[17px] font-medium leading-tight">{startDate ? startDate.getDate() : "–"}</span>
                                 </div>
                                 <div>
-                                    <div className="text-sm font-black text-gray-900">{Math.floor(Math.random() * 5 + 1)}k</div>
-                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Interactions</div>
+                                    <div className="text-base font-medium leading-snug">{dateTitle}</div>
+                                    <div className={cn("text-sm", muted)}>{timeLine}</div>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3 group cursor-pointer">
-                                <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center border border-gray-100 group-hover:bg-blue-50 group-hover:border-blue-100 transition-all">
-                                    <MessageCircle className="w-5 h-5 text-gray-300 group-hover:text-blue-500" />
-                                </div>
-                                <div>
-                                    <div className="text-sm font-black text-gray-900">{Math.floor(Math.random() * 200 + 50)}</div>
-                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Public Chat</div>
-                                </div>
-                            </div>
-                        </div>
-                        */}
-                    </div>
 
-                    {/* RIGHT COL: STICKY SELECTOR (Desktop) */}
-                    <div className="hidden lg:block lg:col-span-5">
-                        <div className="sticky top-32">
-                            <div className="bg-white border border-gray-100 shadow-[0_48px_96px_-32px_rgba(0,0,0,0.06)] rounded-[48px] overflow-hidden">
-                                <div className="p-8 md:p-10 space-y-8">
-                                    {passes.length > 0 ? (
-                                        <div className="text-center py-4">
-                                            <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em]">Select a ticket in the main section to continue</p>
-                                        </div>
+                            <div className="flex items-center gap-3">
+                                <div className={tile}>
+                                    {isVirtual ? <Globe className="h-5 w-5" /> : <MapPin className="h-5 w-5" />}
+                                </div>
+                                <div className="min-w-0">
+                                    {mapsUrl ? (
+                                        <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-base font-medium leading-snug hover:underline">
+                                            {locationTitle}
+                                            <ArrowUpRight className={cn("h-4 w-4 shrink-0", muted)} />
+                                        </a>
                                     ) : (
-                                        <div className="text-center py-10 space-y-6">
-                                            <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto border border-gray-100">
-                                                <Ticket className="w-8 h-8 text-gray-300" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <h3 className="text-xl font-black text-gray-900 tracking-tight">Tickets Not Available</h3>
-                                                <p className="text-gray-400 font-medium text-sm leading-relaxed max-w-[240px] mx-auto">
-                                                    Ticket sales haven't started for this event yet. Please check back later.
-                                                </p>
-                                            </div>
-                                            <button disabled className="w-full py-4 bg-gray-100 text-gray-400 rounded-[24px] font-black text-sm uppercase tracking-wider cursor-not-allowed">
-                                                Coming Soon
-                                            </button>
-                                        </div>
+                                        <div className="text-base font-medium leading-snug">{locationTitle}</div>
                                     )}
+                                    {isHybrid && <div className={cn("text-sm", muted)}>Also available online</div>}
                                 </div>
-                                {/* Verified Badge (Commented out for now)
-                                <div className="bg-gray-50/50 p-5 flex items-center justify-center border-t border-gray-50">
-                                    <span className="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em]">Verified Event — EventFlow Safe</span>
-                                </div>
-                                */}
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-        </main>
 
-            {/* --- MOBILE STICKY FOOTER --- */}
-            <div className="fixed bottom-0 left-0 w-full p-6 md:hidden z-[60] bg-white/95 backdrop-blur-2xl border-t border-gray-100 shadow-[0_-20px_60px_rgba(0,0,0,0.08)]">
-                {passes.length > 0 ? (
-                    <div className="max-w-md mx-auto flex items-center justify-between gap-6">
-                        <div className="flex flex-col">
-                            <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1">Your Pass</span>
-                            <div className="flex items-baseline gap-1">
-                                <span className="text-3xl font-black text-gray-900 tracking-tight">{currentTicket?.is_free ? 'FREE' : `₦${(currentTicket?.price ?? 0).toLocaleString()}`}</span>
+                        {/* Registration card */}
+                        <section id="tickets-section" className={cn("mt-6 scroll-mt-6 overflow-hidden rounded-2xl border bg-[color:var(--pg-surface)] backdrop-blur-md", hairline)}>
+                            <div className={cn("flex items-center gap-2 border-b px-4 py-2.5 text-sm font-medium", hairline, muted)}>
+                                <Ticket className="h-4 w-4" /> Registration
                             </div>
+                            <div className="space-y-4 p-4">
+                                {passes.length > 0 ? (
+                                    <>
+                                        <p className={cn("text-[15px] leading-relaxed", muted)}>{theme.welcomeText}</p>
+                                        <TicketSelector passes={filteredPasses} />
+                                        {allTriggersAnswered && (
+                                            <button type="button" onClick={() => setStep(2)} disabled={!canRegister} className={cn(primaryBtn, "h-11 text-[15px]")}>
+                                                {canRegister ? theme.ctaLabel : "Sold out"}
+                                            </button>
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        <div>
+                                            <h3 className="text-base font-medium">Registration opens soon</h3>
+                                            <p className={cn("mt-1 text-[15px] leading-relaxed", muted)}>
+                                                Ticket sales haven&apos;t started yet. Check back soon.
+                                            </p>
+                                        </div>
+                                        <button type="button" disabled className={cn(primaryBtn, "h-11 text-[15px]")}>
+                                            Tickets coming soon
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </section>
+
+                        <div className="mt-6 md:hidden">{hostBlock}</div>
+
+                        {/* About */}
+                        <section className="mt-8">
+                            <h2 className={cn("border-b pb-2 text-sm font-medium", hairline, muted)}>About Event</h2>
+                            <div
+                                className="mt-4 text-base leading-relaxed [&_a]:underline [&_h2]:mb-2 [&_h2]:text-xl [&_h2]:font-bold [&_h3]:mb-2 [&_h3]:text-lg [&_h3]:font-bold [&_li]:mb-1 [&_ol]:mb-4 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-4 [&_strong]:font-bold [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:pl-5"
+                                dangerouslySetInnerHTML={{ __html: event.description || "<p>Join us for this exclusive event.</p>" }}
+                            />
+                        </section>
+                    </div>
+                </main>
+            </div>
+
+            {/* Mobile sticky action bar */}
+            <div className={cn("fixed inset-x-0 bottom-0 z-40 border-t bg-[color:var(--pg-modal)]/95 px-4 py-3 backdrop-blur-md md:hidden", hairline)}>
+                {passes.length > 0 ? (
+                    <div className="mx-auto flex max-w-md items-center gap-4">
+                        <div className="leading-tight">
+                            <div className={cn("text-xs", muted)}>{currentTicket?.title ?? "Ticket"}</div>
+                            <div className="text-lg font-bold">{currentTicket ? priceLabel(currentTicket) : "–"}</div>
                         </div>
                         <button
-                            onClick={() => setStep(2)}
-                            className="flex-1 py-5 bg-gray-900 text-white rounded-[24px] font-black text-base shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
+                            type="button"
+                            onClick={() => (allTriggersAnswered ? setStep(2) : document.getElementById("tickets-section")?.scrollIntoView({ behavior: "smooth" }))}
+                            disabled={allTriggersAnswered && !canRegister}
+                            className={cn(primaryBtn, "h-11 flex-1 text-[15px]")}
                         >
-                            Register <ChevronRight className="w-5 h-5" />
+                            {allTriggersAnswered ? (canRegister ? theme.ctaLabel : "Sold out") : "Choose a ticket"}
                         </button>
                     </div>
                 ) : (
-                    <div className="max-w-md mx-auto">
-                        <button disabled className="w-full py-4 bg-gray-100 text-gray-400 rounded-[24px] font-black text-sm uppercase tracking-wider cursor-not-allowed">
-                            Tickets Coming Soon
-                        </button>
-                    </div>
+                    <button type="button" disabled className={cn(primaryBtn, "mx-auto h-11 max-w-md text-[15px]")}>
+                        Tickets coming soon
+                    </button>
                 )}
             </div>
 
-            {/* --- REGISTRATION MODAL --- */}
+            {/* Registration dialog */}
             <AnimatePresence>
                 {step === 2 && (
                     <motion.div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label={`Register for ${event.event_title}`}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[100] flex flex-col items-center justify-start sm:justify-center p-4 md:p-6 bg-gray-900/40 backdrop-blur-lg overflow-y-auto custom-scrollbar"
+                        onClick={() => setStep(1)}
+                        className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-6"
                     >
                         <motion.div
-                            initial={{ scale: 0.95, y: 30 }}
-                            animate={{ scale: 1, y: 0 }}
-                            exit={{ scale: 0.95, y: 30 }}
-                            className="bg-white max-w-xl w-full rounded-[40px] md:rounded-[56px] shadow-2xl overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh] my-auto mt-4 sm:mt-auto"
+                            initial={{ y: 24, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: 24, opacity: 0 }}
+                            transition={{ duration: 0.18 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className={cn("flex max-h-[92vh] w-full max-w-[480px] flex-col overflow-hidden rounded-t-3xl border bg-[color:var(--pg-modal)] shadow-2xl sm:rounded-2xl", hairline)}
                         >
-                            <div className="p-7 md:p-9 border-b border-gray-50 flex items-center justify-between bg-white sticky top-0 z-10">
-                                <button onClick={() => setStep(1)} className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-900 transition-all">
-                                    <ChevronLeft className="w-4 h-4" /> Back
+                            <div className={cn("flex items-start justify-between gap-4 border-b px-5 py-4", hairline)}>
+                                <div className="min-w-0">
+                                    <h2 className="truncate text-lg font-bold leading-tight">{event.event_title}</h2>
+                                    <p className={cn("mt-0.5 text-sm", muted)}>
+                                        {currentTicket ? `${currentTicket.title} · ${priceLabel(currentTicket)}` : "Registration"}
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setStep(1)}
+                                    aria-label="Close"
+                                    className={cn("-mr-1.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg transition hover:bg-[color:var(--pg-surface)] hover:text-[color:var(--pg-text)]", muted)}
+                                >
+                                    <X className="h-5 w-5" />
                                 </button>
-                                <h2 className="text-xl font-black text-gray-900 tracking-tight">Guest Info</h2>
-                                <div className="w-10 h-1 bg-blue-50 rounded-full" />
                             </div>
 
-                            <div className="p-6 md:p-10 overflow-y-auto space-y-8 custom-scrollbar">
-                                <div className="space-y-12">
-                                    {guests.map((guest, index) => {
-                                        const isPrimary = index === 0;
+                            <div className="space-y-8 overflow-y-auto px-5 py-5">
+                                {guests.map((guest, index) => {
+                                    const isPrimary = index === 0;
 
-                                        return (
-                                            <div key={index} className="space-y-8">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-[10px] font-black text-gray-400 border border-gray-100 uppercase tracking-widest">
-                                                            #{index + 1}
-                                                        </div>
-                                                        <h3 className="text-xs font-black text-gray-900 uppercase tracking-[0.2em]">
-                                                            {isPrimary ? "Primary Guest" : `Guest ${index + 1}`}
-                                                        </h3>
+                                    return (
+                                        <div key={index} className="space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-[15px] font-bold">{isPrimary ? "Your details" : `Guest ${index + 1}`}</h3>
+
+                                                {!isPrimary && (
+                                                    <div className={cn("flex rounded-lg border p-0.5 text-sm", hairline)}>
+                                                        {([["Fill info", false], ["Invite", true]] as const).map(([label, invite]) => (
+                                                            <button
+                                                                key={label}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const ng = [...guests];
+                                                                    ng[index].isInvite = invite;
+                                                                    setGuests(ng);
+                                                                }}
+                                                                className={cn(
+                                                                    "rounded-md px-3 py-1 font-medium transition",
+                                                                    guest.isInvite === invite ? "bg-[color:var(--pg-selected)] text-[color:var(--pg-text)]" : muted
+                                                                )}
+                                                            >
+                                                                {label}
+                                                            </button>
+                                                        ))}
                                                     </div>
+                                                )}
+                                            </div>
 
-                                                    {!isPrimary && (
-                                                        <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100">
-                                                            <button
-                                                                onClick={() => {
-                                                                    const ng = [...guests];
-                                                                    ng[index].isInvite = false;
-                                                                    setGuests(ng);
-                                                                }}
-                                                                className={cn(
-                                                                    "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
-                                                                    !guest.isInvite ? "bg-white text-gray-900 shadow-sm" : "text-gray-400"
-                                                                )}
-                                                            >
-                                                                Fill Info
-                                                            </button>
-                                                            <button
-                                                                onClick={() => {
-                                                                    const ng = [...guests];
-                                                                    ng[index].isInvite = true;
-                                                                    setGuests(ng);
-                                                                }}
-                                                                className={cn(
-                                                                    "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
-                                                                    guest.isInvite ? "bg-white text-gray-900 shadow-sm" : "text-gray-400"
-                                                                )}
-                                                            >
-                                                                Invite
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                <AnimatePresence mode="wait">
-                                                    {!guest.isInvite || isPrimary ? (
-                                                        <motion.div
-                                                            key="form"
-                                                            initial={{ opacity: 0, height: 0 }}
-                                                            animate={{ opacity: 1, height: "auto" }}
-                                                            exit={{ opacity: 0, height: 0 }}
-                                                            className="space-y-6 overflow-hidden"
-                                                        >
-                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                                <div className="space-y-3">
-                                                                    <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">First Name</label>
-                                                                    <input
-                                                                        value={guest.firstName}
-                                                                        onChange={(e) => {
-                                                                            const newGuests = [...guests];
-                                                                            newGuests[index].firstName = e.target.value;
-                                                                            setGuests(newGuests);
-                                                                        }}
-                                                                        placeholder="Jane"
-                                                                        className="w-full bg-gray-50/50 border-gray-100 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border"
-                                                                    />
-                                                                </div>
-                                                                <div className="space-y-3">
-                                                                    <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Last Name</label>
-                                                                    <input
-                                                                        value={guest.lastName}
-                                                                        onChange={(e) => {
-                                                                            const newGuests = [...guests];
-                                                                            newGuests[index].lastName = e.target.value;
-                                                                            setGuests(newGuests);
-                                                                        }}
-                                                                        placeholder="Smith"
-                                                                        className="w-full bg-gray-50/50 border-gray-100 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border"
-                                                                    />
-                                                                </div>
-                                                            </div>
-                                                            <div className="space-y-3">
-                                                                <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Email Address</label>
+                                            <AnimatePresence mode="wait">
+                                                {!guest.isInvite || isPrimary ? (
+                                                    <motion.div
+                                                        key="form"
+                                                        initial={{ opacity: 0, height: 0 }}
+                                                        animate={{ opacity: 1, height: "auto" }}
+                                                        exit={{ opacity: 0, height: 0 }}
+                                                        className="space-y-4 overflow-hidden px-0.5 py-0.5"
+                                                    >
+                                                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                                            <div>
+                                                                <label htmlFor={`g${index}-first`} className="mb-1.5 block text-sm font-medium">First name</label>
                                                                 <input
-                                                                    type="email"
-                                                                    value={guest.email}
+                                                                    id={`g${index}-first`}
+                                                                    value={guest.firstName}
                                                                     onChange={(e) => {
                                                                         const newGuests = [...guests];
-                                                                        newGuests[index].email = e.target.value;
+                                                                        newGuests[index].firstName = e.target.value;
                                                                         setGuests(newGuests);
                                                                     }}
-                                                                    placeholder="jane@studio.com"
-                                                                    className="w-full bg-gray-50/50 border-gray-100 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border"
+                                                                    placeholder="Jane"
+                                                                    className={cn(inputCls, "h-11")}
                                                                 />
                                                             </div>
-
-                                                            {/* Custom Dynamic Questions */}
-                                                            {visibleFormQuestions.map((q) => {
-                                                                const setAnswer = (value: string | string[] | number) => {
+                                                            <div>
+                                                                <label htmlFor={`g${index}-last`} className="mb-1.5 block text-sm font-medium">Last name</label>
+                                                                <input
+                                                                    id={`g${index}-last`}
+                                                                    value={guest.lastName}
+                                                                    onChange={(e) => {
+                                                                        const newGuests = [...guests];
+                                                                        newGuests[index].lastName = e.target.value;
+                                                                        setGuests(newGuests);
+                                                                    }}
+                                                                    placeholder="Smith"
+                                                                    className={cn(inputCls, "h-11")}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <label htmlFor={`g${index}-email`} className="mb-1.5 block text-sm font-medium">Email</label>
+                                                            <input
+                                                                id={`g${index}-email`}
+                                                                type="email"
+                                                                value={guest.email}
+                                                                onChange={(e) => {
                                                                     const newGuests = [...guests];
-                                                                    newGuests[index].answers = { ...newGuests[index].answers, [q.id]: value };
+                                                                    newGuests[index].email = e.target.value;
                                                                     setGuests(newGuests);
-                                                                };
-                                                                const toggleCheckbox = (optionText: string) => {
-                                                                    const current = (guest.answers[q.id] as string[]) || [];
-                                                                    setAnswer(current.includes(optionText) ? current.filter(v => v !== optionText) : [...current, optionText]);
-                                                                };
-                                                                const scaleMin = q.scale_config?.min ?? 1;
-                                                                const scaleMax = q.scale_config?.max ?? 5;
-                                                                const scaleValues = Array.from({ length: Math.max(1, scaleMax - scaleMin + 1) }, (_, i) => scaleMin + i);
+                                                                }}
+                                                                placeholder="jane@example.com"
+                                                                className={cn(inputCls, "h-11")}
+                                                            />
+                                                        </div>
 
-                                                                return (
-                                                                    <div key={q.id} className="space-y-3">
-                                                                        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">
-                                                                            {q.title} {q.is_required && <span className="text-red-500">*</span>}
-                                                                        </label>
+                                                        {/* Custom Dynamic Questions */}
+                                                        {visibleFormQuestions.map((q) => {
+                                                            const setAnswer = (value: string | string[] | number) => {
+                                                                const newGuests = [...guests];
+                                                                newGuests[index].answers = { ...newGuests[index].answers, [q.id]: value };
+                                                                setGuests(newGuests);
+                                                            };
+                                                            const toggleCheckbox = (optionText: string) => {
+                                                                const current = (guest.answers[q.id] as string[]) || [];
+                                                                setAnswer(current.includes(optionText) ? current.filter(v => v !== optionText) : [...current, optionText]);
+                                                            };
+                                                            const scaleMin = q.scale_config?.min ?? 1;
+                                                            const scaleMax = q.scale_config?.max ?? 5;
+                                                            const scaleValues = Array.from({ length: Math.max(1, scaleMax - scaleMin + 1) }, (_, i) => scaleMin + i);
 
-                                                                        {q.question_type === 'select' && (
-                                                                            <div className="space-y-2">
-                                                                                {q.options?.map(opt => (
-                                                                                    <button
-                                                                                        key={opt.id}
-                                                                                        type="button"
-                                                                                        onClick={() => setAnswer(opt.option_text)}
-                                                                                        className={cn(
-                                                                                            "w-full text-left px-4 py-3 rounded-[20px] border-2 text-sm font-bold transition-all",
-                                                                                            guest.answers[q.id] === opt.option_text ? "bg-blue-50 border-blue-600 text-gray-900" : "bg-gray-50/50 border-gray-100 text-gray-600 hover:border-gray-200"
-                                                                                        )}
-                                                                                    >
+                                                            return (
+                                                                <div key={q.id}>
+                                                                    <label className="mb-1.5 block text-sm font-medium">
+                                                                        {q.title}{q.is_required && <span className="ml-0.5 text-red-500">*</span>}
+                                                                    </label>
+
+                                                                    {q.question_type === "select" && (
+                                                                        <div className="space-y-2">
+                                                                            {q.options?.map(opt => {
+                                                                                const selected = guest.answers[q.id] === opt.option_text;
+                                                                                return (
+                                                                                    <button key={opt.id} type="button" onClick={() => setAnswer(opt.option_text)} className={choiceCls(selected)}>
+                                                                                        <Radio selected={selected} />
                                                                                         {opt.option_text}
                                                                                     </button>
-                                                                                ))}
-                                                                            </div>
-                                                                        )}
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    )}
 
-                                                                        {q.question_type === 'dropdown' && (
-                                                                            <div className="relative">
-                                                                                <select
-                                                                                    value={(guest.answers[q.id] as string) || ""}
-                                                                                    onChange={(e) => setAnswer(e.target.value)}
-                                                                                    className="w-full bg-gray-50/50 border-gray-100 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border appearance-none cursor-pointer"
-                                                                                >
-                                                                                    <option value="" disabled>Select an option</option>
-                                                                                    {q.options?.map(opt => (
-                                                                                        <option key={opt.id} value={opt.option_text}>{opt.option_text}</option>
-                                                                                    ))}
-                                                                                </select>
-                                                                                <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                                                                                    <PlusCircle className="w-4 h-4 rotate-45" />
-                                                                                </div>
-                                                                            </div>
-                                                                        )}
-
-                                                                        {q.question_type === 'checkbox' && (
-                                                                            <div className="space-y-2">
-                                                                                {q.options?.map(opt => {
-                                                                                    const checked = ((guest.answers[q.id] as string[]) || []).includes(opt.option_text);
-                                                                                    return (
-                                                                                        <button
-                                                                                            key={opt.id}
-                                                                                            type="button"
-                                                                                            onClick={() => toggleCheckbox(opt.option_text)}
-                                                                                            className={cn(
-                                                                                                "w-full flex items-center gap-3 text-left px-4 py-3 rounded-[20px] border-2 text-sm font-bold transition-all",
-                                                                                                checked ? "bg-blue-50 border-blue-600 text-gray-900" : "bg-gray-50/50 border-gray-100 text-gray-600 hover:border-gray-200"
-                                                                                            )}
-                                                                                        >
-                                                                                            <div className={cn("w-4 h-4 rounded-md border-2 flex items-center justify-center shrink-0", checked ? "bg-blue-600 border-blue-600" : "border-gray-300")}>
-                                                                                                {checked && <CheckCircle2 className="w-3 h-3 text-white" />}
-                                                                                            </div>
-                                                                                            {opt.option_text}
-                                                                                        </button>
-                                                                                    );
-                                                                                })}
-                                                                            </div>
-                                                                        )}
-
-                                                                        {q.question_type === 'long_text' && (
-                                                                            <textarea
-                                                                                rows={4}
+                                                                    {q.question_type === "dropdown" && (
+                                                                        <div className="relative">
+                                                                            <select
                                                                                 value={(guest.answers[q.id] as string) || ""}
                                                                                 onChange={(e) => setAnswer(e.target.value)}
-                                                                                placeholder="Your answer"
-                                                                                className="w-full bg-gray-50/50 border-gray-100 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border resize-none"
-                                                                            />
-                                                                        )}
+                                                                                className={cn(inputCls, "h-11 cursor-pointer appearance-none pr-10")}
+                                                                            >
+                                                                                <option value="" disabled>Select an option</option>
+                                                                                {q.options?.map(opt => (
+                                                                                    <option key={opt.id} value={opt.option_text}>{opt.option_text}</option>
+                                                                                ))}
+                                                                            </select>
+                                                                            <ChevronDown className={cn("pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2", muted)} />
+                                                                        </div>
+                                                                    )}
 
-                                                                        {q.question_type === 'linear_scale' && (
-                                                                            <div className="flex items-center gap-2">
-                                                                                {scaleValues.map(n => (
-                                                                                    <button
-                                                                                        key={n}
-                                                                                        type="button"
-                                                                                        onClick={() => setAnswer(n)}
-                                                                                        className={cn(
-                                                                                            "flex-1 py-3 rounded-[16px] border-2 text-sm font-black transition-all",
-                                                                                            guest.answers[q.id] === n ? "bg-blue-50 border-blue-600 text-gray-900" : "bg-gray-50/50 border-gray-100 text-gray-500 hover:border-gray-200"
-                                                                                        )}
-                                                                                    >
-                                                                                        {n}
+                                                                    {q.question_type === "checkbox" && (
+                                                                        <div className="space-y-2">
+                                                                            {q.options?.map(opt => {
+                                                                                const checked = ((guest.answers[q.id] as string[]) || []).includes(opt.option_text);
+                                                                                return (
+                                                                                    <button key={opt.id} type="button" onClick={() => toggleCheckbox(opt.option_text)} className={choiceCls(checked)}>
+                                                                                        <span className={cn(
+                                                                                            "grid h-4 w-4 shrink-0 place-items-center rounded border",
+                                                                                            checked ? "border-[color:var(--pg-accent)] bg-[color:var(--pg-accent)] text-[color:var(--pg-btn-fg)]" : hairline
+                                                                                        )}>
+                                                                                            {checked && <CheckCircle2 className="h-3 w-3" />}
+                                                                                        </span>
+                                                                                        {opt.option_text}
                                                                                     </button>
-                                                                                ))}
-                                                                            </div>
-                                                                        )}
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    )}
 
-                                                                        {q.question_type === 'star_rating' && (
-                                                                            <div className="flex items-center gap-1.5">
-                                                                                {scaleValues.map(n => {
-                                                                                    const val = (guest.answers[q.id] as number) || 0;
-                                                                                    return (
-                                                                                        <button key={n} type="button" onClick={() => setAnswer(n)} className="p-1">
-                                                                                            <Star className={cn("w-6 h-6 transition-all", n <= val ? "fill-yellow-400 text-yellow-400" : "text-gray-200")} />
-                                                                                        </button>
-                                                                                    );
-                                                                                })}
-                                                                            </div>
-                                                                        )}
+                                                                    {q.question_type === "long_text" && (
+                                                                        <textarea
+                                                                            rows={4}
+                                                                            value={(guest.answers[q.id] as string) || ""}
+                                                                            onChange={(e) => setAnswer(e.target.value)}
+                                                                            placeholder="Your answer"
+                                                                            className={cn(inputCls, "resize-none py-3")}
+                                                                        />
+                                                                    )}
 
-                                                                        {(q.question_type === 'text' || !q.question_type) && (
-                                                                            <input
-                                                                                value={(guest.answers[q.id] as string) || ""}
-                                                                                onChange={(e) => setAnswer(e.target.value)}
-                                                                                placeholder="Your answer"
-                                                                                className="w-full bg-gray-50/50 border-gray-100 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border"
-                                                                            />
-                                                                        )}
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </motion.div>
-                                                    ) : (
-                                                        <motion.div
-                                                            key="invite"
-                                                            initial={{ opacity: 0, scale: 0.95 }}
-                                                            animate={{ opacity: 1, scale: 1 }}
-                                                            exit={{ opacity: 0, scale: 0.95 }}
-                                                            className="p-6 bg-blue-50/30 border border-blue-100 rounded-[24px] space-y-4"
-                                                        >
-                                                            <div className="space-y-3">
-                                                                <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Enter email to invite guest</label>
-                                                                <input
-                                                                    type="email"
-                                                                    value={guest.email}
-                                                                    onChange={(e) => {
-                                                                        const newGuests = [...guests];
-                                                                        newGuests[index].email = e.target.value;
-                                                                        setGuests(newGuests);
-                                                                    }}
-                                                                    placeholder="guest@email.com"
-                                                                    className="w-full bg-white border-blue-100 focus:border-blue-600 focus:ring-4 focus:ring-blue-50 rounded-[20px] p-4 text-sm font-bold outline-none transition-all border"
-                                                                />
-                                                            </div>
-                                                            <p className="text-[10px] font-bold text-gray-400 leading-relaxed italic">
-                                                                We'll send them a dynamic link to complete their registration and answer custom questions.
-                                                            </p>
-                                                        </motion.div>
-                                                    )}
-                                                </AnimatePresence>
+                                                                    {q.question_type === "linear_scale" && (
+                                                                        <div className="flex items-center gap-2">
+                                                                            {scaleValues.map(n => (
+                                                                                <button
+                                                                                    key={n}
+                                                                                    type="button"
+                                                                                    onClick={() => setAnswer(n)}
+                                                                                    className={cn(choiceCls(guest.answers[q.id] === n), "flex-1 justify-center px-0 py-2.5 font-medium")}
+                                                                                >
+                                                                                    {n}
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
 
-                                                {index < guests.length - 1 && <div className="h-px bg-gray-50 w-full" />}
-                                            </div>
-                                        );
-                                    })}
+                                                                    {q.question_type === "star_rating" && (
+                                                                        <div className="flex items-center gap-1">
+                                                                            {scaleValues.map(n => {
+                                                                                const val = (guest.answers[q.id] as number) || 0;
+                                                                                return (
+                                                                                    <button key={n} type="button" onClick={() => setAnswer(n)} aria-label={`${n} stars`} className="p-1">
+                                                                                        <Star className={cn("h-6 w-6 transition", n <= val ? "fill-[color:var(--pg-accent)] text-[color:var(--pg-accent)]" : muted)} />
+                                                                                    </button>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    )}
 
+                                                                    {(q.question_type === "text" || !q.question_type) && (
+                                                                        <input
+                                                                            value={(guest.answers[q.id] as string) || ""}
+                                                                            onChange={(e) => setAnswer(e.target.value)}
+                                                                            placeholder="Your answer"
+                                                                            className={cn(inputCls, "h-11")}
+                                                                        />
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </motion.div>
+                                                ) : (
+                                                    <motion.div
+                                                        key="invite"
+                                                        initial={{ opacity: 0 }}
+                                                        animate={{ opacity: 1 }}
+                                                        exit={{ opacity: 0 }}
+                                                        className="space-y-2 px-0.5 py-0.5"
+                                                    >
+                                                        <label htmlFor={`g${index}-invite`} className="mb-1.5 block text-sm font-medium">Guest&apos;s email</label>
+                                                        <input
+                                                            id={`g${index}-invite`}
+                                                            type="email"
+                                                            value={guest.email}
+                                                            onChange={(e) => {
+                                                                const newGuests = [...guests];
+                                                                newGuests[index].email = e.target.value;
+                                                                setGuests(newGuests);
+                                                            }}
+                                                            placeholder="guest@example.com"
+                                                            className={cn(inputCls, "h-11")}
+                                                        />
+                                                        <p className={cn("text-sm", muted)}>
+                                                            We&apos;ll email them a link to complete their own registration.
+                                                        </p>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
 
-                                </div>
-
-                                <div className="pt-4 space-y-4">
-                                    {/* Inline Error Display */}
-                                    {formError && (
-                                        <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3">
-                                            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                                            <div>
-                                                <p className="text-sm font-bold text-red-600">{formError}</p>
-                                                <button
-                                                    onClick={() => setFormError(null)}
-                                                    className="text-xs font-bold text-red-400 hover:text-red-600 mt-1 underline"
-                                                >
-                                                    Dismiss
-                                                </button>
-                                            </div>
+                                            {index < guests.length - 1 && <div className={cn("h-px w-full border-t", hairline)} />}
                                         </div>
-                                    )}
+                                    );
+                                })}
+                            </div>
 
-                                    <button
-                                        onClick={handleRegister}
-                                        disabled={submitting}
-                                        className="w-full py-5 bg-gray-900 text-white rounded-[28px] font-black text-lg shadow-xl shadow-gray-200 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
-                                    >
-                                        {submitting ? (
-                                            <>
-                                                <Loader2 className="w-5 h-5 animate-spin" /> Processing...
-                                            </>
-                                        ) : (
-                                            "Complete Registration"
-                                        )}
-                                    </button>
-                                </div>
+                            <div className={cn("space-y-3 border-t px-5 py-4", hairline)}>
+                                {formError && (
+                                    <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+                                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
+                                        <div className="text-sm">
+                                            <p className="font-medium text-red-500">{formError}</p>
+                                            <button type="button" onClick={() => setFormError(null)} className={cn("mt-0.5 underline", muted)}>
+                                                Dismiss
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                                <button type="button" onClick={handleRegister} disabled={submitting} className={cn(primaryBtn, "h-12 text-base")}>
+                                    {submitting ? (
+                                        <><Loader2 className="h-5 w-5 animate-spin" /> Processing…</>
+                                    ) : isPaid ? (
+                                        "Continue to payment"
+                                    ) : (
+                                        "Complete registration"
+                                    )}
+                                </button>
                             </div>
                         </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>
-
-            {/* --- SUCCESS STATE (DEDICATED RECEIPT PAGE) --- */}
-            <AnimatePresence>
-                {step === 3 && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[110] bg-white overflow-y-auto custom-scrollbar"
-                    >
-                        {/* Immersive Backdrop */}
-                        <div className="absolute top-0 left-0 w-full h-[40vh] bg-gradient-to-b from-blue-50/50 to-white -z-10" />
-                        <div className="absolute top-20 right-[10%] w-64 h-64 bg-blue-100/30 blur-[100px] rounded-full -z-10" />
-                        <div className="absolute top-40 left-[5%] w-96 h-96 bg-red-100/20 blur-[120px] rounded-full -z-10" />
-
-                        <div className="max-w-4xl mx-auto px-6 py-16 md:py-24">
-                            <motion.div
-                                initial={{ scale: 0.95, opacity: 0, y: 20 }}
-                                animate={{ scale: 1, opacity: 1, y: 0 }}
-                                className="text-center space-y-12"
-                            >
-                                {/* Success Icon */}
-                                <div className="relative inline-block">
-                                    <div className="w-20 h-20 bg-green-500 rounded-[30px] flex items-center justify-center shadow-[0_20px_40px_-8px_rgba(34,197,94,0.3)] relative z-10 mx-auto">
-                                        <Check className="w-10 h-10 text-white stroke-[4]" />
-                                    </div>
-                                    <div className="absolute inset-0 bg-green-200 blur-2xl opacity-40 scale-150 animate-pulse" />
-                                </div>
-
-                                {/* Headline */}
-                                <div className="space-y-4">
-                                    <h2 className="text-5xl md:text-8xl font-black tracking-tight text-gray-900 leading-[0.85]">
-                                        See you at <br />
-                                        <span className="text-gray-900/10 italic">{displayTitleLast}.</span>
-                                    </h2>
-                                    <p className="text-lg md:text-xl text-gray-400 font-bold max-w-lg mx-auto leading-relaxed">
-                                        You're all set for <span className="text-gray-900">{event.start_date}</span>. We've sent a confirmation email to <span className="text-blue-600">{guests[0].email}</span>.
-                                    </p>
-                                </div>
-
-                                {/* The Receipt Card (Fixed Overlap) */}
-                                <div className="relative max-w-2xl mx-auto">
-                                    <div className="absolute -inset-4 bg-gray-900/[0.02] rounded-[72px] -z-10" />
-
-                                    <div className="bg-white rounded-[64px] border border-gray-100 shadow-[0_48px_96px_-32px_rgba(0,0,0,0.08)] overflow-hidden text-left relative">
-                                        {/* Decorative Ticket Notch */}
-                                        <div className="absolute top-1/2 -left-4 w-8 h-8 bg-white border border-gray-100 rounded-full -translate-y-1/2" />
-                                        <div className="absolute top-1/2 -right-4 w-8 h-8 bg-white border border-gray-100 rounded-full -translate-y-1/2" />
-
-                                        <div className="p-10 md:p-14 space-y-12">
-                                            {/* Top: Branding & Reference */}
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-6 h-6 bg-red-50 text-red-600 rounded flex items-center justify-center font-black text-[10px] border border-red-100">❤</div>
-                                                    <span className="font-black text-xs tracking-tighter uppercase italic">EventFlow</span>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-300">Reference</div>
-                                                    <div className="text-xs font-bold text-gray-900">EF-{currentTicket?.id.slice(0, 4).toUpperCase()}-{Math.floor(Math.random() * 89999 + 10000)}</div>
-                                                </div>
-                                            </div>
-
-                                            {/* Middle: Guest & Pass (Stacked to avoid overlap) */}
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                                <div className="space-y-2">
-                                                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Lead Attendee</div>
-                                                    <div className="text-4xl font-black text-gray-900 tracking-tight break-words">
-                                                        {guests[0].firstName} {guests[0].lastName}
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-2 md:text-right">
-                                                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Pass Hierarchy</div>
-                                                    <div className="text-4xl font-black text-blue-600 tracking-tight">
-                                                        {currentTicket?.title} (₦{(currentTicket?.price ?? 0).toLocaleString()})
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Bottom: Status & Action */}
-                                            <div className="pt-10 border-t border-gray-50 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
-                                                <div className="flex flex-wrap gap-3">
-                                                    <div className="px-3 py-1.5 bg-green-50 text-green-600 text-[10px] font-black uppercase tracking-widest rounded-xl border border-green-100 flex items-center gap-2">
-                                                        <Check className="w-3 h-3" /> Pass Active
-                                                    </div>
-                                                    {totalGuests > 1 && (
-                                                        <div className="px-3 py-1.5 bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest rounded-xl border border-blue-100 flex items-center gap-2">
-                                                            <Mail className="w-3 h-3" /> {guests.filter(g => g.isInvite).length} Invites Sent
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <button className="flex items-center gap-2.5 px-6 py-3 bg-gray-50 hover:bg-gray-100 transition-colors rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-600">
-                                                    <Ticket className="w-4 h-4" /> View Wallet
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Shared Action Suite */}
-                                <div className="pt-8 flex flex-col sm:flex-row items-center justify-center gap-6">
-                                    <button className="w-full sm:w-auto px-10 py-5 bg-white border border-gray-100 text-gray-900 rounded-[24px] font-black text-sm hover:shadow-lg transition-all flex items-center justify-center gap-3">
-                                        <Sparkles className="w-5 h-5 text-blue-500" /> Share Invitation
-                                    </button>
-                                    <button
-                                        onClick={() => setStep(1)}
-                                        className="w-full sm:w-auto px-10 py-5 bg-gray-900 text-white rounded-[24px] font-black text-sm hover:scale-[1.05] active:scale-95 transition-all shadow-xl shadow-gray-200 flex items-center justify-center gap-3"
-                                    >
-                                        <ArrowLeft className="w-5 h-5" /> Back to Event
-                                    </button>
-                                </div>
-                            </motion.div>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
         </div>
     );
 }
 
-function PublicPageSkeleton() {
+/** "10:00" / "10:00:00" -> "10:00 AM". Falls back to the raw string if it isn't HH:mm. */
+function formatClock(t?: string | null) {
+    if (!t) return "";
+    const m = /^(\d{1,2}):(\d{2})/.exec(t);
+    if (!m) return t;
+    const h = Number(m[1]);
+    return `${h % 12 || 12}:${m[2]} ${h >= 12 ? "PM" : "AM"}`;
+}
+
+function Radio({ selected }: { selected: boolean }) {
     return (
-        <div className="min-h-screen bg-white overflow-hidden flex flex-col relative">
+        <span className={cn(
+            "grid h-4 w-4 shrink-0 place-items-center rounded-full border",
+            selected ? "border-[color:var(--pg-accent)] bg-[color:var(--pg-accent)]" : "border-[color:var(--pg-border)]"
+        )}>
+            {selected && <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--pg-btn-fg)]" />}
+        </span>
+    );
+}
 
-            {/* Immersive Background */}
-            <div className="w-full p-4 md:px-10 md:py-8 flex items-center justify-between border-b border-gray-50">
-                <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-gray-100 animate-pulse" />
-                    <div className="w-24 h-6 rounded-lg bg-gray-100 animate-pulse" />
-                </div>
+function PublicPageSkeleton() {
+    const bar = "animate-pulse rounded-lg bg-black/[0.06]";
+    return (
+        <div className={cn(ubuntu.className, "min-h-screen bg-white")}>
+            <div className="mx-auto flex h-14 max-w-[880px] items-center px-4">
+                <div className={cn(bar, "h-5 w-24")} />
             </div>
-
-            <main className="max-w-6xl mx-auto px-0 lg:px-10 pt-10 md:pt-14">
-                {/* Header Skeleton */}
-                <div className="px-6 lg:px-0">
-                    <div className="max-w-3xl mb-10 space-y-6">
-                        <div className="flex items-center gap-3">
-                            <div className="w-20 h-6 rounded-full bg-gray-100 animate-pulse" />
-                            <div className="w-16 h-6 rounded-full bg-gray-100 animate-pulse" />
-                        </div>
-                        <div className="space-y-4">
-                            <div className="w-3/4 h-16 rounded-3xl bg-gray-100 animate-pulse" />
-                            <div className="w-1/2 h-8 rounded-2xl bg-gray-100 animate-pulse" />
-                        </div>
+            <div className="mx-auto grid max-w-[880px] gap-x-8 gap-y-6 px-4 pt-2 md:grid-cols-[340px_minmax(0,1fr)] md:pt-6">
+                <div className={cn(bar, "mx-auto aspect-square w-full max-w-sm !rounded-2xl md:mx-0 md:max-w-none")} />
+                <div className="space-y-6">
+                    <div className="space-y-3">
+                        <div className={cn(bar, "h-10 w-4/5")} />
+                        <div className={cn(bar, "h-10 w-1/2")} />
                     </div>
-                </div>
-
-                {/* Cover Image Skeleton */}
-                <div className="mb-16">
-                    <div className="aspect-[16/9] md:aspect-[21/9] w-full lg:rounded-[48px] bg-gray-100 animate-pulse" />
-                </div>
-
-                <div className="px-6 lg:px-0">
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 md:gap-20">
-                        {/* Left Col Skeleton */}
-                        <div className="lg:col-span-7 space-y-12 lg:space-y-20">
-                            {/* Info Tiles */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                                {[1, 2, 3].map(i => (
-                                    <div key={i} className="space-y-3">
-                                        <div className="w-16 h-4 rounded bg-gray-100 animate-pulse" />
-                                        <div className="w-32 h-6 rounded bg-gray-100 animate-pulse" />
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Description Skeleton */}
-                            <div className="space-y-6">
-                                <div className="w-32 h-4 rounded bg-gray-100 animate-pulse" />
-                                <div className="space-y-4">
-                                    <div className="w-full h-4 rounded bg-gray-100 animate-pulse" />
-                                    <div className="w-full h-4 rounded bg-gray-100 animate-pulse" />
-                                    <div className="w-2/3 h-4 rounded bg-gray-100 animate-pulse" />
-                                    <div className="w-full h-4 rounded bg-gray-100 animate-pulse" />
-                                    <div className="w-1/2 h-4 rounded bg-gray-100 animate-pulse" />
+                    <div className="space-y-4">
+                        {[0, 1].map(i => (
+                            <div key={i} className="flex items-center gap-3">
+                                <div className={cn(bar, "h-11 w-11")} />
+                                <div className="space-y-2">
+                                    <div className={cn(bar, "h-4 w-44")} />
+                                    <div className={cn(bar, "h-3 w-28")} />
                                 </div>
                             </div>
-                        </div>
-
-                        {/* Right Col Skeleton (Sticky) */}
-                        <div className="hidden lg:block lg:col-span-5">
-                            <div className="h-96 rounded-[48px] bg-gray-100 animate-pulse" />
-                        </div>
+                        ))}
+                    </div>
+                    <div className={cn(bar, "h-44 w-full !rounded-2xl")} />
+                    <div className="space-y-3">
+                        <div className={cn(bar, "h-4 w-full")} />
+                        <div className={cn(bar, "h-4 w-full")} />
+                        <div className={cn(bar, "h-4 w-2/3")} />
                     </div>
                 </div>
-            </main>
+            </div>
         </div>
     );
 }
