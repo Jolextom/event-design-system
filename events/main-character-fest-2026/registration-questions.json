@@ -1,0 +1,12 @@
+[
+  { "page": 1, "title": "Phone number (WhatsApp preferred)", "type": "text", "required": true },
+  { "page": 1, "title": "Are you attending as a", "type": "select", "required": true, "options": ["Campus student", "Young professional", "Other"], "property_key": "attending_as" },
+  { "page": 1, "title": "School or organisation name", "type": "text", "required": true },
+  { "page": 1, "title": "Which character are you coming as?", "type": "text", "required": true, "property_key": "character_name" },
+  { "page": 1, "title": "Which movie or franchise is your character from?", "type": "text", "required": true, "property_key": "franchise" },
+  { "page": 1, "title": "Are you coming with a squad?", "type": "select", "required": true, "options": ["Just me", "A duo (2 of us)", "A group (3 or more)"], "property_key": "squad_type" },
+  { "page": 1, "title": "Squad or group name (if you're coming with others)", "type": "text", "required": false, "property_key": "squad_name" },
+  { "page": 1, "title": "Is this your first Campus Yo-Pro event?", "type": "select", "required": true, "options": ["Yes, first time", "No, I've been before"], "property_key": "first_timer" },
+  { "page": 1, "title": "Any food allergies or dietary needs we should know about? (Type 'None' if not)", "type": "text", "required": false },
+  { "page": 1, "title": "Consent for photographs or video taken on the day to be used in event reporting and promotion", "type": "select", "required": true, "options": ["Yes, I consent"] }
+]
