@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
-import { Ubuntu } from "next/font/google";
+import { Inter, Sora } from "next/font/google";
 import {
     ArrowLeft,
     ArrowUpRight,
@@ -27,7 +27,10 @@ import { initializeTransaction } from "@/app/actions";
 import { fulfillOrder } from "@/lib/registrations";
 import { resolveTheme, themeStyle } from "./theme";
 
-const ubuntu = Ubuntu({ subsets: ["latin"], weight: ["300", "400", "500", "700"], display: "swap" });
+// Inter for body text, Sora for headings (applied via the `display` class below).
+const inter = Inter({ subsets: ["latin"], display: "swap" });
+const sora = Sora({ subsets: ["latin"], display: "swap", variable: "--font-sora" });
+const display = "font-[family-name:var(--font-sora)]";
 
 export default function RegistrationPage() {
     const params = useParams();
@@ -465,11 +468,11 @@ export default function RegistrationPage() {
 
     if (error || !event) {
         return (
-            <div className={cn(ubuntu.className, "flex min-h-screen flex-col items-center justify-center bg-white p-6 text-center text-[#131517]")}>
+            <div className={cn(`${inter.className} ${sora.variable}`, "flex min-h-screen flex-col items-center justify-center bg-white p-6 text-center text-[#131517]")}>
                 <div className="mb-6 grid h-14 w-14 place-items-center rounded-full bg-red-50 text-red-600">
                     <AlertCircle className="h-7 w-7" />
                 </div>
-                <h1 className="mb-2 text-2xl font-bold">{error || "Event not found"}</h1>
+                <h1 className={cn(display, "mb-2 text-2xl font-bold")}>{error || "Event not found"}</h1>
                 <p className="mb-8 max-w-sm text-[15px] text-[#6b6f76]">We couldn&apos;t find the event you&apos;re looking for. Please check the link and try again.</p>
                 <Link href="/" className="rounded-lg bg-[#131517] px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90">
                     Go home
@@ -634,7 +637,7 @@ export default function RegistrationPage() {
 
     return (
         <div
-            className={cn(ubuntu.className, "relative min-h-screen overflow-x-hidden pb-28 selection:bg-[color:var(--pg-accent)] selection:text-[color:var(--pg-btn-fg)] md:pb-20")}
+            className={cn(`${inter.className} ${sora.variable}`, "relative min-h-screen overflow-x-hidden pb-28 selection:bg-[color:var(--pg-accent)] selection:text-[color:var(--pg-btn-fg)] md:pb-20")}
             style={{ ...themeStyle(theme), background: "var(--pg-bg)", color: "var(--pg-text)" }}
         >
             {/* Ambient background: the cover image, heavily blurred, plus the theme's glow */}
@@ -667,7 +670,7 @@ export default function RegistrationPage() {
                     >
                         <Loader2 className="h-8 w-8 animate-spin text-[color:var(--pg-accent)]" />
                         <div>
-                            <h2 className="text-lg font-medium">Processing your registration</h2>
+                            <h2 className={cn(display, "text-lg font-semibold")}>Processing your registration</h2>
                             <p className={cn("mt-1 text-sm", muted)}>
                                 {isPaid ? "Preparing secure payment…" : "Finalizing your spot…"}
                             </p>
@@ -712,7 +715,7 @@ export default function RegistrationPage() {
 
                     {/* RIGHT: details, registration, about */}
                     <div className="min-w-0">
-                        <h1 className="text-[32px] font-bold leading-[1.1] tracking-tight md:text-[44px]">{event.event_title}</h1>
+                        <h1 className={cn(display, "text-[28px] font-bold leading-[1.15] tracking-tight sm:text-[32px] md:text-[40px]")}>{event.event_title}</h1>
 
                         <div className="mt-6 space-y-4">
                             <div className="flex items-center gap-3">
@@ -839,7 +842,7 @@ export default function RegistrationPage() {
                         >
                             <div className={cn("flex items-start justify-between gap-4 border-b px-5 py-4", hairline)}>
                                 <div className="min-w-0">
-                                    <h2 className="truncate text-lg font-bold leading-tight">{event.event_title}</h2>
+                                    <h2 className={cn(display, "truncate text-lg font-bold leading-tight")}>{event.event_title}</h2>
                                     <p className={cn("mt-0.5 text-sm", muted)}>
                                         {currentTicket ? `${currentTicket.title} · ${priceLabel(currentTicket)}` : "Registration"}
                                     </p>
@@ -1148,7 +1151,7 @@ function Radio({ selected }: { selected: boolean }) {
 function PublicPageSkeleton() {
     const bar = "animate-pulse rounded-lg bg-black/[0.06]";
     return (
-        <div className={cn(ubuntu.className, "min-h-screen bg-white")}>
+        <div className={cn(`${inter.className} ${sora.variable}`, "min-h-screen bg-white")}>
             <div className="mx-auto flex h-14 max-w-[880px] items-center px-4">
                 <div className={cn(bar, "h-5 w-24")} />
             </div>
