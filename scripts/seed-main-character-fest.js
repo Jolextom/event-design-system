@@ -8,7 +8,9 @@
  *   - the registration questions (registration-questions.json)
  *
  * What it deliberately does NOT do:
- *   - publish the event (do that from the dashboard once you're happy)
+ *   - publish the event (do that from the dashboard once you're happy). Note
+ *     that the hosted page /<tag> does not check is_published, so an
+ *     unpublished event is still reachable by anyone who has the link.
  *   - create a ticket/pass. The ticket fee is "COMING SOON", and the public
  *     page already shows a disabled "Tickets Coming Soon" state while an
  *     event has no passes. A placeholder FREE pass would let people register
@@ -190,7 +192,9 @@ async function main() {
 
         console.log(`\nCreated (unpublished): ${event.event_title}`);
         console.log(`  dashboard:   /events/${event.tag}`);
-        console.log(`  public page: /${event.tag}   (404s until published)`);
+        console.log(`  public page: /${event.tag}`);
+        console.log("  NOTE: \"unpublished\" does NOT hide the hosted page — anyone with that link can open it (and register once a ticket exists).");
+        console.log("        It only keeps the event out of the public API/listing. Don't share the link, or add a ticket, until you're ready.");
     } catch (err) {
         console.error(`\nFailed: ${err.message}`);
         if (eventId) {
