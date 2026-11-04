@@ -79,3 +79,15 @@ rounding, label, whether customers also pay Paystack's fee) at any time, with a 
 keep on each ticket. Changes apply to NEW payments only; every order stores the exact amount it was charged.
 Use this to swap a TEST subaccount code for the LIVE one when you go live. It warns you if you set a payout code but no fee
 (Paystack's fee would then come out of your own account on every sale).
+
+## Deleting an event
+
+Dashboard → each event has a **Delete** button (owner only). It removes the event and everything attached to it
+(tickets, guests, orders, form questions and answers, email records, staff, segments), in the order the database
+requires, then confirms the event is really gone. Events with guests or orders need their exact name typed.
+
+- **Deleting does not refund anyone.** The modal warns when completed (possibly real) orders exist; refund in Paystack first.
+- If something unexpected still points at the event, you get a message naming what couldn't be removed; nothing further is
+  deleted and you can press Delete again once it is fixed.
+- Runs on the server with the service-role key (`SUPABASE_SERVICE_ROLE_KEY` must be set), after checking your login token
+  and that you created the event. Code: `src/lib/eventDelete.ts`, `src/app/events/dashboard/actions.ts`.
