@@ -127,6 +127,7 @@ export async function sendConfirmationEmail({
     brandName,
     checkInRef,
     qrCodeUrl,
+    group,
     from,
     replyTo,
     resendApiKey,
@@ -144,7 +145,8 @@ export async function sendConfirmationEmail({
             eventImage,
             brandName,
             checkInRef,
-            qrCodeUrl
+            qrCodeUrl,
+            group
         });
 
         const { data, error } = await getResend(resendApiKey).emails.send({

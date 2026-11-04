@@ -3,7 +3,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
 import { AlertCircle, Check, Loader2, MapPin, Ticket } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isQuestionRelevant, missingRequiredQuestion, type RuleQuestion } from "@/lib/answers";
@@ -12,7 +11,7 @@ import type { Question } from "@/app/events/[tag]/types";
 import { resolveTheme, themeStyle } from "../../theme";
 import { inter, sora, display } from "../../fonts";
 import { QuestionField, type AnswerValue } from "../../QuestionField";
-import { completeInviteAction } from "../../actions";
+import { completeInviteAction, getInviteAction } from "../../actions";
 import { hairline, inputCls, muted, primaryBtn } from "../../ui";
 
 interface InviteAttendee {
@@ -68,40 +67,20 @@ export default function JoinInvitePage() {
             setLoading(true);
             setError(null);
             try {
-                const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-
-                const { data: att, error: attErr } = await supabase.from("attendees").select("*").eq("ref", ref).single();
-                if (attErr || !att) throw new Error("Invite not found or expired");
+                const res = await getInviteAction(ref);
+                if (!res.ok) throw new Error("Invite not found or expired");
+                const v = res.view;
+                const att = v.attendee as unknown as InviteAttendee;
                 setAttendee(att);
-
-                const { data: ev } = await supabase
-                    .from("events")
-                    .select("id, event_title, tag, start_date, start_time, location, image, image_focus_y")
-                    .eq("id", att.event_id)
-                    .single();
-                setEvent(ev);
+                setEvent(v.event as unknown as InviteEvent | null);
 
                 if (att.email_status === "registered" || att.email_status === "confirmed") {
                     setDone({ emailSent: true }); // already finished earlier: just show their pass
                     return;
                 }
 
-                if (att.pass_id) {
-                    const { data: pass } = await supabase.from("passes").select("title").eq("id", att.pass_id).single();
-                    setPassTitle(pass?.title ?? null);
-                }
-
-                const { data: qs } = await supabase
-                    .from("questions")
-                    .select("*, options:question_options!question_options_question_id_fkey(*)")
-                    .eq("event_id", att.event_id)
-                    .order("question_order", { ascending: true });
-                setQuestions(
-                    (qs || []).map((q: Question) => ({
-                        ...q,
-                        options: [...(q.options || [])].sort((a, b) => a.display_order - b.display_order),
-                    }))
-                );
+                setPassTitle(v.passTitle);
+                setQuestions(v.questions as Question[]);
             } catch (err: unknown) {
                 setError(err instanceof Error ? err.message : "Failed to load invite");
             } finally {

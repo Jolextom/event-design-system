@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
 import {
     Check,
     Calendar,
@@ -26,7 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 import { verifyAndFulfillPayment } from "@/app/actions";
 import type { Question } from "@/app/events/[tag]/types";
-import { addGroupMemberAction, resendInviteAction } from "../../actions";
+import { addGroupMemberAction, getReceiptAction, resendInviteAction } from "../../actions";
 import { QuestionField, type AnswerValue } from "../../QuestionField";
 import { DEFAULT_THEME, themeStyle } from "../../theme";
 import { isQuestionRelevant, missingRequiredQuestion, type RuleQuestion } from "@/lib/answers";
@@ -128,78 +127,15 @@ export default function ReceiptPage() {
             setError(null);
 
             try {
-                const supabase = createClient(
-                    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-                );
-
-                // Fetch order by ref
-                const { data: orderData, error: orderErr } = await supabase
-                    .from("orders_table")
-                    .select("*")
-                    .eq("order_ref", ref)
-                    .single();
-
-                if (orderErr || !orderData) {
-                    throw new Error("Order not found");
-                }
-
-                setOrder(orderData);
-
-                // Fetch attendees for this order
-                const { data: attendeesData } = await supabase
-                    .from("attendees")
-                    .select("*")
-                    .eq("order_id", orderData.id);
-
-                setAttendees(attendeesData || []);
-
-                // Fetch pass details
-                if (orderData.pass_id) {
-                    const { data: passData } = await supabase
-                        .from("passes")
-                        .select("id, title, type, group_size")
-                        .eq("id", orderData.pass_id)
-                        .single();
-
-                    setPass(passData);
-                }
-
-                // Fetch event details
-                if (orderData.event_id) {
-                    const { data: eventData } = await supabase
-                        .from("events")
-                        .select(`
-                            id, event_title, tag, start_date, start_time, location, image,
-                            questions (
-                                *,
-                                options:question_options!question_options_question_id_fkey (*)
-                            )
-                        `)
-                        .eq("id", orderData.event_id)
-                        .single();
-
-                    if (eventData) {
-                        setEvent({
-                            id: eventData.id,
-                            event_title: eventData.event_title,
-                            tag: eventData.tag,
-                            start_date: eventData.start_date,
-                            start_time: eventData.start_time,
-                            location: eventData.location,
-                            image: eventData.image
-                        });
-
-                        // Sort and set questions
-                        const sortedQuestions = (eventData.questions || [])
-                            .sort((a: any, b: any) => a.question_order - b.question_order)
-                            .map((q: any) => ({
-                                ...q,
-                                options: (q.options || []).sort((a: any, b: any) => a.display_order - b.display_order)
-                            }));
-                        setQuestions(sortedQuestions);
-                    }
-                }
+                // The server looks up this one order and returns only what this page draws.
+                const res = await getReceiptAction(ref);
+                if (!res.ok) throw new Error(res.error === "Not found." ? "Order not found" : res.error);
+                const v = res.view;
+                setOrder(v.order as unknown as Order);
+                setAttendees(v.attendees as unknown as Attendee[]);
+                setPass(v.pass as unknown as Pass | null);
+                if (v.event) setEvent(v.event as unknown as Event);
+                setQuestions(v.questions);
 
             } catch (err: any) {
                 console.error("Failed to load receipt:", err);
@@ -433,9 +369,9 @@ export default function ReceiptPage() {
 
                     {/* Headline */}
                     <div className="space-y-4">
-                        <h2 className="text-5xl md:text-8xl font-black tracking-tight text-gray-900 leading-[0.85]">
-                            See you at <br />
-                            <span className="text-gray-900/10 italic">{event?.event_title || "The Event"}.</span>
+                        <h2 className="tracking-tight">
+                            <span className="block text-xl md:text-3xl font-bold text-gray-400 mb-3 md:mb-4">See you at</span>
+                            <span className="block text-4xl md:text-7xl font-black text-gray-900 leading-[1.02] text-balance">{event?.event_title || "The Event"}</span>
                         </h2>
                         <p className="text-lg md:text-xl text-gray-400 font-bold max-w-lg mx-auto leading-relaxed">
                             You're all set for <span className="text-gray-900">{formatDate(event?.start_date || "")}</span>. (₦{(order.total_amount || 0).toLocaleString()}) <br />

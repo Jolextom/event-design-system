@@ -147,11 +147,30 @@ export interface ConfirmationEmailParams {
     checkInRef?: string;
     /** QR image URL encoding checkInRef (see buildQrCodeUrl in email.ts). */
     qrCodeUrl?: string;
+    /** Only for the BUYER of a group ticket: how many of the group's places are filled, so the email can say the rest are theirs to invite and manage. */
+    group?: { filled: number; total: number };
 }
 
 /** Escapes text before it goes into HTML. Used by the templates added for check-in passes. */
 const esc = (v: string) =>
     String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+/** For the buyer of a group ticket: the rest of the group is theirs to invite and manage, on their receipt page. */
+function groupManageBlock(group: { filled: number; total: number } | undefined, receiptLink: string): string {
+    if (!group || group.total < 2) return "";
+    const left = Math.max(group.total - group.filled, 0);
+    const status = left > 0
+        ? `${group.filled} of ${group.total} places are filled. <strong>${left} still ${left === 1 ? "needs" : "need"} to be invited or added.</strong>`
+        : `All ${group.total} places are filled. You can still review your group or resend an invite from the same page.`;
+    return `
+                                <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 24px; padding: 24px; margin-bottom: 32px;">
+                                    <div style="font-size: 10px; font-weight: 800; color: #b45309; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px;">Your group ticket</div>
+                                    <div style="font-size: 15px; font-weight: 700; color: #111827; line-height: 1.5; margin-bottom: 8px;">${status}</div>
+                                    <div style="font-size: 13px; color: #78716c; line-height: 1.6; margin-bottom: 16px;">You booked for the whole group, so you manage it. On your receipt page you can add each person's details or send them an invite link. Each person then gets their own ticket and check-in pass by email. You can resend an invite there too.</div>
+                                    <a href="${receiptLink}" style="display: inline-block; background: #111827; color: #ffffff; padding: 12px 22px; border-radius: 14px; text-decoration: none; font-weight: 800; font-size: 13px;">Manage your group &rarr;</a>
+                                </div>`;
+}
+
 
 /** The "Your check-in pass" block: QR code + the code in text, for showing at the door. */
 function checkInPassBlock(checkInRef?: string, qrCodeUrl?: string): string {
@@ -181,7 +200,8 @@ export function renderConfirmationEmailHtml({
     eventImage,
     brandName = 'EventFlow',
     checkInRef,
-    qrCodeUrl
+    qrCodeUrl,
+    group
 }: ConfirmationEmailParams): string {
     return `
 <!DOCTYPE html>
@@ -258,6 +278,7 @@ export function renderConfirmationEmailHtml({
                                     </table>
                                 </div>
                                 ${checkInPassBlock(checkInRef, qrCodeUrl)}
+                                ${groupManageBlock(group, receiptLink)}
                                 ${classNotesHtml ? `
                                 <div style="background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 20px; padding: 24px; margin-bottom: 32px;">
                                     <div style="font-size: 10px; font-weight: 800; color: #0d9488; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px;">📅 Session Schedule</div>

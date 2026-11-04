@@ -99,3 +99,26 @@ check on the server that the caller is logged in **and created that event** (`sr
 not protection, because anyone can call these endpoints directly. The guest confirmation email is internal-only
 (`src/lib/welcomeEmail.ts`) and is sent by checkout/payment/invite code that has already checked who is asking.
 Co-organisers are not supported yet: only the event's creator can do these things.
+
+## Receipt and invite links, and what the database exposes
+
+The receipt page (after paying) and the invite page (link in an email) used to read the orders and guests tables
+straight from the visitor's browser with the public key. They now ask the server for ONE reference
+(`getReceiptAction` / `getInviteAction` in `src/app/[tag]/actions.ts`, logic in `src/lib/publicViews.ts`), and get back
+only what the page draws: no payment internals, phone numbers, answers or other guests. A few wrong references in a row
+block that visitor for 10 minutes. The reference itself (e.g. `EF-…-F92AA249A0`) works like a ticket link: anyone who has it
+sees that order's names, emails and check-in QR codes, so don't post receipt links publicly.
+
+**Do this once:** the code no longer needs public read access to `orders_table`, `attendees`, `answers`, so check what the
+database currently allows. In the Supabase SQL editor:
+
+```sql
+select tablename, policyname, cmd, roles, qual
+from pg_policies
+where tablename in ('attendees','orders_table','answers','email_deliveries','staff')
+order by 1, 2;
+```
+
+Any row with `roles` containing `anon` (or `public`) and `cmd` of `SELECT` or `ALL` means anyone holding the public key can list
+that table. Send that output to be tightened (organiser dashboards, staff check-in and the watch/join pages still read these
+tables with a login, so the policies need rewriting rather than just removing).
