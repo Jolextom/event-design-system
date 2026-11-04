@@ -148,7 +148,7 @@ const MAIN_CHARACTER_FEST: PageTheme = {
             },
             {
                 heading: "Dress code",
-                intro: "Main Character Fest is a costume party: come dressed as your favourite movie character. Please keep your outfit modest.",
+                intro: "Come dressed as your favourite movie character: costumes are encouraged, not compulsory. Modest dress is still required for everyone.",
                 items: [
                     "Dress decently and appropriately for a mixed gathering of campus students and young professionals. Outfits should not be revealing or sexually suggestive.",
                     "Costumes must not carry offensive, hateful, or inappropriate symbols, slogans, or imagery.",

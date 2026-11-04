@@ -44,7 +44,8 @@ test("Main Character Fest: no invites, and a short code of conduct (expected beh
     assert.deepEqual(c.sections.map((s) => s.heading), ["Expected behaviour", "Dress code"]);
     assert.equal(c.sections[0].items.length, 6);
     assert.ok(c.sections[1].items.some((i) => /revealing or sexually suggestive/.test(i)));
-    assert.match(c.sections[1].intro ?? "", /modest/);
+    assert.match(c.sections[1].intro ?? "", /costumes are encouraged, not compulsory/);
+    assert.match(c.sections[1].intro ?? "", /Modest dress is still required for everyone/);
     assert.match(c.agreeLabel, /agree/i);
     assert.equal(resolveTheme("kini-ai-summit").conduct, undefined, "no conduct box on other events");
 });
