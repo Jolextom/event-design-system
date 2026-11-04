@@ -179,7 +179,7 @@ export async function fulfillOrder({
         // Fetch event data for emails
         const { data: event } = await supabase
             .from("events")
-            .select("event_title, start_date, start_time, location, created_by")
+            .select("event_title, tag, start_date, start_time, location, created_by")
             .eq("id", eventId)
             .single();
 
@@ -216,8 +216,8 @@ export async function fulfillOrder({
         })));
 
         if (event) {
-            const { resolveSenderForUser } = await import("./senderDomains");
-            const sender = await resolveSenderForUser(event.created_by);
+            const { resolveEventSender } = await import("./eventEmail");
+            const sender = await resolveEventSender(event);
             const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
             const eventDate = event.start_date
                 ? new Date(event.start_date).toLocaleDateString('en-US', {

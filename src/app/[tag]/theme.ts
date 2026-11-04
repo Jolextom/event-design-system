@@ -16,6 +16,14 @@ import type { CSSProperties } from "react";
 export interface PageTheme {
     /** Shown under the cover as "Hosted By". Omit to hide the block (events have no host field yet). */
     hostName?: string;
+    /**
+     * Who emails for this event come from. When set, the platform's own sending
+     * domain is used with this display name and brand, INSTEAD of whatever verified
+     * sender identity the event owner's account happens to have (which, for an
+     * account that also runs another brand, would put that other brand on this
+     * event's emails). When omitted, the old behaviour applies unchanged.
+     */
+    email?: { brandName: string; fromName?: string; replyTo?: string };
     /** Label on the main registration button. */
     ctaLabel: string;
     /** Line shown at the top of the registration card. */
@@ -71,6 +79,7 @@ export const DEFAULT_THEME: PageTheme = {
 
 const MAIN_CHARACTER_FEST: PageTheme = {
     hostName: "Campus Yo-Pro Ministry",
+    email: { brandName: "Campus Yo-Pro Ministry", fromName: "Main Character Fest" },
     ctaLabel: "Claim your role",
     welcomeText: "Everybody has a role. Pull up as your favourite character and register below.",
     ambientOpacity: 0.5,
@@ -101,6 +110,11 @@ export function resolveTheme(tag?: string | null): PageTheme {
     if (!tag) return DEFAULT_THEME;
     const key = Object.keys(THEMES).find((prefix) => tag.startsWith(prefix));
     return key ? THEMES[key] : DEFAULT_THEME;
+}
+
+/** Email identity configured for this event's tag, if any (see PageTheme.email). */
+export function emailConfigForTag(tag?: string | null): PageTheme["email"] | undefined {
+    return resolveTheme(tag).email;
 }
 
 /** The theme's colours as CSS variables, to spread onto the page's root element. */

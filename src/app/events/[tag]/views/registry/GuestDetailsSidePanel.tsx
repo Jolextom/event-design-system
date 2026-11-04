@@ -163,17 +163,22 @@ export function GuestDetailsSidePanel({
             const { data: ev } = await supabase.from("events").select("tag").eq("id", attendee.event_id).single();
             if (!ev?.tag) throw new Error("Event tag not found");
 
-            await fetch('/api/send-invite', {
+            const { data: sess } = await supabase.auth.getSession();
+            const res = await fetch('/api/send-invite', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sess.session?.access_token ?? ""}` },
                 body: JSON.stringify({ attendeeId: attendee.id, eventTag: ev.tag })
             });
+            if (!res.ok) {
+                const j = await res.json().catch(() => ({}));
+                throw new Error(j.error || "Failed to send invite");
+            }
 
             alert("Invite resent successfully");
             if (attendee.id) fetchEmailHistory(attendee.id);
         } catch (err) {
             console.error(err);
-            alert("Failed to send invite");
+            alert(err instanceof Error && err.message ? err.message : "Failed to send invite");
         } finally {
             setActionLoading(null);
         }

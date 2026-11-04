@@ -5,19 +5,15 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
-import { Inter, Sora } from "next/font/google";
 import {
     ArrowLeft,
     ArrowUpRight,
     Check,
-    CheckCircle2,
-    ChevronDown,
     Globe,
     Loader2,
     AlertCircle,
     MapPin,
     Share2,
-    Star,
     Ticket,
     X,
 } from "lucide-react";
@@ -27,11 +23,10 @@ import { computeCharge } from "@/lib/fees";
 import { passSaleState, registrationClosed } from "@/lib/sales";
 import { submitRegistration } from "./actions";
 import { resolveTheme, themeStyle } from "./theme";
+import { QuestionField } from "./QuestionField";
+import { inter, sora, display } from "./fonts";
+import { choiceCls, hairline, inputCls, muted, primaryBtn, Radio } from "./ui";
 
-// Inter for body text, Sora for headings (applied via the `display` class below).
-const inter = Inter({ subsets: ["latin"], display: "swap" });
-const sora = Sora({ subsets: ["latin"], display: "swap", variable: "--font-sora" });
-const display = "font-[family-name:var(--font-sora)]";
 
 export default function RegistrationPage() {
     const params = useParams();
@@ -399,22 +394,11 @@ export default function RegistrationPage() {
         : null;
 
     // Shared class strings
-    const muted = "text-[color:var(--pg-muted)]";
-    const hairline = "border-[color:var(--pg-border)]";
     const tile = cn("grid h-11 w-11 shrink-0 place-items-center rounded-lg border bg-[color:var(--pg-surface)]", hairline);
-    const inputCls = cn(
-        "w-full rounded-lg border bg-[color:var(--pg-input)] px-3.5 text-[15px] text-[color:var(--pg-text)] outline-none transition",
-        "placeholder:text-[color:var(--pg-muted)] focus:border-[color:var(--pg-accent)] focus:ring-4 focus:ring-[color:var(--pg-ring)]",
-        hairline
-    );
-    const choiceCls = (selected: boolean, disabled = false) => cn(
-        "flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-[15px] transition",
-        selected ? "border-[color:var(--pg-accent)] bg-[color:var(--pg-selected)]" : cn(hairline, "hover:bg-[color:var(--pg-surface)]"),
-        disabled && "cursor-not-allowed opacity-50 hover:bg-transparent"
-    );
-    const primaryBtn = "flex w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--pg-btn)] font-medium text-[color:var(--pg-btn-fg)] transition hover:opacity-90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40";
 
-    const TicketSelector = ({ passes: passesProp = [] }: { passes?: Pass[] }) => {
+    // A plain function that returns JSX, NOT a component: declaring a component inside the
+    // page makes React rebuild it from scratch on every state change (visible as a flicker).
+    const renderTicketSelector = (passesProp: Pass[] = []) => {
         const displayPasses = passesProp && passesProp.length > 0 ? passesProp : (passes || []);
         const currentTrigger = triggerQuestions[currentTriggerIndex];
 
@@ -537,7 +521,7 @@ export default function RegistrationPage() {
                     <img
                         src={event.image}
                         alt=""
-                        className="absolute inset-0 h-full w-full scale-150 object-cover blur-[90px] saturate-150"
+                        className="absolute inset-0 h-full w-full scale-150 transform-gpu object-cover blur-[90px] saturate-150"
                         style={{ opacity: theme.ambientOpacity }}
                     />
                 )}
@@ -557,7 +541,7 @@ export default function RegistrationPage() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[120] flex flex-col items-center justify-center gap-4 bg-[color:var(--pg-bg)]/90 p-6 text-center backdrop-blur-md"
+                        className="fixed inset-0 z-[120] flex flex-col items-center justify-center gap-4 bg-[color:var(--pg-bg)]/95 p-6 text-center"
                     >
                         <Loader2 className="h-8 w-8 animate-spin text-[color:var(--pg-accent)]" />
                         <div>
@@ -641,7 +625,7 @@ export default function RegistrationPage() {
                         </div>
 
                         {/* Registration card */}
-                        <section id="tickets-section" className={cn("mt-6 scroll-mt-6 overflow-hidden rounded-2xl border bg-[color:var(--pg-surface)] backdrop-blur-md", hairline)}>
+                        <section id="tickets-section" className={cn("mt-6 scroll-mt-6 overflow-hidden rounded-2xl border bg-[color:var(--pg-surface)]", hairline)}>
                             <div className={cn("flex items-center gap-2 border-b px-4 py-2.5 text-sm font-medium", hairline, muted)}>
                                 <Ticket className="h-4 w-4" /> Registration
                             </div>
@@ -661,7 +645,7 @@ export default function RegistrationPage() {
                                 ) : passes.length > 0 ? (
                                     <>
                                         <p className={cn("text-[15px] leading-relaxed", muted)}>{theme.welcomeText}</p>
-                                        <TicketSelector passes={filteredPasses} />
+                                        {renderTicketSelector(filteredPasses)}
                                         {currentCharge?.applied && (
                                             <p className={cn("text-sm", muted)}>A {currentCharge.label.toLowerCase()} is added at checkout.</p>
                                         )}
@@ -705,7 +689,7 @@ export default function RegistrationPage() {
             </div>
 
             {/* Mobile sticky action bar */}
-            <div className={cn("fixed inset-x-0 bottom-0 z-40 border-t bg-[color:var(--pg-modal)]/95 px-4 py-3 backdrop-blur-md md:hidden", hairline)}>
+            <div className={cn("fixed inset-x-0 bottom-0 z-40 border-t bg-[color:var(--pg-modal)] px-4 py-3 md:hidden", hairline)}>
                 {regClosed ? (
                     <button type="button" disabled className={cn(primaryBtn, "mx-auto h-11 max-w-md text-[15px]")}>
                         Registration closed
@@ -744,13 +728,13 @@ export default function RegistrationPage() {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={() => setStep(1)}
-                        className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-6"
+                        className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 sm:items-center sm:p-6"
                     >
                         <motion.div
-                            initial={{ y: 24, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            exit={{ y: 24, opacity: 0 }}
-                            transition={{ duration: 0.18 }}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.12 }}
                             onClick={(e) => e.stopPropagation()}
                             className={cn("flex max-h-[92vh] w-full max-w-[480px] flex-col overflow-hidden rounded-t-3xl border bg-[color:var(--pg-modal)] shadow-2xl sm:rounded-2xl", hairline)}
                         >
@@ -803,16 +787,9 @@ export default function RegistrationPage() {
                                                 )}
                                             </div>
 
-                                            <AnimatePresence mode="wait">
-                                                {!guest.isInvite || isPrimary ? (
-                                                    <motion.div
-                                                        key="form"
-                                                        initial={{ opacity: 0, height: 0 }}
-                                                        animate={{ opacity: 1, height: "auto" }}
-                                                        exit={{ opacity: 0, height: 0 }}
-                                                        className="-mx-1 space-y-4 overflow-hidden p-1"
-                                                    >
-                                                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                            {!guest.isInvite || isPrimary ? (
+                                                <div className="space-y-4">
+                                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                                             <div>
                                                                 <label htmlFor={`g${index}-first`} className="mb-1.5 block text-sm font-medium">First name</label>
                                                                 <input
@@ -858,153 +835,40 @@ export default function RegistrationPage() {
                                                             />
                                                         </div>
 
-                                                        {/* Custom Dynamic Questions */}
-                                                        {visibleFormQuestions.map((q) => {
-                                                            const setAnswer = (value: string | string[] | number) => {
-                                                                const newGuests = [...guests];
-                                                                newGuests[index].answers = { ...newGuests[index].answers, [q.id]: value };
-                                                                setGuests(newGuests);
-                                                            };
-                                                            const toggleCheckbox = (optionText: string) => {
-                                                                const current = (guest.answers[q.id] as string[]) || [];
-                                                                setAnswer(current.includes(optionText) ? current.filter(v => v !== optionText) : [...current, optionText]);
-                                                            };
-                                                            const scaleMin = q.scale_config?.min ?? 1;
-                                                            const scaleMax = q.scale_config?.max ?? 5;
-                                                            const scaleValues = Array.from({ length: Math.max(1, scaleMax - scaleMin + 1) }, (_, i) => scaleMin + i);
-
-                                                            return (
-                                                                <div key={q.id}>
-                                                                    <label className="mb-1.5 block text-sm font-medium">
-                                                                        {q.title}{q.is_required && <span className="ml-0.5 text-red-500">*</span>}
-                                                                    </label>
-
-                                                                    {q.question_type === "select" && (
-                                                                        <div className="space-y-2">
-                                                                            {q.options?.map(opt => {
-                                                                                const selected = guest.answers[q.id] === opt.option_text;
-                                                                                return (
-                                                                                    <button key={opt.id} type="button" onClick={() => setAnswer(opt.option_text)} className={choiceCls(selected)}>
-                                                                                        <Radio selected={selected} />
-                                                                                        {opt.option_text}
-                                                                                    </button>
-                                                                                );
-                                                                            })}
-                                                                        </div>
-                                                                    )}
-
-                                                                    {q.question_type === "dropdown" && (
-                                                                        <div className="relative">
-                                                                            <select
-                                                                                value={(guest.answers[q.id] as string) || ""}
-                                                                                onChange={(e) => setAnswer(e.target.value)}
-                                                                                className={cn(inputCls, "h-11 cursor-pointer appearance-none pr-10")}
-                                                                            >
-                                                                                <option value="" disabled>Select an option</option>
-                                                                                {q.options?.map(opt => (
-                                                                                    <option key={opt.id} value={opt.option_text}>{opt.option_text}</option>
-                                                                                ))}
-                                                                            </select>
-                                                                            <ChevronDown className={cn("pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2", muted)} />
-                                                                        </div>
-                                                                    )}
-
-                                                                    {q.question_type === "checkbox" && (
-                                                                        <div className="space-y-2">
-                                                                            {q.options?.map(opt => {
-                                                                                const checked = ((guest.answers[q.id] as string[]) || []).includes(opt.option_text);
-                                                                                return (
-                                                                                    <button key={opt.id} type="button" onClick={() => toggleCheckbox(opt.option_text)} className={choiceCls(checked)}>
-                                                                                        <span className={cn(
-                                                                                            "grid h-4 w-4 shrink-0 place-items-center rounded border",
-                                                                                            checked ? "border-[color:var(--pg-accent)] bg-[color:var(--pg-accent)] text-[color:var(--pg-btn-fg)]" : hairline
-                                                                                        )}>
-                                                                                            {checked && <CheckCircle2 className="h-3 w-3" />}
-                                                                                        </span>
-                                                                                        {opt.option_text}
-                                                                                    </button>
-                                                                                );
-                                                                            })}
-                                                                        </div>
-                                                                    )}
-
-                                                                    {q.question_type === "long_text" && (
-                                                                        <textarea
-                                                                            rows={4}
-                                                                            value={(guest.answers[q.id] as string) || ""}
-                                                                            onChange={(e) => setAnswer(e.target.value)}
-                                                                            placeholder="Your answer"
-                                                                            className={cn(inputCls, "resize-none py-3")}
-                                                                        />
-                                                                    )}
-
-                                                                    {q.question_type === "linear_scale" && (
-                                                                        <div className="flex items-center gap-2">
-                                                                            {scaleValues.map(n => (
-                                                                                <button
-                                                                                    key={n}
-                                                                                    type="button"
-                                                                                    onClick={() => setAnswer(n)}
-                                                                                    className={cn(choiceCls(guest.answers[q.id] === n), "flex-1 justify-center px-0 py-2.5 font-medium")}
-                                                                                >
-                                                                                    {n}
-                                                                                </button>
-                                                                            ))}
-                                                                        </div>
-                                                                    )}
-
-                                                                    {q.question_type === "star_rating" && (
-                                                                        <div className="flex items-center gap-1">
-                                                                            {scaleValues.map(n => {
-                                                                                const val = (guest.answers[q.id] as number) || 0;
-                                                                                return (
-                                                                                    <button key={n} type="button" onClick={() => setAnswer(n)} aria-label={`${n} stars`} className="p-1">
-                                                                                        <Star className={cn("h-6 w-6 transition", n <= val ? "fill-[color:var(--pg-accent)] text-[color:var(--pg-accent)]" : muted)} />
-                                                                                    </button>
-                                                                                );
-                                                                            })}
-                                                                        </div>
-                                                                    )}
-
-                                                                    {(q.question_type === "text" || !q.question_type) && (
-                                                                        <input
-                                                                            value={(guest.answers[q.id] as string) || ""}
-                                                                            onChange={(e) => setAnswer(e.target.value)}
-                                                                            placeholder="Your answer"
-                                                                            className={cn(inputCls, "h-11")}
-                                                                        />
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </motion.div>
-                                                ) : (
-                                                    <motion.div
-                                                        key="invite"
-                                                        initial={{ opacity: 0 }}
-                                                        animate={{ opacity: 1 }}
-                                                        exit={{ opacity: 0 }}
-                                                        className="-mx-1 space-y-2 p-1"
-                                                    >
-                                                        <label htmlFor={`g${index}-invite`} className="mb-1.5 block text-sm font-medium">Guest&apos;s email</label>
-                                                        <input
-                                                            id={`g${index}-invite`}
-                                                            type="email"
-                                                            value={guest.email}
-                                                            onChange={(e) => {
-                                                                const newGuests = [...guests];
-                                                                newGuests[index].email = e.target.value;
-                                                                setGuests(newGuests);
-                                                            }}
-                                                            placeholder="guest@example.com"
-                                                            className={cn(inputCls, "h-11")}
-                                                        />
-                                                        <p className={cn("text-sm", muted)}>
-                                                            We&apos;ll email them a link to complete their own registration.
-                                                        </p>
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
+                                                        {/* Custom questions: the shared field renders every question type */}
+                                                        {visibleFormQuestions.map((q) => (
+                                                            <QuestionField
+                                                                key={q.id}
+                                                                question={q}
+                                                                value={guest.answers[q.id]}
+                                                                onChange={(value) => {
+                                                                    const newGuests = [...guests];
+                                                                    newGuests[index].answers = { ...newGuests[index].answers, [q.id]: value };
+                                                                    setGuests(newGuests);
+                                                                }}
+                                                            />
+                                                        ))}
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-2">
+                                                    <label htmlFor={`g${index}-invite`} className="mb-1.5 block text-sm font-medium">Guest&apos;s email</label>
+                                                    <input
+                                                        id={`g${index}-invite`}
+                                                        type="email"
+                                                        value={guest.email}
+                                                        onChange={(e) => {
+                                                            const newGuests = [...guests];
+                                                            newGuests[index].email = e.target.value;
+                                                            setGuests(newGuests);
+                                                        }}
+                                                        placeholder="guest@example.com"
+                                                        className={cn(inputCls, "h-11")}
+                                                    />
+                                                    <p className={cn("text-sm", muted)}>
+                                                        We&apos;ll email them a link to complete their own registration.
+                                                    </p>
+                                                </div>
+                                            )}
 
                                             {index < guests.length - 1 && <div className={cn("h-px w-full border-t", hairline)} />}
                                         </div>
@@ -1067,17 +931,6 @@ function formatClock(t?: string | null) {
     if (!m) return t;
     const h = Number(m[1]);
     return `${h % 12 || 12}:${m[2]} ${h >= 12 ? "PM" : "AM"}`;
-}
-
-function Radio({ selected }: { selected: boolean }) {
-    return (
-        <span className={cn(
-            "grid h-4 w-4 shrink-0 place-items-center rounded-full border",
-            selected ? "border-[color:var(--pg-accent)] bg-[color:var(--pg-accent)]" : "border-[color:var(--pg-border)]"
-        )}>
-            {selected && <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--pg-btn-fg)]" />}
-        </span>
-    );
 }
 
 function PublicPageSkeleton() {

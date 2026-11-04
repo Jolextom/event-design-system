@@ -143,6 +143,28 @@ export interface ConfirmationEmailParams {
     eventImage?: string;
     /** Sender brand shown in the header badge and footer. Defaults to the platform brand. */
     brandName?: string;
+    /** This attendee's OWN check-in code (attendees.ref). When given with qrCodeUrl, the email carries their check-in pass. */
+    checkInRef?: string;
+    /** QR image URL encoding checkInRef (see buildQrCodeUrl in email.ts). */
+    qrCodeUrl?: string;
+}
+
+/** Escapes text before it goes into HTML. Used by the templates added for check-in passes. */
+const esc = (v: string) =>
+    String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+/** The "Your check-in pass" block: QR code + the code in text, for showing at the door. */
+function checkInPassBlock(checkInRef?: string, qrCodeUrl?: string): string {
+    if (!checkInRef || !qrCodeUrl) return "";
+    return `
+                                <div style="background: #111827; border-radius: 24px; padding: 28px 24px; margin-bottom: 32px; text-align: center;">
+                                    <div style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 16px;">Your check-in pass</div>
+                                    <div style="display: inline-block; background: #ffffff; border-radius: 16px; padding: 14px;">
+                                        <img src="${esc(qrCodeUrl)}" width="180" height="180" alt="Your check-in QR code" style="display: block; width: 180px; height: 180px;">
+                                    </div>
+                                    <div style="margin-top: 16px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 13px; letter-spacing: 0.5px; color: #ffffff;">${esc(checkInRef)}</div>
+                                    <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">Show this at the entrance. It is personal to you, so each person in a group gets their own.</div>
+                                </div>`;
 }
 
 export function renderConfirmationEmailHtml({
@@ -157,7 +179,9 @@ export function renderConfirmationEmailHtml({
     googleCalendarLink,
     outlookCalendarLink,
     eventImage,
-    brandName = 'EventFlow'
+    brandName = 'EventFlow',
+    checkInRef,
+    qrCodeUrl
 }: ConfirmationEmailParams): string {
     return `
 <!DOCTYPE html>
@@ -233,6 +257,7 @@ export function renderConfirmationEmailHtml({
                                         </tr>
                                     </table>
                                 </div>
+                                ${checkInPassBlock(checkInRef, qrCodeUrl)}
                                 ${classNotesHtml ? `
                                 <div style="background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 20px; padding: 24px; margin-bottom: 32px;">
                                     <div style="font-size: 10px; font-weight: 800; color: #0d9488; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px;">📅 Session Schedule</div>
@@ -429,6 +454,8 @@ export interface ReminderEmailParams {
     qrCodeUrl: string;
     googleCalendarLink?: string;
     outlookCalendarLink?: string;
+    /** Sender brand for the generic template (the Kini template ignores it). Defaults to the platform brand. */
+    brandName?: string;
 }
 
 /**
@@ -592,6 +619,87 @@ export function renderKiniSummitReminderEmailHtml({
 </body>
 </html>
 `.trim();
+}
+
+// ============================================================================
+// GENERIC CHECK-IN REMINDER
+// Event-driven (title, date, venue and brand all come from the event), so it
+// is safe for any event. The Kini/AAES reminder above stays available for
+// events that explicitly use the 'kini_summit' template.
+// ============================================================================
+
+export function renderReminderEmailHtml({
+    eventTitle,
+    eventDate,
+    eventLocation,
+    attendeeName,
+    checkInRef,
+    qrCodeUrl,
+    googleCalendarLink,
+    outlookCalendarLink,
+    brandName = 'EventFlow',
+}: ReminderEmailParams): string {
+    const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(eventLocation)}`;
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0; padding:0; background-color:#f6f9fc; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+<table role="presentation" style="width:100%; border-collapse:collapse;">
+  <tr>
+    <td align="center" style="padding:40px 20px;">
+      <table role="presentation" style="width:100%; max-width:520px; border-collapse:collapse;">
+        <tr>
+          <td style="text-align:center; padding-bottom:24px;">
+            <span style="font-weight:900; font-size:16px; letter-spacing:-0.5px; color:#111827;">${esc(brandName)}</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#ffffff; border-radius:28px; border:1px solid #f1f5f9; padding:40px 32px;">
+            <div style="text-align:center;">
+              <div style="display:inline-block; background:#eef2ff; color:#4f46e5; padding:6px 14px; border-radius:100px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:20px;">Almost here</div>
+              <h1 style="margin:0 0 8px; font-size:26px; line-height:1.25; font-weight:900; color:#111827; letter-spacing:-0.5px;">See you soon, ${esc(attendeeName)}.</h1>
+              <p style="margin:0 0 28px; font-size:15px; line-height:1.7; color:#64748b;"><strong style="color:#111827;">${esc(eventTitle)}</strong> is coming up. Your check-in code is below. Show it at the entrance, no printing needed.</p>
+            </div>
+            ${checkInPassBlock(checkInRef, qrCodeUrl)}
+            <table role="presentation" style="width:100%; border-collapse:collapse; background:#f8fafc; border:1px solid #f1f5f9; border-radius:20px; margin-bottom:8px;">
+              <tr><td style="padding:22px 24px;">
+                <div style="font-size:10px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:4px;">Date</div>
+                <div style="font-size:15px; font-weight:800; color:#1e293b; margin-bottom:18px;">${esc(eventDate)}</div>
+                <div style="font-size:10px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:4px;">Venue</div>
+                <div style="font-size:15px; font-weight:800; color:#1e293b;">${esc(eventLocation)}</div>
+                <div style="margin-top:6px;"><a href="${mapsLink}" target="_blank" rel="noopener noreferrer" style="font-size:12px; font-weight:700; color:#4f46e5; text-decoration:underline;">View on Google Maps</a></div>
+              </td></tr>
+            </table>
+            ${(googleCalendarLink || outlookCalendarLink) ? `
+            <div style="margin-top:28px; padding-top:24px; border-top:1px solid #f1f5f9; text-align:center;">
+              <p style="margin:0 0 14px; font-size:10px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:1.5px;">Add to calendar</p>
+              ${googleCalendarLink ? `<a href="${googleCalendarLink}" style="font-size:12px; color:#4f46e5; text-decoration:none; font-weight:800; padding:10px 18px; background:#eef2ff; border-radius:12px; margin:0 4px;">Google</a>` : ''}
+              ${outlookCalendarLink ? `<a href="${outlookCalendarLink}" style="font-size:12px; color:#4f46e5; text-decoration:none; font-weight:800; padding:10px 18px; background:#eef2ff; border-radius:12px; margin:0 4px;">Outlook</a>` : ''}
+            </div>
+            ` : ''}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-top:28px; text-align:center;">
+            <p style="margin:0; font-size:12px; color:#94a3b8;">Sent via <strong style="color:#64748b;">${esc(brandName)}</strong></p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
+`.trim();
+}
+
+/** Picks the reminder design for an event: the Kini/AAES one only when the event asks for it. */
+export function renderReminderEmailHtmlForTemplate(templateKey: string | null | undefined, params: ReminderEmailParams): string {
+    return templateKey === 'kini_summit' ? renderKiniSummitReminderEmailHtml(params) : renderReminderEmailHtml(params);
 }
 
 // ============================================================================

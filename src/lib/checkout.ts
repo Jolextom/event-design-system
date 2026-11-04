@@ -4,6 +4,7 @@ import { initializeTransaction } from "./paystack";
 import { fulfillOrder } from "./registrations";
 import { computeCharge } from "./fees";
 import { passSaleState, registrationClosed } from "./sales";
+import { missingRequiredQuestion, type RuleQuestion } from "./answers";
 
 /**
  * Server-side checkout. The ONE place where a registration becomes an order,
@@ -164,26 +165,11 @@ export async function createCheckout(input: CheckoutInput, opts: CheckoutOptions
     }
 
     // Required questions (non-invite guests only), honouring track-gated questions
-    const optionIndex = new Map<string, { questionId: string; text: string }>();
-    for (const q of event.questions || []) {
-        for (const opt of (q as any).options || []) optionIndex.set(opt.id, { questionId: q.id, text: opt.option_text });
-    }
-    const isQuestionRelevant = (q: any, answers: Record<string, any>) => {
-        if (!q.show_for_option_id) return true;
-        const linked = optionIndex.get(q.show_for_option_id);
-        if (!linked) return false; // stale link: fail closed, like the hosted page's hidden behaviour
-        return answers[linked.questionId] === linked.text;
-    };
-    const requiredQuestions = (event.questions || []).filter((q: any) => q.is_required && !q.is_selection_logic);
     for (let i = 0; i < finalGuests.length; i++) {
         const guest = finalGuests[i];
         if (guest.isInvite) continue;
-        for (const rq of requiredQuestions) {
-            if (!isQuestionRelevant(rq, guest.answers)) continue;
-            const answer = guest.answers[rq.id];
-            const isEmpty = answer === undefined || answer === null || answer === "" || (Array.isArray(answer) && answer.length === 0);
-            if (isEmpty) return fail(400, `${i === 0 ? "Primary guest" : `Guest ${i + 1}`} must answer: "${rq.title}"`);
-        }
+        const missing = missingRequiredQuestion((event.questions || []) as RuleQuestion[], guest.answers);
+        if (missing) return fail(400, `${i === 0 ? "Primary guest" : `Guest ${i + 1}`} must answer: "${missing.title}"`);
     }
 
     // Availability
