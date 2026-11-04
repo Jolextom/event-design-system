@@ -1,5 +1,5 @@
 import { adminClient } from "@/lib/apiV1";
-import { invitesAllowedForTag } from "@/app/[tag]/theme";
+import { communityForTag, invitesAllowedForTag } from "@/app/[tag]/theme";
 import { sendConfirmationEmail, buildQrCodeUrl } from "@/lib/email";
 import { generateGoogleCalendarLink, generateOutlookLink } from "@/lib/calendar";
 
@@ -165,6 +165,7 @@ export async function sendWelcomeEmail(attendeeId: string, eventId: string) {
             checkInRef: attendee.ref || undefined,
             qrCodeUrl: attendee.ref ? buildQrCodeUrl(attendee.ref) : undefined,
             group,
+            community: communityForTag(event.tag),
         };
 
         const result = await sendConfirmationEmail({

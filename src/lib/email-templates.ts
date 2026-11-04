@@ -149,11 +149,24 @@ export interface ConfirmationEmailParams {
     qrCodeUrl?: string;
     /** Only for the BUYER of a group ticket: how many of the group's places are filled, so the email can say the rest are theirs to invite and manage. */
     group?: { filled: number; total: number };
+    /** A group chat for registered guests (see theme.ts `community`). */
+    community?: { label: string; url: string; note?: string };
 }
 
 /** Escapes text before it goes into HTML. Used by the templates added for check-in passes. */
 const esc = (v: string) =>
     String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+/** "Join the group chat" button for events that have one. */
+function communityBlock(community: { label: string; url: string; note?: string } | undefined): string {
+    if (!community?.url) return "";
+    return `
+                                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 24px; padding: 24px; margin-bottom: 32px; text-align: center;">
+                                    <div style="font-size: 10px; font-weight: 800; color: #15803d; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px;">Stay in the loop</div>
+                                    <a href="${esc(community.url)}" style="display: inline-block; background: #16a34a; color: #ffffff; padding: 14px 26px; border-radius: 14px; text-decoration: none; font-weight: 800; font-size: 14px;">${esc(community.label)} &rarr;</a>
+                                    ${community.note ? `<div style="margin-top: 12px; font-size: 12px; color: #4b5563; line-height: 1.6;">${esc(community.note)}</div>` : ""}
+                                </div>`;
+}
 
 /** For the buyer of a group ticket: the rest of the group is theirs to invite and manage, on their receipt page. */
 function groupManageBlock(group: { filled: number; total: number } | undefined, receiptLink: string): string {
@@ -201,7 +214,8 @@ export function renderConfirmationEmailHtml({
     brandName = 'EventFlow',
     checkInRef,
     qrCodeUrl,
-    group
+    group,
+    community
 }: ConfirmationEmailParams): string {
     return `
 <!DOCTYPE html>
@@ -279,6 +293,7 @@ export function renderConfirmationEmailHtml({
                                 </div>
                                 ${checkInPassBlock(checkInRef, qrCodeUrl)}
                                 ${groupManageBlock(group, receiptLink)}
+                                ${communityBlock(community)}
                                 ${classNotesHtml ? `
                                 <div style="background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 20px; padding: 24px; margin-bottom: 32px;">
                                     <div style="font-size: 10px; font-weight: 800; color: #0d9488; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px;">📅 Session Schedule</div>

@@ -20,6 +20,14 @@ export interface ConductText {
     agreeLabel: string;
 }
 
+/** A group chat registered people are invited to (shown on the receipt page and in the confirmation email). */
+export interface CommunityLink {
+    label: string;
+    /** The invite link. Use the clean form without tracking parameters. */
+    url: string;
+    note?: string;
+}
+
 export interface PageTheme {
     /** Shown under the cover as "Hosted By". Omit to hide the block (events have no host field yet). */
     hostName?: string;
@@ -49,6 +57,11 @@ export interface PageTheme {
      * "agree" before they can register or pay. Omit for none.
      */
     conduct?: ConductText;
+    /**
+     * A WhatsApp (or similar) group for registered guests. Apps can't add people to a group themselves, so we show
+     * the invite link once the order is complete: on the receipt page and in the confirmation email.
+     */
+    community?: CommunityLink;
     /** Label on the main registration button. */
     ctaLabel: string;
     /** Line shown at the top of the registration card. */
@@ -113,6 +126,11 @@ const MAIN_CHARACTER_FEST: PageTheme = {
         siteName: "Campus Yo-Pro Ministry",
     },
     allowInvites: false,
+    community: {
+        label: "Join the Main Character Fest WhatsApp group",
+        url: "https://chat.whatsapp.com/JHjcoEm79WrJQ1TGQa2yA6",
+        note: "This group is for registered guests. Please don't share the link.",
+    },
     conduct: {
         title: "Code of Conduct",
         sections: [
@@ -170,6 +188,16 @@ export function resolveTheme(tag?: string | null): PageTheme {
     if (!tag) return DEFAULT_THEME;
     const key = Object.keys(THEMES).find((prefix) => tag.startsWith(prefix));
     return key ? THEMES[key] : DEFAULT_THEME;
+}
+
+/**
+ * The group-chat link to show registered guests of this event, if it has one. Test copies of an event (tag contains
+ * "-test") never get it, so someone trying the registration out doesn't end up in the real group.
+ */
+export function communityForTag(tag?: string | null): CommunityLink | undefined {
+    if (isTestTag(tag)) return undefined;
+    const c = resolveTheme(tag).community;
+    return c && /^https:\/\//.test(c.url) ? c : undefined;
 }
 
 /** Can the buyer of a group ticket invite the others to fill in their own details? (False for events that want everyone filled in at checkout.) */

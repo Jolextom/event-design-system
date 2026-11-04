@@ -48,3 +48,24 @@ test("Main Character Fest: no invites, and a short code of conduct (expected beh
     assert.match(c.agreeLabel, /agree/i);
     assert.equal(resolveTheme("kini-ai-summit").conduct, undefined, "no conduct box on other events");
 });
+
+test("the WhatsApp group link: clean URL for the real event only, never for test copies or other events", async () => {
+    const { communityForTag } = await import("../app/[tag]/theme.ts");
+    const c = communityForTag("main-character-fest-2026-ab3d");
+    assert.ok(c);
+    assert.match(c.url, /^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]{15,}$/, "clean invite link, no tracking parameters");
+    assert.equal(communityForTag("main-character-fest-2026-test-fbdf"), undefined, "test registrations don't get the real group");
+    assert.equal(communityForTag("kini-ai-summit"), undefined);
+    assert.equal(communityForTag(null), undefined);
+});
+
+test("the confirmation email carries the group button only when the event has one", async () => {
+    const { renderConfirmationEmailHtml } = await import("./email-templates.ts");
+    const base = { eventTitle: "Fest", eventDate: "d", eventLocation: "l", orderRef: "EF-1", receiptLink: "https://x/r", attendeeName: "Ada" };
+    const withGroup = renderConfirmationEmailHtml({ ...base, community: { label: "Join the group", url: "https://chat.whatsapp.com/ABC123", note: "Please don't share <this>." } });
+    assert.ok(withGroup.includes('href="https://chat.whatsapp.com/ABC123"'));
+    assert.ok(withGroup.includes("Join the group"));
+    assert.ok(withGroup.includes("Please don&#39;t share") || withGroup.includes("Please don't share"));
+    assert.ok(!withGroup.includes("<this>"), "text is escaped");
+    assert.ok(!renderConfirmationEmailHtml(base).includes("chat.whatsapp.com"));
+});
