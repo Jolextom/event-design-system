@@ -64,9 +64,9 @@ export function CreateEventModal({ isOpen, onClose, userId, onCreated }: CreateE
                     tag: slug,
                     event_format: eventFormat,
                     start_date: new Date(`${startDate}T${startTime}`).toISOString(),
-                    end_date: new Date(`${finalEndDate}T${endTime}`).toISOString(),
+                    end_date: new Date(`${finalEndDate}T${endTime || startTime}`).toISOString(),
                     start_time: startTime,
-                    end_time: endTime,
+                    end_time: endTime || null,
                     is_published: false,
                     location: null,
                     description: null

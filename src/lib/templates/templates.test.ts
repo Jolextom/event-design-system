@@ -110,16 +110,16 @@ test("input checking: required, numbers, times, dates", () => {
     if (good.ok) { assert.equal(good.parsed.singleQty, 120); assert.equal(good.parsed.endTime, "18:00"); }
 
     const bad = (patch: Record<string, string>) => parseInputs(t, real, { ...ok, ...patch });
-    assert.equal(bad({ endTime: "" }).ok, false);
+    assert.equal(bad({ endTime: "" }).ok, true, "the end time is optional");
     assert.equal(bad({ endTime: "9am" }).ok, false);
     assert.equal(bad({ endTime: "09:00" }).ok, false, "end before the 10:00 start");
     assert.equal(bad({ singleQty: "0" }).ok, false);
     assert.equal(bad({ singleQty: "12.5" }).ok, false);
     assert.equal(bad({ groupQty: "" }).ok, false);
     assert.equal(bad({ registrationCloses: "2026-13-45T99:99" }).ok, false);
-    // the test variant needs only an end time
+    // the test variant needs nothing at all (the end time is optional)
     assert.equal(parseInputs(t, variant("test"), { endTime: "18:00" }).ok, true);
-    assert.equal(parseInputs(t, variant("test"), {}).ok, false);
+    assert.equal(parseInputs(t, variant("test"), {}).ok, true);
 });
 
 test("Lagos times become the right instants (WAT = UTC+1)", () => {
@@ -167,4 +167,17 @@ test("registration questions: costume ones optional, squad question gone, region
     assert.deepEqual(q("Gender").options, ["Male", "Female"]);
     // things that must stay required
     for (const must of ["Phone number", "Are you attending as a", "School or organisation", "Consent for photographs"]) assert.equal(q(must).required, true, must);
+});
+
+test("end time is optional: empty is accepted, a wrong format or a time before the start is still refused", () => {
+    const real = variant("real");
+    const rest = { singleQty: "120", groupQty: "40", registrationCloses: "2026-12-10T23:59" };
+    const none = parseInputs(t, real, { ...rest, endTime: "" });
+    assert.equal(none.ok, true);
+    if (none.ok) assert.equal(none.parsed.endTime, undefined);
+    assert.equal(parseInputs(t, real, rest).ok, true, "not given at all");
+    assert.equal(parseInputs(t, real, { ...rest, endTime: "9am" }).ok, false);
+    assert.equal(parseInputs(t, real, { ...rest, endTime: "09:00" }).ok, false);
+    assert.equal(t.inputs.find((i) => i.key === "endTime")!.required, false);
+    assert.doesNotMatch(t.inputs.find((i) => i.key === "endTime")!.hint ?? "", /placeholder/i);
 });

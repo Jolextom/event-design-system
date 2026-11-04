@@ -40,7 +40,7 @@ export const mainCharacterFest: EventTemplate = {
 <p><strong>Dress code:</strong> your favourite movie character.</p>
 <p><strong>Bring your main character energy!</strong></p>`,
     inputs: [
-        { key: "endTime", label: "Event end time (Lagos)", type: "time", required: true, hint: "Not decided yet? Put a placeholder, you can change it later in Basic Info." },
+        { key: "endTime", label: "Event end time (Lagos, optional)", type: "time", required: false, hint: "Optional. Leave it empty if there is no set end time: the event page then shows only the start time." },
     ],
     // ₦500 flat on top of the ticket price, plus Paystack's own fee passed on to the buyer, rounded up
     // to the next ₦50 so totals look clean. Customers see ONE "Service fee" line.

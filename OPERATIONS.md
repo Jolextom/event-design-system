@@ -193,3 +193,10 @@ show it, so test registrations don't land in the real group.
   not compulsory. Modest dress is still required for everyone."
 - Known limit: stock is checked when someone starts paying and counted when the payment completes, so with the last few promo
   tickets, two people paying at the same moment can both succeed and slightly oversell.
+
+## Event end time is optional
+
+The end time is no longer required: not in Templates (the box says "optional"), not when creating an event, and it can be removed
+later in Studio > Basic Info > Date & Time > **Remove end time** > Save. With no end time the event page shows only the start time
+("10:00 AM", not "10:00 AM – 6:00 PM"). Internally the end time is stored empty and `end_date` equals the start, so nothing that reads
+it has to cope with a missing value. Calendar links in emails only use the start time (they assume a default length).

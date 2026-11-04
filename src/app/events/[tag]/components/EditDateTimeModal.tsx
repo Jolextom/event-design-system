@@ -61,15 +61,16 @@ export function EditDateTimeModal({ isOpen, onClose, eventId, initialData, onUpd
 
         setIsSubmitting(true);
         const finalEndDate = isMultiDay && endDate ? endDate : startDate;
+        // The end time is optional. Without one the event has no end time (stored empty) and end_date follows the start.
         const updates = {
             start_date: new Date(`${startDate}T${startTime}`).toISOString(),
-            end_date: new Date(`${finalEndDate}T${endTime}`).toISOString(),
+            end_date: new Date(`${finalEndDate}T${endTime || startTime}`).toISOString(),
             start_time: startTime,
             end_time: endTime,
         };
 
         try {
-            const { error: updateError } = await supabase.from("events").update(updates).eq("id", eventId);
+            const { error: updateError } = await supabase.from("events").update({ ...updates, end_time: endTime || null }).eq("id", eventId);
             if (updateError) throw updateError;
             onUpdate(updates);
             onClose();
