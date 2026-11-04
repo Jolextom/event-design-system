@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@supabase/supabase-js";
 import { Event } from "../types";
 import { broadcastUpdate } from "@/app/actions";
+import { getAccessToken } from "@/lib/accessToken";
 
 interface BroadcastViewProps {
     event: Event | null;
@@ -74,6 +75,7 @@ export function BroadcastView({ event }: BroadcastViewProps) {
 
         try {
             const res = await broadcastUpdate({
+                accessToken: await getAccessToken(),
                 eventId: event.id,
                 messageTitle: title,
                 messageBody: message,

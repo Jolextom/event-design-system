@@ -4,7 +4,7 @@ import { sendInviteEmail } from "./email";
 import { resolveEventSender } from "./eventEmail";
 import { generateGoogleCalendarLink, generateOutlookLink } from "./calendar";
 import { missingRequiredQuestion, type RuleQuestion, type AnswerValue } from "./answers";
-import { sendWelcomeEmail } from "@/app/actions";
+import { sendWelcomeEmail } from "@/lib/welcomeEmail";
 
 /**
  * What happens to a guest AFTER the order exists, all on the server:

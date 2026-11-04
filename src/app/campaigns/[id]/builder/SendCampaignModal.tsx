@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { Users, Send, AtSign } from "lucide-react";
 import { Modal, ModalButton } from "@/app/components/ui/Modal";
 import { sendCampaignToAttendees } from "@/app/actions";
+import { getAccessToken } from "@/lib/accessToken";
 import { useAuth } from "@/app/context/AuthContext";
 
 const supabase = createClient(
@@ -68,6 +69,7 @@ export function SendCampaignModal({ isOpen, onClose, campaignId, eventId }: Send
         setResult(null);
         try {
             const res = await sendCampaignToAttendees({
+                accessToken: await getAccessToken(),
                 campaignId,
                 eventId,
                 segmentId: selectedSegmentId || undefined,
