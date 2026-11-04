@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { ShieldAlert, Loader2, ExternalLink, Video, Clock, CheckCircle2 } from "lucide-react";
 import type { Event, Attendee } from "../../events/[tag]/types";
+import { brandNameForTag } from "../theme";
 
 function detectPlatform(link: string) {
     if (!link) return { isZoom: false, isMeet: false, isYouTube: false, isExternal: false };
@@ -208,7 +209,7 @@ export default function JoinPageInner() {
 
                 <div className="flex items-center justify-center gap-2 mb-10">
                     <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[var(--color-primary-500)] to-[var(--color-primary-700)] flex items-center justify-center text-[10px]">✦</div>
-                    <span className="text-[11px] font-bold text-white/40 uppercase tracking-[0.2em]">EventFlow</span>
+                    <span className="text-[11px] font-bold text-white/40 uppercase tracking-[0.2em]">{brandNameForTag(tag)}</span>
                 </div>
 
                 {isBeforeStart && (

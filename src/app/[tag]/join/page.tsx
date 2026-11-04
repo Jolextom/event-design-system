@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { ShieldAlert, Loader2, ExternalLink, Video, Clock, CheckCircle2, Sparkles, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Event, Attendee } from "../../events/[tag]/types";
+import { brandNameForTag } from "../theme";
 
 function detectPlatform(link: string) {
     if (!link) return { isZoom: false, isMeet: false, isYouTube: false, isExternal: false };
@@ -227,7 +228,7 @@ function JoinInner() {
                     <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
                         <Sparkles className="w-4 h-4 text-white" />
                     </div>
-                    <span className="text-[12px] font-black text-gray-400 uppercase tracking-[0.4em] italic">EventFlow</span>
+                    <span className="text-[12px] font-black text-gray-400 uppercase tracking-[0.4em] italic">{brandNameForTag(tag)}</span>
                 </div>
 
                 {isBeforeStart ? (

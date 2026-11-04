@@ -27,7 +27,7 @@ import { verifyAndFulfillPayment } from "@/app/actions";
 import type { Question } from "@/app/events/[tag]/types";
 import { addGroupMemberAction, getReceiptAction, resendInviteAction } from "../../actions";
 import { QuestionField, type AnswerValue } from "../../QuestionField";
-import { DEFAULT_THEME, themeStyle } from "../../theme";
+import { DEFAULT_THEME, brandNameForTag, themeStyle } from "../../theme";
 import { isQuestionRelevant, missingRequiredQuestion, type RuleQuestion } from "@/lib/answers";
 
 interface Order {
@@ -394,7 +394,7 @@ export default function ReceiptPage() {
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <div className="w-6 h-6 bg-red-50 text-red-500 rounded flex items-center justify-center font-black text-[10px] border border-red-100">❤</div>
-                                        <span className="font-black text-xs tracking-tighter uppercase italic">EventFlow</span>
+                                        <span className="font-black text-xs tracking-tighter uppercase italic">{brandNameForTag(tag)}</span>
                                     </div>
                                     <div className="text-right">
                                         <div className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-300">Reference</div>
@@ -680,7 +680,7 @@ export default function ReceiptPage() {
 
                     {/* Footer */}
                     <p className="text-xs text-gray-300 font-bold pt-8">
-                        Confirmation sent to {order.email} • Check your spam folder • Powered by EventFlow
+                        Confirmation sent to {order.email} • Check your spam folder • Powered by {brandNameForTag(tag)}
                     </p>
                 </div>
             </div>

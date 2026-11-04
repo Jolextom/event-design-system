@@ -24,6 +24,13 @@ export interface PageTheme {
      * event's emails). When omitted, the old behaviour applies unchanged.
      */
     email?: { brandName: string; fromName?: string; replyTo?: string };
+    /**
+     * Name shown where the platform's own name ("EventFlow") would otherwise appear on this event's
+     * public pages (page header, receipt, join page footers). Omit to keep "EventFlow".
+     */
+    brandName?: string;
+    /** The browser tab title and the text shown when the event link is shared or searched. Omit to keep the platform's generic ones. */
+    meta?: { title: string; description: string; siteName?: string };
     /** Label on the main registration button. */
     ctaLabel: string;
     /** Line shown at the top of the registration card. */
@@ -80,6 +87,13 @@ export const DEFAULT_THEME: PageTheme = {
 const MAIN_CHARACTER_FEST: PageTheme = {
     hostName: "Campus Yo-Pro Ministry",
     email: { brandName: "Campus Yo-Pro Ministry", fromName: "Main Character Fest" },
+    brandName: "Main Character Fest",
+    meta: {
+        title: "Main Character Fest 2026",
+        description:
+            "Dress as your favourite movie character. Live DJ, costume party, games, booths and food. For campus students and young professionals. Sat 19 Dec 2026, Surulere.",
+        siteName: "Campus Yo-Pro Ministry",
+    },
     ctaLabel: "Claim your role",
     welcomeText: "Everybody has a role. Pull up as your favourite character and register below.",
     ambientOpacity: 0.5,
@@ -110,6 +124,22 @@ export function resolveTheme(tag?: string | null): PageTheme {
     if (!tag) return DEFAULT_THEME;
     const key = Object.keys(THEMES).find((prefix) => tag.startsWith(prefix));
     return key ? THEMES[key] : DEFAULT_THEME;
+}
+
+/** The name to show instead of the platform's own for this event's public pages. */
+export function brandNameForTag(tag?: string | null): string {
+    return resolveTheme(tag).brandName ?? "EventFlow";
+}
+
+/** Test copies of an event (tag contains "-test") are labelled and kept out of search engines. */
+export const isTestTag = (tag?: string | null): boolean => !!tag && /-test(-|$)/.test(tag);
+
+/** Tab title / link-preview text for this event's tag, or null to keep the site-wide defaults. */
+export function metaForTag(tag?: string | null): { title: string; description: string; siteName?: string; noindex: boolean } | null {
+    const meta = resolveTheme(tag).meta;
+    if (!meta) return null;
+    const test = isTestTag(tag);
+    return { ...meta, title: test ? `[Test] ${meta.title}` : meta.title, noindex: test };
 }
 
 /** Email identity configured for this event's tag, if any (see PageTheme.email). */
