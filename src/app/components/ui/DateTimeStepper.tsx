@@ -277,8 +277,9 @@ export function DateTimeStepper({
     onEndTimeChange, onEndDateChange, onToggleMultiDay,
 }: DateTimeStepperProps) {
     const startDone = !!startDate && !!startTime;
-    const endDone = !!endTime;
-    const activeStep = !startDone ? 0 : !endDone ? 1 : -1;
+    // The end time is optional: once the start is set, the form is complete.
+    const endDone = startDone;
+    const activeStep = !startDone ? 0 : -1;
 
     return (
         <div className="relative pl-9">
@@ -327,7 +328,7 @@ export function DateTimeStepper({
                     <div className="absolute -top-6 left-[10px] w-[2px] h-6 bg-transparent z-0" />
 
                     <div className="absolute -left-9 top-1/2 -translate-y-1/2 z-20">
-                        <StepDot done={endDone} active={activeStep === 1} />
+                        <StepDot done={!!endTime} active={startDone && !endTime} />
                     </div>
 
                     <div className="space-y-2 relative z-10">
@@ -345,7 +346,7 @@ export function DateTimeStepper({
                         )}
 
                         <FieldRow
-                            label="End time"
+                            label="End time (optional)"
                             Icon={Clock}
                             type="time"
                             value={endTime}
@@ -373,6 +374,15 @@ export function DateTimeStepper({
                                 )
                             }
                         />
+                        {endTime && (
+                            <button
+                                type="button"
+                                onClick={() => onEndTimeChange("")}
+                                className="mt-2 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-red-500 transition-colors"
+                            >
+                                Remove end time
+                            </button>
+                        )}
                     </div>
                 </div>
             )}

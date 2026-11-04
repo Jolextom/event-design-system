@@ -175,7 +175,10 @@ export async function createEventFromTemplate(args: {
 
     // 3. The event.
     const startIso = localToIso(`${template.date}T${template.startTime}`, template.tzOffset);
-    const endIso = localToIso(`${template.date}T${p.endTime as string}`, template.tzOffset);
+    // The end time is optional. With none, the event simply has no end time (the page shows only the start time);
+    // end_date is kept equal to the start so nothing reading it has to cope with a missing value.
+    const endTime = (p.endTime as string | undefined) || null;
+    const endIso = endTime ? localToIso(`${template.date}T${endTime}`, template.tzOffset) : startIso;
     const tag = resuming?.tag ?? `${slugify(title)}-${Math.random().toString(36).substring(2, 6)}`;
 
     const eventRow: Record<string, unknown> = {
@@ -184,7 +187,7 @@ export async function createEventFromTemplate(args: {
         start_date: startIso,
         end_date: endIso,
         start_time: template.startTime,
-        end_time: p.endTime,
+        end_time: endTime,
         is_published: false,
         location: template.location,
         description: template.description,
