@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { AlertCircle, Check, Copy } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { Modal, ModalButton } from "@/app/components/ui/Modal";
@@ -8,6 +8,7 @@ import { Input } from "@/app/components/ui/Input";
 import { cn } from "@/lib/utils";
 import { EVENT_TEMPLATES } from "@/lib/templates";
 import { createEventFromTemplate } from "@/lib/templates/createFromTemplate";
+import { computeCharge } from "@/lib/fees";
 import type { EventTemplate, TemplateInput, TemplateVariant } from "@/lib/templates";
 
 interface TemplateModalProps {
@@ -20,10 +21,20 @@ interface TemplateModalProps {
 
 const inputType = (t: TemplateInput["type"]) => (t === "datetime" ? "datetime-local" : t);
 
+/** Pre-filled values for a template + variant (what's already typed is kept by the callers). */
+const defaultsFor = (template: EventTemplate, variantId: string): Record<string, string> => {
+    const variant = template.variants.find((v) => v.id === variantId) ?? template.variants[0];
+    const out: Record<string, string> = {};
+    for (const i of [...template.inputs, ...variant.inputs]) if (i.defaultValue !== undefined) out[i.key] = String(i.defaultValue);
+    return out;
+};
+
 export function TemplateModal({ isOpen, onClose, userId, onCreated }: TemplateModalProps) {
     const [template, setTemplate] = useState<EventTemplate>(EVENT_TEMPLATES[0]);
     const [variantId, setVariantId] = useState<string>("test"); // the harmless option is the default
-    const [values, setValues] = useState<Record<string, string>>({});
+    // Defaults are set up front and whenever the choice changes (in the click handler), not in an
+    // effect after render: otherwise a ticked-by-default box would flash unticked first.
+    const [values, setValues] = useState<Record<string, string>>(() => defaultsFor(EVENT_TEMPLATES[0], "test"));
     const [error, setError] = useState<string | null>(null);
     const [sql, setSql] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
@@ -34,17 +45,16 @@ export function TemplateModal({ isOpen, onClose, userId, onCreated }: TemplateMo
         [template, variantId]
     );
     const inputs: TemplateInput[] = useMemo(() => [...template.inputs, ...variant.inputs], [template, variant]);
+    const feeOn = !!variant.feeInput && values[variant.feeInput] === "true" && !!template.feeConfig;
 
-    // Pre-fill defaults when the template/variant changes, without wiping what was typed.
-    useEffect(() => {
-        setValues((prev) => {
-            const next = { ...prev };
-            for (const i of inputs) if (next[i.key] === undefined && i.defaultValue !== undefined) next[i.key] = String(i.defaultValue);
-            return next;
-        });
+    const choose = (nextTemplate: EventTemplate, nextVariantId: string) => {
+        setTemplate(nextTemplate);
+        setVariantId(nextVariantId);
+        // keep whatever was already typed or chosen; only fill in what's missing
+        setValues((prev) => ({ ...defaultsFor(nextTemplate, nextVariantId), ...prev }));
         setError(null);
         setSql(null);
-    }, [inputs]);
+    };
 
     const copySql = async () => {
         if (!sql) return;
@@ -104,7 +114,7 @@ export function TemplateModal({ isOpen, onClose, userId, onCreated }: TemplateMo
                             <button
                                 key={t.id}
                                 type="button"
-                                onClick={() => { setTemplate(t); setVariantId(t.variants[0].id); }}
+                                onClick={() => choose(t, t.variants[0].id)}
                                 className={cn("text-left rounded-2xl border-2 px-4 py-3 transition-all", t.id === template.id ? "border-gray-900 bg-gray-50" : "border-gray-100 hover:border-gray-200")}
                             >
                                 <div className="font-black text-gray-900">{t.name}</div>
@@ -127,7 +137,7 @@ export function TemplateModal({ isOpen, onClose, userId, onCreated }: TemplateMo
                         <button
                             key={v.id}
                             type="button"
-                            onClick={() => setVariantId(v.id)}
+                            onClick={() => choose(template, v.id)}
                             className={cn("text-left rounded-2xl border-2 px-4 py-3 transition-all", v.id === variant.id ? "border-gray-900 bg-gray-50" : "border-gray-100 hover:border-gray-200")}
                         >
                             <div className="font-black text-gray-900">{v.label}</div>
@@ -138,20 +148,55 @@ export function TemplateModal({ isOpen, onClose, userId, onCreated }: TemplateMo
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                    {inputs.map((i) => (
-                        <Input
-                            key={`${variant.id}-${i.key}`}
-                            label={i.label}
-                            hint={i.hint}
-                            type={inputType(i.type)}
-                            min={i.type === "number" ? 1 : undefined}
-                            required={i.required}
-                            value={values[i.key] ?? ""}
-                            onChange={(e) => setValues((prev) => ({ ...prev, [i.key]: e.target.value }))}
-                            containerClassName={i.type === "datetime" || i.hint ? "sm:col-span-2" : undefined}
-                        />
-                    ))}
+                    {inputs.map((i) =>
+                        i.type === "checkbox" ? (
+                            <label key={`${variant.id}-${i.key}`} className="sm:col-span-2 flex cursor-pointer items-start gap-3 rounded-2xl border-2 border-gray-100 p-4 hover:border-gray-200">
+                                <input
+                                    type="checkbox"
+                                    className="mt-1 h-4 w-4"
+                                    checked={values[i.key] === "true"}
+                                    onChange={(e) => setValues((prev) => ({ ...prev, [i.key]: e.target.checked ? "true" : "" }))}
+                                />
+                                <span>
+                                    <span className="block text-sm font-black text-gray-900">{i.label}</span>
+                                    {i.hint && <span className="mt-1 block text-xs font-bold leading-relaxed text-gray-500">{i.hint}</span>}
+                                </span>
+                            </label>
+                        ) : (
+                            <Input
+                                key={`${variant.id}-${i.key}`}
+                                label={i.label}
+                                hint={i.hint}
+                                type={inputType(i.type)}
+                                min={i.type === "number" ? 1 : undefined}
+                                required={i.required}
+                                value={values[i.key] ?? ""}
+                                onChange={(e) => setValues((prev) => ({ ...prev, [i.key]: e.target.value }))}
+                                containerClassName={i.type === "datetime" || i.type === "text" || i.hint ? "sm:col-span-2" : undefined}
+                            />
+                        )
+                    )}
                 </div>
+
+                {feeOn && (
+                    <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">What customers will pay</div>
+                        <div className="mt-2 space-y-1.5">
+                            {variant.passes.filter((p) => p.price > 0).map((p) => {
+                                const c = computeCharge(p.price, template.feeConfig);
+                                return (
+                                    <div key={p.title} className="flex flex-wrap items-baseline justify-between gap-x-4 text-sm">
+                                        <span className="font-black text-gray-900">{p.title}</span>
+                                        <span className="font-bold text-gray-600">
+                                            ₦{c.subtotal.toLocaleString()} + {c.label.toLowerCase()} ₦{c.serviceFee.toLocaleString()} = <span className="text-gray-900">₦{c.total.toLocaleString()}</span>
+                                            <span className="ml-2 text-xs text-gray-400">you keep about ₦{Math.round(c.platformNetKobo / 100).toLocaleString()}</span>
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
 
                 {error && (
                     <div role="alert" className="flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 p-4">

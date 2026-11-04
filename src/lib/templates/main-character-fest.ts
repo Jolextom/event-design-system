@@ -1,4 +1,4 @@
-import type { EventTemplate } from "./types";
+import type { EventTemplate, TemplateInput } from "./types";
 
 /**
  * Main Character Fest 2026 (Campus Yo-Pro Ministry).
@@ -8,6 +8,15 @@ import type { EventTemplate } from "./types";
  * script scripts/seed-main-character-fest.js reads. A test
  * (src/lib/templates/templates.test.ts) fails if the two ever drift apart.
  */
+const SUBACCOUNT_INPUT: TemplateInput = {
+    key: "subaccount",
+    label: "Organiser's Paystack subaccount code (optional)",
+    type: "text",
+    pattern: "^ACCT_[A-Za-z0-9]+$",
+    patternMessage: "That doesn't look like a subaccount code. It looks like ACCT_xxxxxxxxxx.",
+    hint: "Leave empty to receive all payments in your own Paystack account. With a code, the organiser is paid the ticket price directly and you keep the fee. Use a TEST code on the test key and a LIVE code on the live key.",
+};
+
 export const mainCharacterFest: EventTemplate = {
     id: "main-character-fest-2026",
     name: "Main Character Fest 2026",
@@ -33,6 +42,9 @@ export const mainCharacterFest: EventTemplate = {
     inputs: [
         { key: "endTime", label: "Event end time (Lagos)", type: "time", required: true, hint: "Not decided yet? Put a placeholder, you can change it later in Basic Info." },
     ],
+    // ₦500 flat on top of the ticket price, plus Paystack's own fee passed on to the buyer, rounded up
+    // to the next ₦50 so totals look clean. Customers see ONE "Service fee" line.
+    feeConfig: { enabled: true, pass_processing_fee: true, platform_fee: { flat: 500 }, round_to: 50, label: "Service fee" },
     questions: [
     { page: 1, title: "Phone number (WhatsApp preferred)", type: "text", required: true },
     { page: 1, title: "Are you attending as a", type: "select", required: true, options: ["Campus student", "Young professional", "Other"], property_key: "attending_as" },
@@ -51,7 +63,12 @@ export const mainCharacterFest: EventTemplate = {
             label: "Test copy",
             hint: "A separate throwaway event titled (TEST) with ₦100, ₦300 and free tickets, for trying payments over and over.",
             titleSuffix: " (TEST)",
-            inputs: [],
+            feeInput: "testFee",
+            subaccountInput: "subaccount",
+            inputs: [
+                { key: "testFee", label: "Also charge the ₦500 service fee (to try the real checkout)", type: "checkbox", defaultValue: "" },
+                SUBACCOUNT_INPUT,
+            ],
             passes: [
                 { title: "TEST single (₦100)", description: "Test ticket - not for sale", price: 100, type: "individual", quantity: 1000 },
                 { title: "TEST group of 3 (₦300)", description: "Test ticket - not for sale", price: 300, type: "group", groupSize: 3, quantity: 1000 },
@@ -63,7 +80,11 @@ export const mainCharacterFest: EventTemplate = {
             label: "Real event",
             hint: "The real thing: Single ₦15,000 and Group of 3 ₦22,500 (50% off promo), with the promo end and registration close dates below. Stays a draft until you launch it.",
             registrationClosesInput: "registrationCloses",
+            feeInput: "addFee",
+            subaccountInput: "subaccount",
             inputs: [
+                { key: "addFee", label: "Add the ₦500 service fee", type: "checkbox", defaultValue: "true", hint: "Customers pay the ticket price + Paystack's fee + ₦500, shown as ONE \"Service fee\" line at checkout. The organiser receives the full ticket price." },
+                SUBACCOUNT_INPUT,
                 { key: "singleQty", label: "Single tickets available", type: "number", required: true, hint: "How many single tickets can be sold." },
                 { key: "groupQty", label: "Group-of-3 tickets available", type: "number", required: true, hint: "How many groups of 3 can be sold (each group is 3 people)." },
                 { key: "promoEnds", label: "Group promo ends (Lagos time)", type: "datetime", defaultValue: "2026-11-30T23:55", required: true },

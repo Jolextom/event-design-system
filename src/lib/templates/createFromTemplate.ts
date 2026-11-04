@@ -33,11 +33,15 @@ export const COLUMN_SQL: Record<string, string> = {
     "passes.display_order": "ALTER TABLE public.passes ADD COLUMN IF NOT EXISTS display_order INTEGER;",
     "passes.sales_end_at": "ALTER TABLE public.passes ADD COLUMN IF NOT EXISTS sales_end_at TIMESTAMP WITH TIME ZONE;",
     "events.registration_closes_at": "ALTER TABLE public.events ADD COLUMN IF NOT EXISTS registration_closes_at TIMESTAMP WITH TIME ZONE;",
+    "events.fee_config": "ALTER TABLE public.events ADD COLUMN IF NOT EXISTS fee_config JSONB;",
+    "events.paystack_subaccount_code": "ALTER TABLE public.events ADD COLUMN IF NOT EXISTS paystack_subaccount_code TEXT;",
 };
 
-/** The columns this variant will write, as "table.column". */
-export function requiredColumns(variant: TemplateVariant): string[] {
+/** The columns this variant will write, as "table.column". Fee/payout columns only when those options are used. */
+export function requiredColumns(variant: TemplateVariant, use: { fee?: boolean; subaccount?: boolean } = {}): string[] {
     const cols = new Set<string>(["passes.type", "passes.display_order"]);
+    if (use.fee) cols.add("events.fee_config");
+    if (use.subaccount) cols.add("events.paystack_subaccount_code");
     for (const p of variant.passes) {
         cols.add(p.type === "group" ? "passes.group_size" : "passes.max_per_person");
         if (p.salesEndInput) cols.add("passes.sales_end_at");
@@ -75,6 +79,13 @@ export function parseInputs(
             parsed[input.key] = n;
         } else if (input.type === "time") {
             if (!/^\d{2}:\d{2}$/.test(raw)) return { ok: false, error: `${input.label} must look like 18:00.` };
+            parsed[input.key] = raw;
+        } else if (input.type === "checkbox") {
+            parsed[input.key] = raw === "true" ? "true" : "";
+        } else if (input.type === "text") {
+            if (input.pattern && !new RegExp(input.pattern).test(raw)) {
+                return { ok: false, error: input.patternMessage || `${input.label} isn't valid.` };
+            }
             parsed[input.key] = raw;
         } else {
             if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(raw) || Number.isNaN(Date.parse(`${raw}:00${template.tzOffset}`))) {
@@ -120,7 +131,9 @@ export async function createEventFromTemplate(args: {
     const title = template.title + (variant.titleSuffix ?? "");
 
     // 1. Make sure the database has every column we're about to write, BEFORE creating anything.
-    const needed = requiredColumns(variant);
+    const feeOn = !!variant.feeInput && p[variant.feeInput] === "true" && !!template.feeConfig;
+    const subaccount = variant.subaccountInput ? String(p[variant.subaccountInput] ?? "") : "";
+    const needed = requiredColumns(variant, { fee: feeOn, subaccount: !!subaccount });
     const probes = await Promise.all(
         needed.map(async (full) => {
             const [table, column] = full.split(".");
@@ -183,6 +196,8 @@ export async function createEventFromTemplate(args: {
     if (variant.registrationClosesInput) {
         eventRow.registration_closes_at = localToIso(p[variant.registrationClosesInput] as string, template.tzOffset);
     }
+    if (feeOn) eventRow.fee_config = template.feeConfig;
+    if (subaccount) eventRow.paystack_subaccount_code = subaccount;
 
     const clearChildren = async (eventId: string) => {
         const { data: qs } = await supabase.from("questions").select("id").eq("event_id", eventId);
