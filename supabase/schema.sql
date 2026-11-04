@@ -304,3 +304,30 @@ ALTER TABLE public.staff ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Enable all access for staff" ON public.staff
 FOR ALL USING (true) WITH CHECK (true);
 
+
+
+-- ============================================================================
+-- Checkout: sale windows, registration deadline, fees and split payments
+-- ============================================================================
+-- Additive and idempotent: every column is nullable, and NULL means "behave
+-- exactly as before" (no deadline, no fee, no split). Safe to run on a live DB.
+--
+--   passes.sales_start_at / sales_end_at   per-ticket sale window (e.g. a promo
+--                                          ticket that ends 30 Nov 11:55pm)
+--   events.registration_closes_at          after this, nobody can register
+--   events.paystack_subaccount_code        organiser's Paystack subaccount
+--                                          (ACCT_xxx). When set, paid checkouts
+--                                          are split: organiser gets the ticket
+--                                          price, the platform keeps the fee.
+--   events.fee_config                      see src/lib/fees.ts, e.g.
+--                                          {"enabled":true,"pass_processing_fee":true,
+--                                           "platform_fee":{"flat":500,"percent":0},
+--                                           "round_to":50,"label":"Service fee"}
+--   orders_table.fee_amount                service fee (naira) included in the
+--                                          order's total, for reporting
+ALTER TABLE public.passes       ADD COLUMN IF NOT EXISTS sales_start_at           TIMESTAMP WITH TIME ZONE;
+ALTER TABLE public.passes       ADD COLUMN IF NOT EXISTS sales_end_at             TIMESTAMP WITH TIME ZONE;
+ALTER TABLE public.events       ADD COLUMN IF NOT EXISTS registration_closes_at   TIMESTAMP WITH TIME ZONE;
+ALTER TABLE public.events       ADD COLUMN IF NOT EXISTS paystack_subaccount_code TEXT;
+ALTER TABLE public.events       ADD COLUMN IF NOT EXISTS fee_config               JSONB;
+ALTER TABLE public.orders_table ADD COLUMN IF NOT EXISTS fee_amount               NUMERIC;

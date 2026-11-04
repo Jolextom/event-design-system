@@ -18,6 +18,10 @@ export interface Event {
   created_by: string;
   tag?: string | null;
   image_focus_y?: number;
+  // Checkout settings (all optional; null/absent = no limit / no fee). See supabase/schema.sql.
+  registration_closes_at?: string | null;
+  paystack_subaccount_code?: string | null;
+  fee_config?: unknown;
 }
 
 // Pass (ticket) type for event passes
@@ -43,6 +47,9 @@ export interface Pass {
   updated_at: string | null;
   display_order: number | null;
   show_for_option_id: string | null;
+  /** Optional sale window; null = always on sale. */
+  sales_start_at?: string | null;
+  sales_end_at?: string | null;
 }
 
 // Payload for creating a new pass

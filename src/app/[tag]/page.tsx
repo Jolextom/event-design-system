@@ -23,8 +23,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Event, Pass, Question } from "../events/[tag]/types";
-import { initializeTransaction } from "@/app/actions";
-import { fulfillOrder } from "@/lib/registrations";
+import { computeCharge } from "@/lib/fees";
+import { passSaleState, registrationClosed } from "@/lib/sales";
+import { submitRegistration } from "./actions";
 import { resolveTheme, themeStyle } from "./theme";
 
 // Inter for body text, Sora for headings (applied via the `display` class below).
@@ -239,11 +240,6 @@ export default function RegistrationPage() {
         setSubmitting(true);
         setFormError(null);
 
-        const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        );
-
         try {
             // Get the selected pass
             const pass = passes.find(p => p.id === selectedTicket);
@@ -282,18 +278,6 @@ export default function RegistrationPage() {
                 throw new Error("Each attendee must have a unique email address");
             }
 
-            // === VALIDATION 4: Check if emails already registered for this event (Attendees ONLY) ===
-            const { data: existingAttendees } = await supabase
-                .from("attendees")
-                .select("email")
-                .eq("event_id", event.id)
-                .in("email", emailsInForm);
-
-            if (existingAttendees && existingAttendees.length > 0) {
-                const alreadyRegistered = existingAttendees.map(r => r.email).join(", ");
-                throw new Error(`Already registered for this event: ${alreadyRegistered}`);
-            }
-
             // === VALIDATION 5: Check required questions are answered ===
             // visibleFormQuestions already excludes selection-logic questions
             // and anything hidden for the track that wasn't picked.
@@ -314,139 +298,24 @@ export default function RegistrationPage() {
                 }
             }
 
-            // === VALIDATION 6: Check ticket availability ===
-            const ticketQuantity = pass.type === "group" ? 1 : validGuests.length;
-            const remaining = (pass.quantity_available || 0) - (pass.quantity_sold || 0);
-            if (ticketQuantity > remaining) {
-                throw new Error(`Only ${remaining} ticket(s) remaining for ${pass.title}`);
-            }
+            // Everything below happens on the server (src/lib/checkout.ts): duplicate
+            // emails, availability, deadlines, guest limits, the price (from the
+            // database, never from this page), the order, and either Paystack or
+            // immediate fulfilment. This page only says who is registering and for
+            // which ticket.
+            const result = await submitRegistration({
+                eventTag: event.tag || tag || "",
+                passId: pass.id,
+                guests: validGuests,
+                referralCode,
+            });
 
-            // 4. Determine if payment is needed
-            const isPaid = !currentTicket?.is_free && (currentTicket?.price ?? 0) > 0;
-            const expectedPrice = currentTicket?.price ?? 0;
+            if (!result.ok) throw new Error(result.error);
 
-            // === CHECK IF ALREADY REGISTERED (Attendee is source of truth) ===
-            const { data: existingAttendee } = await supabase
-                .from("attendees")
-                .select("id")
-                .eq("event_id", event.id)
-                .eq("email", primaryGuest.email)
-                .maybeSingle();
-
-            if (existingAttendee) {
-                throw new Error(`Already registered for this event: ${primaryGuest.email}`);
-            }
-
-            // === CHECK FOR EXISTING PENDING ORDER ===
-            const { data: existingOrder } = await supabase
-                .from("orders_table")
-                .select("id, order_ref, total_amount, pass_id")
-                .eq("event_id", event.id)
-                .eq("email", primaryGuest.email)
-                .eq("status", "pending")
-                .maybeSingle();
-
-            // === PAYSTACK REFERENCE GENERATION ===
-            // We ALWAYS generate a new, unique reference to prevent Paystack's "Duplicate Transaction Reference" error.
-            // If the user is retrying a failed or abandoned checkout, Paystack requires a fresh reference.
-            // Our webhook relies on orderId in metadata, so changing the order_ref on the DB record is safe.
-            const uniquePart = crypto.randomUUID().replace(/-/g, '').substring(0, 10).toUpperCase();
-            // order_ref is varchar(50) — long descriptive event tags (e.g. full-sentence
-            // slugs) can overflow it once "EF-" + tag + "-" + uniquePart are combined,
-            // so the tag portion is capped to leave safe headroom.
-            const safeTag = (event.tag?.toUpperCase() || 'EV').substring(0, 20);
-            const orderRef = `EF-${safeTag}-${uniquePart}`;
-
-            // === RESOLVE REFERRAL CODE (if a ?ref= link was used) ===
-            let referredByCollaboratorId: string | null = null;
-            if (referralCode) {
-                const { data: collab } = await supabase
-                    .from("event_collaborators")
-                    .select("id, status")
-                    .eq("event_id", event.id)
-                    .eq("referral_code", referralCode)
-                    .maybeSingle();
-                if (collab?.status === "active") referredByCollaboratorId = collab.id;
-            }
-
-            // === UPSERT ORDER ===
-            const orderData = {
-                event_id: event.id,
-                pass_id: pass.id,
-                quantity: ticketQuantity,
-                first_name: primaryGuest.firstName || "Guest",
-                last_name: primaryGuest.lastName || "",
-                email: primaryGuest.email,
-                order_ref: orderRef,
-                total_amount: isPaid ? expectedPrice : 0,
-                expected_amount_kobo: isPaid ? Math.round(expectedPrice * 100) : 0,
-                // Always starts "pending" — fulfillOrder() is what flips it to "completed"
-                // once attendees are actually created and emails sent. Marking it completed
-                // here would make fulfillOrder's idempotency guard skip fulfillment entirely.
-                status: "pending",
-                updated_at: new Date().toISOString(),
-                referred_by_collaborator_id: referredByCollaboratorId
-            };
-
-            const { data: order, error: orderErr } = existingOrder 
-                ? await supabase
-                    .from("orders_table")
-                    .update(orderData)
-                    .eq("id", existingOrder.id)
-                    .select()
-                    .single()
-                : await supabase
-                    .from("orders_table")
-                    .insert(orderData)
-                    .select()
-                    .single();
-
-            if (orderErr) {
-                console.error("Order processing failed:", orderErr);
-                throw new Error(orderErr.message || "Failed to process order. Please try again.");
-            }
-
-            if (isPaid) {
-                // === PAID FLOW: INITIATE PAYSTACK ===
-                const amountInKobo = Math.round((currentTicket?.price ?? 0) * 100);
-                
-                const { data: paystackData, error: paystackErr } = await initializeTransaction({
-                    email: guests[0].email,
-                    amount: amountInKobo,
-                    reference: orderRef,
-                    metadata: {
-                        orderId: order.id,
-                        eventId: event.id,
-                        passId: selectedTicket,
-                        eventTag: event.tag,
-                        validGuests: validGuests,
-                        referrerCollaboratorId: referredByCollaboratorId
-                    },
-                    callbackUrl: `${window.location.origin}/${event.tag}/receipt/${orderRef}`
-                });
-
-                if (paystackErr || !paystackData) {
-                    throw new Error(paystackErr || "Failed to initialize payment");
-                }
-
-                // Redirect to Paystack
-                window.location.href = paystackData.authorization_url;
-                return;
-            } else {
-                // === FREE FLOW: FULFILL DIRECTLY ===
-                await fulfillOrder({
-                    orderId: order.id,
-                    eventId: event.id,
-                    passId: selectedTicket,
-                    eventTag: event.tag || "event",
-                    validGuests: validGuests,
-                    totalAmount: 0,
-                    referredByCollaboratorId
-                });
-
-                // === REDIRECT TO RECEIPT ===
-                window.location.href = `/${event.tag}/receipt/${orderRef}`;
-            }
+            window.location.href = result.status === "payment_required"
+                ? result.authorizationUrl
+                : `/${event.tag}/receipt/${result.orderRef}`;
+            return;
 
         } catch (err: any) {
             console.error("Registration error:", err);
@@ -483,10 +352,29 @@ export default function RegistrationPage() {
 
     // --- Presentation helpers ---
     const theme = resolveTheme(event.tag ?? tag);
+    const now = new Date();
+    const regClosed = registrationClosed(event, now);
     const isPaid = !currentTicket?.is_free && (currentTicket?.price ?? 0) > 0;
-    const isSoldOut = (p: Pass) => (p.quantity_available || 0) - (p.quantity_sold || 0) <= 0;
-    const priceLabel = (p: Pass) => (p.is_free ? "Free" : `₦${(p.price ?? 0).toLocaleString()}`);
-    const canRegister = !!currentTicket && !isSoldOut(currentTicket);
+    const fmtNaira = (n: number) =>
+        `₦${n.toLocaleString("en-NG", { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 })}`;
+    const priceLabel = (p: Pass) => (p.is_free ? "Free" : fmtNaira(p.price ?? 0));
+    const whenLabel = (iso: string) =>
+        new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" });
+    /** Why this ticket can't be bought right now, or null if it can. (The server re-checks all of this.) */
+    const unavailableReason = (p: Pass): string | null => {
+        if ((p.quantity_available || 0) - (p.quantity_sold || 0) <= 0) return "Sold out";
+        const state = passSaleState(p, now);
+        if (state === "ended") return "Ended";
+        if (state === "not_started") return "Not on sale yet";
+        return null;
+    };
+    // What the customer pays for the selected ticket, including any service fee for this event.
+    // Display only: the server computes the real amount again from the database.
+    const currentCharge = currentTicket
+        ? computeCharge(currentTicket.is_free ? 0 : (currentTicket.price ?? 0), event.fee_config)
+        : null;
+    const canRegister = !!currentTicket && !unavailableReason(currentTicket) && !regClosed;
+    const ctaText = canRegister ? theme.ctaLabel : regClosed ? "Registration closed" : (currentTicket && unavailableReason(currentTicket)) || "Unavailable";
 
     const startDate = event.start_date ? new Date(event.start_date) : null;
     const endDate = event.end_date ? new Date(event.end_date) : null;
@@ -589,19 +477,19 @@ export default function RegistrationPage() {
                 <div className="space-y-2">
                     {displayPasses.map(ticket => {
                         const isSelected = selectedTicket === ticket.id;
-                        const soldOut = isSoldOut(ticket);
+                        const unavailable = unavailableReason(ticket);
                         return (
                             <button
                                 key={ticket.id}
                                 type="button"
-                                disabled={soldOut}
+                                disabled={!!unavailable}
                                 onClick={() => {
                                     setSelectedTicket(ticket.id);
                                     if (ticket.type === "group") setQuantity(1);
                                 }}
-                                className={choiceCls(isSelected && !soldOut, soldOut)}
+                                className={choiceCls(isSelected && !unavailable, !!unavailable)}
                             >
-                                <Radio selected={isSelected && !soldOut} />
+                                <Radio selected={isSelected && !unavailable} />
                                 <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-2">
                                         <span className="font-medium">{ticket.title}</span>
@@ -610,8 +498,11 @@ export default function RegistrationPage() {
                                         )}
                                     </div>
                                     {ticket.description && <div className={cn("text-sm", muted)}>{ticket.description}</div>}
+                                    {!unavailable && ticket.sales_end_at && (
+                                        <div className="text-sm font-medium text-[color:var(--pg-accent)]">Ends {whenLabel(ticket.sales_end_at)}</div>
+                                    )}
                                 </div>
-                                <div className="font-medium">{soldOut ? "Sold out" : priceLabel(ticket)}</div>
+                                <div className="font-medium">{unavailable ?? priceLabel(ticket)}</div>
                             </button>
                         );
                     })}
@@ -755,13 +646,31 @@ export default function RegistrationPage() {
                                 <Ticket className="h-4 w-4" /> Registration
                             </div>
                             <div className="space-y-4 p-4">
-                                {passes.length > 0 ? (
+                                {regClosed ? (
+                                    <>
+                                        <div>
+                                            <h3 className="text-base font-medium">Registration closed</h3>
+                                            <p className={cn("mt-1 text-[15px] leading-relaxed", muted)}>
+                                                Registration for this event has closed.
+                                            </p>
+                                        </div>
+                                        <button type="button" disabled className={cn(primaryBtn, "h-11 text-[15px]")}>
+                                            Registration closed
+                                        </button>
+                                    </>
+                                ) : passes.length > 0 ? (
                                     <>
                                         <p className={cn("text-[15px] leading-relaxed", muted)}>{theme.welcomeText}</p>
                                         <TicketSelector passes={filteredPasses} />
+                                        {currentCharge?.applied && (
+                                            <p className={cn("text-sm", muted)}>A {currentCharge.label.toLowerCase()} is added at checkout.</p>
+                                        )}
+                                        {event.registration_closes_at && (
+                                            <p className={cn("text-sm", muted)}>Registration closes {whenLabel(event.registration_closes_at)}.</p>
+                                        )}
                                         {allTriggersAnswered && (
                                             <button type="button" onClick={() => setStep(2)} disabled={!canRegister} className={cn(primaryBtn, "h-11 text-[15px]")}>
-                                                {canRegister ? theme.ctaLabel : "Sold out"}
+                                                {ctaText}
                                             </button>
                                         )}
                                     </>
@@ -797,11 +706,16 @@ export default function RegistrationPage() {
 
             {/* Mobile sticky action bar */}
             <div className={cn("fixed inset-x-0 bottom-0 z-40 border-t bg-[color:var(--pg-modal)]/95 px-4 py-3 backdrop-blur-md md:hidden", hairline)}>
-                {passes.length > 0 ? (
+                {regClosed ? (
+                    <button type="button" disabled className={cn(primaryBtn, "mx-auto h-11 max-w-md text-[15px]")}>
+                        Registration closed
+                    </button>
+                ) : passes.length > 0 ? (
                     <div className="mx-auto flex max-w-md items-center gap-4">
                         <div className="leading-tight">
                             <div className={cn("text-xs", muted)}>{currentTicket?.title ?? "Ticket"}</div>
                             <div className="text-lg font-bold">{currentTicket ? priceLabel(currentTicket) : "–"}</div>
+                            {currentCharge?.applied && <div className={cn("text-xs", muted)}>+ {currentCharge.label.toLowerCase()}</div>}
                         </div>
                         <button
                             type="button"
@@ -809,7 +723,7 @@ export default function RegistrationPage() {
                             disabled={allTriggersAnswered && !canRegister}
                             className={cn(primaryBtn, "h-11 flex-1 text-[15px]")}
                         >
-                            {allTriggersAnswered ? (canRegister ? theme.ctaLabel : "Sold out") : "Choose a ticket"}
+                            {allTriggersAnswered ? ctaText : "Choose a ticket"}
                         </button>
                     </div>
                 ) : (
@@ -896,7 +810,7 @@ export default function RegistrationPage() {
                                                         initial={{ opacity: 0, height: 0 }}
                                                         animate={{ opacity: 1, height: "auto" }}
                                                         exit={{ opacity: 0, height: 0 }}
-                                                        className="space-y-4 overflow-hidden px-0.5 py-0.5"
+                                                        className="-mx-1 space-y-4 overflow-hidden p-1"
                                                     >
                                                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                                             <div>
@@ -1070,7 +984,7 @@ export default function RegistrationPage() {
                                                         initial={{ opacity: 0 }}
                                                         animate={{ opacity: 1 }}
                                                         exit={{ opacity: 0 }}
-                                                        className="space-y-2 px-0.5 py-0.5"
+                                                        className="-mx-1 space-y-2 p-1"
                                                     >
                                                         <label htmlFor={`g${index}-invite`} className="mb-1.5 block text-sm font-medium">Guest&apos;s email</label>
                                                         <input
@@ -1110,11 +1024,29 @@ export default function RegistrationPage() {
                                         </div>
                                     </div>
                                 )}
-                                <button type="button" onClick={handleRegister} disabled={submitting} className={cn(primaryBtn, "h-12 text-base")}>
+                                {isPaid && currentCharge && (
+                                    <div className="space-y-1.5 text-[15px]">
+                                        <div className="flex justify-between gap-4">
+                                            <span className={muted}>{currentTicket?.title}</span>
+                                            <span>{fmtNaira(currentCharge.subtotal)}</span>
+                                        </div>
+                                        {currentCharge.serviceFee > 0 && (
+                                            <div className="flex justify-between gap-4">
+                                                <span className={muted}>{currentCharge.label}</span>
+                                                <span>{fmtNaira(currentCharge.serviceFee)}</span>
+                                            </div>
+                                        )}
+                                        <div className={cn("flex justify-between gap-4 border-t pt-1.5 font-bold", hairline)}>
+                                            <span>Total</span>
+                                            <span>{fmtNaira(currentCharge.total)}</span>
+                                        </div>
+                                    </div>
+                                )}
+                                <button type="button" onClick={handleRegister} disabled={submitting || !canRegister} className={cn(primaryBtn, "h-12 text-base")}>
                                     {submitting ? (
                                         <><Loader2 className="h-5 w-5 animate-spin" /> Processing…</>
                                     ) : isPaid ? (
-                                        "Continue to payment"
+                                        `Pay ${fmtNaira(currentCharge?.total ?? 0)}`
                                     ) : (
                                         "Complete registration"
                                     )}
