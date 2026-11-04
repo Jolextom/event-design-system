@@ -28,13 +28,21 @@
  *
  * Usage:
  *   node scripts/seed-main-character-fest.js --end-time 18:00
- *   node scripts/seed-main-character-fest.js --end-time 18:00 --owner <user-uuid> --apply
+ *   node scripts/seed-main-character-fest.js --end-time 18:00 --owner-from-tag <an-event-you-already-have> --apply
+ *   node scripts/seed-main-character-fest.js --end-time 18:00 --owner-from-tag <tag> --test --apply   (separate "(TEST)" copy)
  *
  *   --end-time HH:MM   REQUIRED. Event end time (WAT). Not in the brief, so it
  *                      has no default; the tool stores one for every event.
- *   --owner <uuid>     REQUIRED with --apply. The dashboard user who should own
- *                      the event (events.created_by), i.e. your auth user id.
- *                      Can also be set via EVENT_OWNER_ID.
+ *   --owner <uuid>     The dashboard user who should own the event (events.created_by),
+ *                      i.e. your auth user id. Can also be set via EVENT_OWNER_ID.
+ *   --owner-from-tag <tag>
+ *                      Easier: use the same owner as an event you ALREADY have in your
+ *                      dashboard (any of your events). One of --owner / --owner-from-tag
+ *                      is REQUIRED with --apply. You log in as that user to see the event.
+ *   --test             Create "Main Character Fest 2026 (TEST)" instead: a throwaway copy
+ *                      for trying payments with cheap tickets. Its URL tag still starts
+ *                      with main-character-fest, so it gets the same look. Remove it
+ *                      later with scripts/delete-test-event.mjs.
  *   --apply            Actually write to the database.
  */
 
@@ -81,7 +89,7 @@ function loadQuestions() {
     return list;
 }
 
-function buildEvent(endTime, owner) {
+function buildEvent(endTime, owner, test) {
     const description = fs.readFileSync(path.join(DIR, "description.html"), "utf8").trim();
     const start = new Date(`${EVENT.date}T${EVENT.startTime}:00${EVENT.tzOffset}`);
     const end = new Date(`${EVENT.date}T${endTime}:00${EVENT.tzOffset}`);
@@ -89,11 +97,12 @@ function buildEvent(endTime, owner) {
     if (end <= start) fail(`--end-time ${endTime} must be after the ${EVENT.startTime} start.`);
 
     // Mirrors CreateEventModal's slug: title -> kebab-case + 4 random chars.
-    const tag = EVENT.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Math.random().toString(36).substring(2, 6);
+    const title = test ? `${EVENT.title} (TEST)` : EVENT.title;
+    const tag = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + "-" + Math.random().toString(36).substring(2, 6);
 
     return {
         created_by: owner || null,
-        event_title: EVENT.title,
+        event_title: title,
         tag,
         event_format: EVENT.format,
         start_date: start.toISOString(),
@@ -114,7 +123,7 @@ function print(event, questions) {
     console.log(`  ends:      ${event.end_date}  (${event.end_time} WAT)`);
     console.log(`  location:  ${event.location}`);
     console.log(`  format:    ${event.event_format}   published: ${event.is_published}`);
-    console.log(`  owner:     ${event.created_by || "(not set — required with --apply)"}`);
+    console.log(`  owner:     ${event.created_by || "(set when you run with --apply)"}`);
     console.log(`\nREGISTRATION QUESTIONS (${questions.length}; Full Name + Email are built-in fixed fields)`);
     questions.forEach((q, i) => {
         const opts = q.options ? `  [${q.options.join(" | ")}]` : "";
@@ -128,10 +137,14 @@ async function main() {
     if (!endTime) fail("Missing --end-time HH:MM (e.g. --end-time 18:00). The brief has no end time, so it must be given.");
     const apply = process.argv.includes("--apply");
     const owner = arg("owner") || process.env.EVENT_OWNER_ID;
+    const ownerFromTag = arg("owner-from-tag");
+    const test = process.argv.includes("--test");
 
     const questions = loadQuestions();
-    const event = buildEvent(endTime, owner);
+    const event = buildEvent(endTime, owner, test);
+    if (!owner && ownerFromTag) event.created_by = null; // resolved from the database at --apply
     print(event, questions);
+    if (!owner && ownerFromTag) console.log(`  (owner will be the owner of the existing event "${ownerFromTag}", looked up when you run with --apply)`);
 
     if (!apply) {
         console.log("\nDRY RUN — nothing was written. Re-run with --owner <uuid> --apply to create it.");
@@ -141,7 +154,7 @@ async function main() {
     const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!SUPABASE_URL || !SERVICE_KEY) fail("\nMissing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
-    if (!owner) fail("\n--apply needs --owner <user-uuid> (or EVENT_OWNER_ID) so the event shows up in your dashboard.");
+    if (!owner && !ownerFromTag) fail("\n--apply needs --owner <user-uuid> or --owner-from-tag <one-of-your-event-tags> so the event shows up in your dashboard.");
 
     async function sb(method, p, body) {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/${p}`, {
@@ -158,7 +171,16 @@ async function main() {
         return res.status === 204 ? null : res.json();
     }
 
-    const existing = await sb("GET", `events?created_by=eq.${encodeURIComponent(owner)}&event_title=eq.${encodeURIComponent(event.event_title)}&select=id,tag`);
+    let resolvedOwner = owner;
+    if (!resolvedOwner) {
+        const rows = await sb("GET", `events?tag=eq.${encodeURIComponent(ownerFromTag)}&select=created_by,event_title`);
+        if (!rows[0]?.created_by) fail(`\nNo event with tag "${ownerFromTag}" to take the owner from. Check the tag (it's the last part of the event's dashboard URL).`);
+        resolvedOwner = rows[0].created_by;
+        console.log(`\nOwner taken from "${rows[0].event_title}": ${resolvedOwner}`);
+    }
+    event.created_by = resolvedOwner;
+
+    const existing = await sb("GET", `events?created_by=eq.${encodeURIComponent(resolvedOwner)}&event_title=eq.${encodeURIComponent(event.event_title)}&select=id,tag`);
     if (existing.length > 0) {
         fail(`\nYou already have "${event.event_title}" (tag ${existing[0].tag}). Not creating a duplicate — nothing was written.`);
     }
