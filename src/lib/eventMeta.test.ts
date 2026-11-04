@@ -33,3 +33,18 @@ test("other events are untouched: no custom meta, platform name kept", () => {
 test("Main Character Fest pages show the event's name where EventFlow would be", () => {
     assert.equal(brandNameForTag("main-character-fest-2026-ab3d"), "Main Character Fest");
 });
+
+test("Main Character Fest: no invites, and a short code of conduct (expected behaviour + dress code only)", async () => {
+    const { invitesAllowedForTag } = await import("../app/[tag]/theme.ts");
+    assert.equal(invitesAllowedForTag("main-character-fest-2026-ab3d"), false);
+    assert.equal(invitesAllowedForTag("kini-ai-summit"), true, "other events keep invites");
+    assert.equal(invitesAllowedForTag(null), true);
+    const c = resolveTheme("main-character-fest-2026").conduct;
+    assert.ok(c);
+    assert.deepEqual(c.sections.map((s) => s.heading), ["Expected behaviour", "Dress code"]);
+    assert.equal(c.sections[0].items.length, 6);
+    assert.ok(c.sections[1].items.some((i) => /revealing or sexually suggestive/.test(i)));
+    assert.match(c.sections[1].intro ?? "", /modest/);
+    assert.match(c.agreeLabel, /agree/i);
+    assert.equal(resolveTheme("kini-ai-summit").conduct, undefined, "no conduct box on other events");
+});

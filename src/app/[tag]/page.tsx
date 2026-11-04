@@ -23,7 +23,7 @@ import { computeCharge } from "@/lib/fees";
 import { passSaleState, registrationClosed } from "@/lib/sales";
 import { submitRegistration } from "./actions";
 import { openPaystackPopup } from "@/lib/paystackPopup";
-import { resolveTheme, themeStyle } from "./theme";
+import { invitesAllowedForTag, resolveTheme, themeStyle } from "./theme";
 import { QuestionField } from "./QuestionField";
 import { inter, sora, display } from "./fonts";
 import { choiceCls, hairline, inputCls, muted, primaryBtn, Radio } from "./ui";
@@ -32,6 +32,10 @@ import { choiceCls, hairline, inputCls, muted, primaryBtn, Radio } from "./ui";
 export default function RegistrationPage() {
     const params = useParams();
     const tag = typeof params === "object" && params?.tag ? String(params.tag) : null;
+    // Per-event rules from the theme registry: may buyers invite the other guests, and is there a code of conduct to accept?
+    const invitesOn = invitesAllowedForTag(tag);
+    const conduct = resolveTheme(tag).conduct;
+    const [conductAccepted, setConductAccepted] = useState(false);
     const searchParams = useSearchParams();
     const referralCode = searchParams.get("ref");
 
@@ -201,14 +205,14 @@ export default function RegistrationPage() {
             let newGuests = [...prev];
             if (newGuests.length < totalGuests) {
                 for (let i = newGuests.length; i < totalGuests; i++) {
-                    newGuests.push({ firstName: "", lastName: "", email: "", isInvite: true, answers: { ...triggerAnswerTexts } });
+                    newGuests.push({ firstName: "", lastName: "", email: "", isInvite: invitesOn, answers: { ...triggerAnswerTexts } });
                 }
             } else if (newGuests.length > totalGuests) {
                 newGuests = newGuests.slice(0, totalGuests);
             }
             return newGuests.map(g => ({ ...g, answers: { ...g.answers, ...triggerAnswerTexts } }));
         });
-    }, [totalGuests, triggerAnswerTexts]);
+    }, [totalGuests, triggerAnswerTexts, invitesOn]);
 
     // Esc closes the registration dialog.
     useEffect(() => {
@@ -282,6 +286,18 @@ export default function RegistrationPage() {
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (primaryGuest.email && !emailRegex.test(primaryGuest.email)) {
                 throw new Error("Please enter a valid email address");
+            }
+
+            // Events that don't use invites need EVERY guest's details now (the server checks this too).
+            if (!invitesOn) {
+                for (let i = 1; i < guests.length; i++) {
+                    if (!guests[i].firstName?.trim() || !guests[i].email?.trim()) {
+                        throw new Error(`Guest ${i + 1}: please fill in their first name and email.`);
+                    }
+                }
+            }
+            if (conduct && !conductAccepted) {
+                throw new Error("Please read and agree to the Code of Conduct to continue.");
             }
 
             // === VALIDATION 2: Filter valid guests ===
@@ -795,7 +811,7 @@ export default function RegistrationPage() {
                                             <div className="flex items-center justify-between">
                                                 <h3 className="text-[15px] font-bold">{isPrimary ? "Your details" : `Guest ${index + 1}`}</h3>
 
-                                                {!isPrimary && (
+                                                {!isPrimary && invitesOn && (
                                                     <div className={cn("flex rounded-lg border p-0.5 text-sm", hairline)}>
                                                         {([["Fill info", false], ["Invite", true]] as const).map(([label, invite]) => (
                                                             <button
@@ -905,6 +921,24 @@ export default function RegistrationPage() {
                                         </div>
                                     );
                                 })}
+                                {conduct && (
+                                    <div className={cn("space-y-3 rounded-xl border p-4 text-[13px] leading-relaxed", hairline)} data-testid="conduct">
+                                        <h4 className="text-sm font-bold">{conduct.title}</h4>
+                                        {conduct.sections.map((sec) => (
+                                            <div key={sec.heading} className="space-y-1">
+                                                <p className="font-semibold">{sec.heading}</p>
+                                                {sec.intro && <p className={muted}>{sec.intro}</p>}
+                                                <ul className={cn("list-disc space-y-0.5 pl-5", muted)}>
+                                                    {sec.items.map((it) => <li key={it}>{it}</li>)}
+                                                </ul>
+                                            </div>
+                                        ))}
+                                        <label className="flex cursor-pointer items-start gap-2.5 border-t pt-3 text-sm font-medium" style={{ borderColor: "var(--pg-border)" }}>
+                                            <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0" checked={conductAccepted} onChange={(e) => setConductAccepted(e.target.checked)} />
+                                            <span>{conduct.agreeLabel}</span>
+                                        </label>
+                                    </div>
+                                )}
                             </div>
 
                             <div className={cn("space-y-3 border-t px-5 py-4", hairline)}>
@@ -942,7 +976,10 @@ export default function RegistrationPage() {
                                         </div>
                                     </div>
                                 )}
-                                <button type="button" onClick={handleRegister} disabled={submitting || !canRegister} className={cn(primaryBtn, "h-12 text-base")}>
+                                {conduct && !conductAccepted && canRegister && (
+                                    <p className={cn("text-center text-sm", muted)}>Scroll down and agree to the Code of Conduct to continue.</p>
+                                )}
+                                <button type="button" onClick={handleRegister} disabled={submitting || !canRegister || (!!conduct && !conductAccepted)} className={cn(primaryBtn, "h-12 text-base")}>
                                     {submitting ? (
                                         <><Loader2 className="h-5 w-5 animate-spin" /> Processing…</>
                                     ) : isPaid ? (

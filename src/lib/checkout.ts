@@ -1,3 +1,4 @@
+import { invitesAllowedForTag } from "@/app/[tag]/theme";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { adminClient } from "./apiV1";
 import { initializeTransaction } from "./paystack";
@@ -154,6 +155,16 @@ export async function createCheckout(input: CheckoutInput, opts: CheckoutOptions
                 ? `This ticket covers at most ${maxGuests} people.`
                 : `This ticket allows at most ${maxGuests} guest${maxGuests === 1 ? "" : "s"} per order.`
         );
+    }
+
+    // Events that don't use invites (see theme.ts allowInvites): everyone on a ticket is filled in at checkout.
+    if (!invitesAllowedForTag(event.tag)) {
+        if (finalGuests.some((g) => g.isInvite)) {
+            return fail(400, "Invites aren't used for this event. Please fill in every guest's details.");
+        }
+        if (isGroup && finalGuests.length !== maxGuests) {
+            return fail(400, `Please fill in the details of all ${maxGuests} people on this ticket.`);
+        }
     }
 
     // Already registered for this event
