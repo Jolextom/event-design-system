@@ -588,7 +588,7 @@ export default function RegistrationPage() {
             <div className="relative z-10">
                 {/* Top bar */}
                 <header className="mx-auto flex h-14 max-w-[880px] items-center justify-between px-4">
-                    <span className="text-[15px] font-bold tracking-tight">EventFlow</span>
+                    <span className="text-[15px] font-bold tracking-tight">{theme.brandName ?? "EventFlow"}</span>
                     <button
                         type="button"
                         onClick={handleShare}

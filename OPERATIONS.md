@@ -133,3 +133,14 @@ goes to the receipt page, which verifies it with Paystack exactly as before (the
 - Closing the popup shows "Payment wasn't completed" with **Resume payment**, which reopens the same payment (no duplicate order).
 - If the popup can't open (blocked, offline, no response within 10 seconds) the page falls back to the old full-page Paystack redirect.
 - Test it with a Paystack TEST card in test mode before going live; popups cannot be exercised without reaching Paystack.
+
+## Event-specific wording (tab title, link preview, brand name)
+
+`src/app/[tag]/theme.ts` holds per-event settings, matched on the start of the event's tag. For Main Character Fest it sets:
+- `meta`: the browser tab title, search/share description and site name (`src/app/[tag]/layout.tsx` turns this into the page's
+  title, description and Open Graph/Twitter tags; the cover image comes from the event's own `image`). Tags containing `-test`
+  are titled "[Test] …" and marked noindex.
+- `brandName`: shown instead of "EventFlow" on the event page header and the receipt / join pages.
+Events without these keep the platform defaults. To brand another event, add the same fields to its theme entry.
+Link previews are cached by WhatsApp/X/Facebook, so after changing the wording re-scrape the link (e.g. Facebook Sharing
+Debugger) or wait for their cache to expire.
