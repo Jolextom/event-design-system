@@ -60,7 +60,13 @@ and its registration questions. 404 if unknown or unpublished.
       "quantity_available": 100,
       "quantity_sold": 12,
       "sold_out": false,
-      "show_for_option_id": null        // selection-logic: only show this pass when that option id was chosen
+      "show_for_option_id": null,       // selection-logic: only show this pass when that option id was chosen
+      "service_fee": 0,                 // fee added at checkout for this event (0 = none)
+      "fee_label": "Service fee",
+      "total": 5000,                    // price + service_fee: what the buyer is actually charged
+      "sales_start_at": null,           // optional sale window (ISO timestamps)
+      "sales_end_at": null,
+      "on_sale": true                   // false once the window or the event's registration deadline has passed
     }
   ],
   "questions": [
@@ -122,8 +128,13 @@ happens automatically via the Paystack webhook after payment:
 }
 ```
 
-Errors: `400` (validation), `403` (unpublished), `404` (unknown event/pass),
-`409` (already registered / sold out), `500`/`502` — all as `{ "error": "message" }`.
+Errors: `400` (validation), `403` (unpublished, registration closed, or the ticket's sale window
+isn't open), `404` (unknown event/pass), `409` (already registered / sold out), `500`/`502` — all
+as `{ "error": "message" }`.
+
+Pricing is always computed on the server from the database; nothing the caller sends can change
+the amount. An individual ticket is priced per guest; a group ticket is one flat price covering up
+to `group_size` people. If the event has a service fee, the Paystack amount is the ticket's `total`.
 
 ## GET /api/v1/campaigns/{id}
 

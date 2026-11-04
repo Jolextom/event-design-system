@@ -8,6 +8,7 @@ import DashboardGuard from "@/app/components/DashboardGuard";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { CreateEventModal } from "./CreateEventModal";
+import { TemplateModal } from "./TemplateModal";
 
 
 export default function DemoDashboard() {
@@ -16,6 +17,7 @@ export default function DemoDashboard() {
     const [events, setEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
     useEffect(() => {
         const fetchEvents = async () => {
@@ -76,6 +78,12 @@ export default function DemoDashboard() {
                                     Campaigns
                                 </a>
                                 <button
+                                    onClick={() => setIsTemplateModalOpen(true)}
+                                    className="bg-white border border-[var(--color-neutral-200)] text-[var(--color-neutral-700)] px-6 py-2 rounded-xl font-black text-xs hover:bg-[var(--color-neutral-50)] transition-all uppercase tracking-widest"
+                                >
+                                    Templates
+                                </button>
+                                <button
                                     onClick={() => setIsCreateModalOpen(true)}
                                     className="bg-[var(--color-primary-700)] text-white px-6 py-2 rounded-xl font-black text-xs shadow hover:bg-[var(--color-primary-900)] transition-all uppercase tracking-widest"
                                 >
@@ -117,6 +125,15 @@ export default function DemoDashboard() {
                         )}
                     </div>
                 </div>
+
+                {user && (
+                    <TemplateModal
+                        isOpen={isTemplateModalOpen}
+                        onClose={() => setIsTemplateModalOpen(false)}
+                        userId={user.id}
+                        onCreated={handleEventCreated}
+                    />
+                )}
 
                 {user && (
                     <CreateEventModal

@@ -178,9 +178,10 @@ export async function sendWelcomeEmail(attendeeId: string, eventId: string) {
     }
 }
 
-export async function initializeTransaction(options: any) {
-    return PaystackLib.initializeTransaction(options);
-}
+// NOTE: there is intentionally no exported initializeTransaction() here any more.
+// Exported functions in this file are callable from the browser, and this one let
+// the caller choose the amount. Payment is started server-side only, from
+// createCheckout() in src/lib/checkout.ts, with a price read from the database.
 
 export async function verifyAndFulfillPayment(reference: string) {
     try {

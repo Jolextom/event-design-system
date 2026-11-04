@@ -1,0 +1,7 @@
+{
+  "passes": [
+    { "title": "TEST single (₦100)", "description": "Test ticket - not for sale", "price": 100, "type": "individual", "quantity_available": 1000 },
+    { "title": "TEST group of 3 (₦300)", "description": "Test ticket - not for sale", "price": 300, "type": "group", "group_size": 3, "quantity_available": 1000 },
+    { "title": "TEST free", "description": "Test ticket - not for sale", "price": 0, "type": "individual", "quantity_available": 1000 }
+  ]
+}

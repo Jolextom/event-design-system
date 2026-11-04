@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import { adminClient, corsJson, corsPreflight, shapeQuestion } from "@/lib/apiV1";
+import { computeCharge } from "@/lib/fees";
+import { passSaleState, registrationClosed } from "@/lib/sales";
 
 export async function OPTIONS(req: NextRequest) {
     return corsPreflight(req);
@@ -39,7 +41,11 @@ export async function GET(
         const passes = (event.passes || [])
             .filter((p: any) => !p.is_hidden)
             .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
-            .map((p: any) => ({
+            .map((p: any) => {
+                // What the buyer is actually charged (ticket price + any service fee for this event).
+                const charge = computeCharge(p.is_free ? 0 : Number(p.price ?? 0), event.fee_config);
+                const saleState = passSaleState(p);
+                return {
                 id: p.id,
                 title: p.title,
                 description: p.description,
@@ -51,7 +57,15 @@ export async function GET(
                 quantity_sold: p.quantity_sold ?? 0,
                 sold_out: (p.quantity_sold ?? 0) >= p.quantity_available,
                 show_for_option_id: p.show_for_option_id, // selection-logic linkage
-            }));
+                // Additive fields (safe to ignore):
+                service_fee: charge.serviceFee,    // 0 when the event has no fee
+                fee_label: charge.label,
+                total: charge.total,               // price + service_fee: what checkout charges
+                sales_start_at: p.sales_start_at ?? null,
+                sales_end_at: p.sales_end_at ?? null,
+                on_sale: saleState === "open" && !registrationClosed(event),
+                };
+            });
 
         const questions = (event.questions || [])
             .sort((a: any, b: any) => a.question_order - b.question_order)
@@ -72,6 +86,7 @@ export async function GET(
                 location: event.location,
                 format: event.event_format || "physical",
                 virtual_platform: event.virtual_platform,
+                registration_closes_at: event.registration_closes_at ?? null, // additive
             },
             passes,
             questions,
