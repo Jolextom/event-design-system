@@ -63,6 +63,8 @@ export type CheckoutResult =
           status: "payment_required";
           orderRef: string;
           authorizationUrl: string;
+          /** Lets the browser open Paystack's popup for THIS server-created transaction (price and split already fixed). */
+          accessCode?: string;
           /** What was actually charged, for logging / UI. */
           charge: { totalKobo: number; subtotalKobo: number; serviceFeeKobo: number };
       }
@@ -270,6 +272,7 @@ export async function createCheckout(input: CheckoutInput, opts: CheckoutOptions
             status: "payment_required",
             orderRef,
             authorizationUrl: paystackData.authorization_url,
+            accessCode: paystackData.access_code,
             charge: { totalKobo: charge.totalKobo, subtotalKobo: charge.subtotalKobo, serviceFeeKobo: charge.serviceFeeKobo },
         };
     }
