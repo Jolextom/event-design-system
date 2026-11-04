@@ -144,3 +144,16 @@ goes to the receipt page, which verifies it with Paystack exactly as before (the
 Events without these keep the platform defaults. To brand another event, add the same fields to its theme entry.
 Link previews are cached by WhatsApp/X/Facebook, so after changing the wording re-scrape the link (e.g. Facebook Sharing
 Debugger) or wait for their cache to expire.
+
+## Changing your password
+
+Dashboard → **Password** (or `/settings/password`). It asks for the current password first (so someone at an unlocked laptop
+can't change it), enforces a new password of at least 10 characters that isn't obviously guessable, and by default signs out
+every OTHER device, which is the quickest way to kick someone out if you think the old password leaked. This device stays signed in.
+Rules: `src/lib/passwordRules.ts`.
+
+Supabase settings that go with it (Dashboard → Authentication):
+- **Sign In / Providers → "Allow new users to sign up": turn OFF** so strangers can't create accounts on your platform.
+- **Password security**: raise the minimum length to 10 and turn on leaked-password protection if your plan offers it.
+- There is no "Forgot password" link on the sign-in page yet. If you lock yourself out, use Authentication → Users → your user →
+  "Send password recovery", or set a new password there.

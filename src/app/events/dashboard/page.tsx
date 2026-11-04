@@ -53,6 +53,12 @@ export default function DemoDashboard() {
                             <div className="text-lg font-black text-[var(--color-primary-700)]">{user?.email || "Loading..."}</div>
                             <div className="text-xs text-[var(--color-neutral-400)] font-bold mt-1">Organizer</div>
                         </div>
+                        <a
+                            href="/settings/password"
+                            className="bg-white border border-[var(--color-neutral-200)] text-[var(--color-neutral-700)] px-6 py-2 rounded-xl font-black text-xs hover:bg-[var(--color-neutral-50)] transition-all uppercase tracking-widest"
+                        >
+                            Password
+                        </a>
                         <button
                             onClick={async () => {
                                 await supabase.auth.signOut();
