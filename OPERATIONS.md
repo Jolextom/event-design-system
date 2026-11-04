@@ -71,3 +71,11 @@ use a TEST code with the test key and a LIVE code with the live key.
 
 After a test payment, open the transaction in Paystack's dashboard and check the split shows the organiser receiving the
 ticket price and your account receiving the fee.
+
+### Changing them later: the Payments tab
+
+Event dashboard → **Ticket Types** → **Payments** tab. Edit the organiser's payout code and the service fee (flat ₦, optional %,
+rounding, label, whether customers also pay Paystack's fee) at any time, with a table showing what the customer pays and what you
+keep on each ticket. Changes apply to NEW payments only; every order stores the exact amount it was charged.
+Use this to swap a TEST subaccount code for the LIVE one when you go live. It warns you if you set a payout code but no fee
+(Paystack's fee would then come out of your own account on every sale).

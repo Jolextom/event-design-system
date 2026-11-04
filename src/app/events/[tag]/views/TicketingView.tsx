@@ -10,6 +10,7 @@ import { createClient } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
 import { SelectionLogicView } from "./SelectionLogicView";
+import { PaymentsPanel } from "./PaymentsPanel";
 
 interface TicketingViewProps {
     passes: Pass[];
@@ -21,6 +22,11 @@ interface TicketingViewProps {
     onPassUpdated: () => void;
     onQuestionCreated: () => void;
     attendees: any[];
+    /** The event's stored service-fee settings and the organiser's Paystack subaccount code (Payments tab). */
+    feeConfig?: unknown;
+    payoutCode?: string | null;
+    /** Called after the Payments tab saves, so the page's copy of the event stays current. */
+    onPaymentsSaved?: (updates: { fee_config: unknown; paystack_subaccount_code: string | null }) => void;
 }
 
 // Skeleton loading component for a single pass card
@@ -59,14 +65,17 @@ export function TicketingView({
     onPassCreated, 
     onPassUpdated,
     onQuestionCreated,
-    attendees = [] 
+    attendees = [],
+    feeConfig,
+    payoutCode = null,
+    onPaymentsSaved
 }: TicketingViewProps) {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [deletePassId, setDeletePassId] = useState<string | null>(null);
     const [deletePassTitle, setDeletePassTitle] = useState<string>("");
     const [isDeleting, setIsDeleting] = useState(false);
     const [editingPassId, setEditingPassId] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'tickets' | 'logic'>('tickets');
+    const [activeTab, setActiveTab] = useState<'tickets' | 'logic' | 'payments'>('tickets');
 
     // Delete pass handler
     const handleDeletePass = async () => {
@@ -153,6 +162,15 @@ export function TicketingView({
                         )}
                     >
                         <Zap className="w-3.5 h-3.5" /> Selection Logic
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('payments')}
+                        className={cn(
+                            "px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+                            activeTab === 'payments' ? "bg-white text-gray-900 shadow-sm border border-gray-100" : "text-gray-400 hover:text-gray-600"
+                        )}
+                    >
+                        <CircleDollarSign className="w-3.5 h-3.5" /> Payments
                     </button>
                 </div>
 
@@ -312,7 +330,7 @@ export function TicketingView({
                             </div>
                         )}
                     </div>
-                ) : (
+                ) : activeTab === 'logic' ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 min-h-[600px]">
                         <SelectionLogicView
                             questions={questions}
@@ -324,6 +342,17 @@ export function TicketingView({
                             onPassUpdated={onPassUpdated}
                         />
                     </div>
+                ) : (
+                    eventId ? (
+                        <PaymentsPanel
+                            key={eventId}
+                            eventId={eventId}
+                            passes={passes}
+                            feeConfig={feeConfig}
+                            payoutCode={payoutCode}
+                            onSaved={(updates) => onPaymentsSaved?.(updates)}
+                        />
+                    ) : null
                 )}
 
                 <div className="pt-10 grid grid-cols-2 gap-6">

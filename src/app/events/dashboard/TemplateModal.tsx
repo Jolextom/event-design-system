@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { AlertCircle, Check, Copy } from "lucide-react";
+import { AlertCircle, AlertTriangle, Check, Copy, Info } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { Modal, ModalButton } from "@/app/components/ui/Modal";
 import { Input } from "@/app/components/ui/Input";
@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { EVENT_TEMPLATES } from "@/lib/templates";
 import { createEventFromTemplate } from "@/lib/templates/createFromTemplate";
 import { computeCharge } from "@/lib/fees";
+import { formFromEvent, paymentWarnings } from "@/lib/paymentsForm";
 import type { EventTemplate, TemplateInput, TemplateVariant } from "@/lib/templates";
 
 interface TemplateModalProps {
@@ -46,6 +47,16 @@ export function TemplateModal({ isOpen, onClose, userId, onCreated }: TemplateMo
     );
     const inputs: TemplateInput[] = useMemo(() => [...template.inputs, ...variant.inputs], [template, variant]);
     const feeOn = !!variant.feeInput && values[variant.feeInput] === "true" && !!template.feeConfig;
+    const payoutCode = (variant.subaccountInput ? values[variant.subaccountInput] ?? "" : "").trim();
+    // Same rules as the event's Payments card (src/lib/paymentsForm.ts), so a risky combination is flagged BEFORE creating.
+    const warnings = useMemo(
+        () =>
+            paymentWarnings(
+                formFromEvent(feeOn ? template.feeConfig : null, payoutCode || null),
+                variant.passes.map((p) => ({ title: p.title, price: p.price, is_free: p.price === 0 }))
+            ),
+        [feeOn, template, payoutCode, variant]
+    );
 
     const choose = (nextTemplate: EventTemplate, nextVariantId: string) => {
         setTemplate(nextTemplate);
@@ -197,6 +208,20 @@ export function TemplateModal({ isOpen, onClose, userId, onCreated }: TemplateMo
                         </div>
                     </div>
                 )}
+
+                {warnings.map((w) => (
+                    <div
+                        key={w.text}
+                        role={w.level === "warn" ? "alert" : "note"}
+                        className={cn(
+                            "flex items-start gap-3 rounded-2xl border p-4 text-sm font-bold",
+                            w.level === "warn" ? "border-amber-200 bg-amber-50 text-amber-800" : "border-blue-100 bg-blue-50 text-blue-800"
+                        )}
+                    >
+                        {w.level === "warn" ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> : <Info className="mt-0.5 h-4 w-4 shrink-0" />}
+                        <span>{w.text}</span>
+                    </div>
+                ))}
 
                 {error && (
                     <div role="alert" className="flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 p-4">
