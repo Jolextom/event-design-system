@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useLayoutEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { PanelLeftOpen, Eye, Menu, X } from "lucide-react";
 import Link from 'next/link';
 import { cn } from "@/lib/utils";
@@ -119,9 +119,11 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
         }
 
         if (changed) {
-            router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+            // Only the address bar needs to follow the tab. router.replace would ask the server for the page again on
+            // every click; the browser's own history API is synced with Next's router and costs nothing.
+            window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
         }
-    }, [activeGlobal, activeBuilderCategory, pathname, router, searchParams]);
+    }, [activeGlobal, activeBuilderCategory, pathname, searchParams]);
 
     const [isBackboneOpen, setIsBackboneOpen] = useState(true);
     const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
@@ -767,15 +769,9 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                             </a>
                         </div>
                     ) : (
-                        <AnimatePresence mode="popLayout">
-                            <motion.div
-                                key={activeGlobal}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.1 }}
-                                className="h-full"
-                            >
+                        // No fade between sections: a cross-fade keeps the old and the new section on screen
+                        // together, each half see-through, which showed up as a flash on every click.
+                        <div key={activeGlobal} className="h-full">
                                 {activeGlobal === "command" && (
                                     <CommandHubView
                                         event={event}
@@ -789,15 +785,7 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                                 )}
 
                                 {activeGlobal === "studio" && (
-                                    <AnimatePresence mode="wait">
-                                        <motion.div
-                                            key={activeBuilderCategory}
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, y: -10 }}
-                                            transition={{ duration: 0.2, ease: "circOut" }}
-                                            className="h-full"
-                                        >
+                                    <div key={activeBuilderCategory} className="h-full">
 
                                             {activeBuilderCategory === "registration" && (
                                                 <RegistrationView
@@ -851,8 +839,7 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                                                     }}
                                                 />
                                             )}
-                                        </motion.div>
-                                    </AnimatePresence>
+                                    </div>
                                 )}
 
                                 {activeGlobal === "live" && <OperationsView />}
@@ -876,8 +863,7 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                                 )}
                                 {activeGlobal === "broadcast" && <BroadcastView event={event} />}
                                 {activeGlobal === "settings" && <SettingsView />}
-                            </motion.div>
-                        </AnimatePresence>
+                        </div>
                     )}
                 </main>
             </div >
