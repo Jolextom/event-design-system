@@ -39,13 +39,29 @@ export async function sendWelcomeEmail(attendeeId: string, eventId: string) {
 
         // Fetch pass to build class-specific schedule notes
         let passTitle = '';
+        let group: { filled: number; total: number } | undefined;
         if (attendee.pass_id) {
             const { data: passData } = await adminSupabase
                 .from("passes")
-                .select("title")
+                .select("title, type, group_size")
                 .eq("id", attendee.pass_id)
                 .single();
             if (passData) passTitle = passData.title;
+
+            // The BUYER of a group ticket also needs to know the rest of the group is theirs to
+            // invite and manage. Invited members (who have their own email) don't get this block.
+            const { data: orderRow } = attendee.order_id
+                ? await adminSupabase.from("orders_table").select("email").eq("id", attendee.order_id).maybeSingle()
+                : { data: null };
+            const buyerEmail = String(orderRow?.email ?? "").trim().toLowerCase();
+            const isBuyer = !!buyerEmail && String(attendee.email ?? "").trim().toLowerCase() === buyerEmail;
+            if (isBuyer && passData?.type === "group" && Number(passData.group_size) > 1 && attendee.order_id) {
+                const { count } = await adminSupabase
+                    .from("attendees")
+                    .select("id", { count: "exact", head: true })
+                    .eq("order_id", attendee.order_id);
+                group = { filled: Math.min(count ?? 1, Number(passData.group_size)), total: Number(passData.group_size) };
+            }
         }
 
         // 2. Create initial delivery record
@@ -147,6 +163,7 @@ export async function sendWelcomeEmail(attendeeId: string, eventId: string) {
             // Every attendee's OWN check-in code (not the order ref, which a whole group shares).
             checkInRef: attendee.ref || undefined,
             qrCodeUrl: attendee.ref ? buildQrCodeUrl(attendee.ref) : undefined,
+            group,
         };
 
         const result = await sendConfirmationEmail({

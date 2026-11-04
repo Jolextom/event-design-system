@@ -3,7 +3,9 @@
 import { headers } from "next/headers";
 import { createCheckout, type CheckoutGuestInput } from "@/lib/checkout";
 import { addGroupMember, completeInvite, resendGuestEmail } from "@/lib/guests";
-import { rateLimit } from "@/lib/rateLimit";
+import { isLimited, rateLimit } from "@/lib/rateLimit";
+import { adminClient } from "@/lib/apiV1";
+import { inviteView, receiptView, type InviteView, type ReceiptView } from "@/lib/publicViews";
 import type { AnswerValue } from "@/lib/answers";
 
 export type RegistrationResult =
@@ -126,4 +128,30 @@ export async function resendInviteAction(input: { attendeeId: string; orderRef: 
     if (!rl.ok) return tooMany(rl.retryAfterSec);
     const res = await resendGuestEmail({ attendeeId: String(input?.attendeeId ?? ""), orderRef: String(input?.orderRef ?? "") });
     return res.ok ? { ok: true as const } : { ok: false as const, error: res.error };
+}
+
+// ---------------------------------------------------------------------------
+// Reading ONE receipt / ONE invite (the pages behind a link). The server looks it up by its
+// reference and returns only what the page draws. Guessing references is slowed down: a
+// handful of misses blocks that visitor for a while.
+// ---------------------------------------------------------------------------
+async function lookup<T>(scope: string, ref: unknown, load: (ref: unknown) => Promise<T | null>): Promise<{ ok: true; view: T } | { ok: false; error: string }> {
+    const ip = await callerKey(scope);
+    if (isLimited(`${ip}:miss`, 15, 10 * 60 * 1000)) return { ok: false, error: "Too many attempts. Please try again later." };
+    const rl = rateLimit(`${ip}:read`, 180, 60 * 1000);
+    if (!rl.ok) return tooMany(rl.retryAfterSec);
+    const view = await load(ref);
+    if (!view) {
+        rateLimit(`${ip}:miss`, 15, 10 * 60 * 1000);
+        return { ok: false, error: "Not found." };
+    }
+    return { ok: true, view };
+}
+
+export async function getReceiptAction(ref: string): Promise<{ ok: true; view: ReceiptView } | { ok: false; error: string }> {
+    return lookup("receipt", ref, (r) => receiptView(adminClient(), r));
+}
+
+export async function getInviteAction(ref: string): Promise<{ ok: true; view: InviteView } | { ok: false; error: string }> {
+    return lookup("invite", ref, (r) => inviteView(adminClient(), r));
 }

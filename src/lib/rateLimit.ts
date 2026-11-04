@@ -24,3 +24,8 @@ export function rateLimit(key: string, limit: number, windowMs: number, now: num
 export function resetRateLimits() {
     hits.clear();
 }
+
+/** True if this key has already used up its allowance (does NOT record a new hit). */
+export function isLimited(key: string, limit: number, windowMs: number, now: number = Date.now()): boolean {
+    return (hits.get(key) ?? []).filter((t) => now - t < windowMs).length >= limit;
+}
