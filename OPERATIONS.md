@@ -91,3 +91,11 @@ requires, then confirms the event is really gone. Events with guests or orders n
   deleted and you can press Delete again once it is fixed.
 - Runs on the server with the service-role key (`SUPABASE_SERVICE_ROLE_KEY` must be set), after checking your login token
   and that you created the event. Code: `src/lib/eventDelete.ts`, `src/app/events/dashboard/actions.ts`.
+
+## Who may do what (organiser-only actions)
+
+Sending a broadcast, sending an event campaign, adding or removing check-in staff, and deleting an event all
+check on the server that the caller is logged in **and created that event** (`src/lib/authz.ts`). Hiding a button is
+not protection, because anyone can call these endpoints directly. The guest confirmation email is internal-only
+(`src/lib/welcomeEmail.ts`) and is sent by checkout/payment/invite code that has already checked who is asking.
+Co-organisers are not supported yet: only the event's creator can do these things.

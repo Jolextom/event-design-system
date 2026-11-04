@@ -1,15 +1,15 @@
 'use server'
 
 import { createClient } from "@supabase/supabase-js";
+import { sendBroadcastEmail } from "@/lib/email";
+import * as PaystackLib from "@/lib/paystack";
+import { fulfillOrder } from "@/lib/registrations";
+import { authorizeEventOwner, verifiedUserId, checkEventOwner } from "@/lib/authz";
 
 /** Pulls the display name out of a resolved "Name <email>" From line. */
 function brandNameFromSender(fromLine: string): string {
     return fromLine.replace(/\s*<.*>\s*$/, '').trim() || 'EventFlow';
 }
-import { sendConfirmationEmail, sendBroadcastEmail, buildQrCodeUrl } from "@/lib/email";
-import * as PaystackLib from "@/lib/paystack";
-import { fulfillOrder } from "@/lib/registrations";
-import { generateGoogleCalendarLink, generateOutlookLink } from "@/lib/calendar";
 
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!serviceKey) {
@@ -20,166 +20,6 @@ const adminSupabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     serviceKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
-
-export async function sendWelcomeEmail(attendeeId: string, eventId: string) {
-    try {
-        // Use admin client for administrative email tasks
-        const { data: attendee, error: attendeeError } = await adminSupabase
-            .from("attendees")
-            .select("*, order:orders_table(order_ref)")
-            .eq("id", attendeeId)
-            .single();
-
-        if (attendeeError || !attendee) throw new Error("Attendee not found");
-
-        const { data: event, error: eventError } = await adminSupabase
-            .from("events")
-            .select("*")
-            .eq("id", eventId)
-            .single();
-
-        if (eventError || !event) throw new Error("Event not found");
-
-        // Fetch pass to build class-specific schedule notes
-        let passTitle = '';
-        if (attendee.pass_id) {
-            const { data: passData } = await adminSupabase
-                .from("passes")
-                .select("title")
-                .eq("id", attendee.pass_id)
-                .single();
-            if (passData) passTitle = passData.title;
-        }
-
-        // 2. Create initial delivery record
-        const { data: delivery, error: deliveryError } = await adminSupabase
-            .from("email_deliveries")
-            .insert({
-                attendee_id: attendeeId,
-                event_id: eventId,
-                email_type: "confirmation",
-                status: "sending"
-            })
-            .select()
-            .single();
-
-        if (deliveryError) {
-            console.error("Failed to create email delivery record:", deliveryError);
-        }
-
-        // ... rest of the function (no changes to email logic itself)
-        let eventDateStr = "TBA";
-        try {
-            const d = new Date(event.start_date);
-            if (!isNaN(d.getTime())) {
-                eventDateStr = d.toLocaleDateString("en-US", {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                });
-            }
-        } catch (e) {
-            console.error("Error formatting event date:", e);
-        }
-        const eventLocation = event.location || "Virtual Event";
-        const orderRef = attendee?.order?.order_ref || "N/A";
-        const receiptLink = `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/${event.tag}/receipt/${attendee?.order?.order_ref}`;
-
-        const isVirtual = event.event_format === 'virtual' || event.event_format === 'hybrid';
-        const watchLink = isVirtual ? `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/${event.tag}/join?token=${attendeeId}` : undefined;
-
-        // Build class-specific schedule block 
-        let classNotesHtml: string | undefined;
-        if (/child/i.test(passTitle)) {
-            classNotesHtml = `
-                <table role="presentation" style="width:100%; border-collapse:collapse;">
-                    <tr><td style="padding: 6px 0; font-size: 13px; color: #166534; font-weight: 600;">🇳🇬 Ígbò Children</td><td style="padding: 6px 0; font-size: 12px; color: #15803d; text-align:right;">Friday 4–5pm GMT+1</td></tr>
-                    <tr><td colspan="2" style="padding-bottom: 8px;"><a href="https://meet.google.com/gtj-nzmw-nsf" style="font-size: 12px; color: #16a34a;">meet.google.com/gtj-nzmw-nsf</a></td></tr>
-                    <tr><td style="padding: 6px 0; font-size: 13px; color: #166534; font-weight: 600;">🇳🇬 Yorùbá Children</td><td style="padding: 6px 0; font-size: 12px; color: #15803d; text-align:right;">Friday 5–6pm GMT+1</td></tr>
-                    <tr><td colspan="2"><a href="https://meet.google.com/mha-huvk-ckd" style="font-size: 12px; color: #16a34a;">meet.google.com/mha-huvk-ckd</a></td></tr>
-                </table>`;
-        } else if (/adult/i.test(passTitle)) {
-            classNotesHtml = `
-                <table role="presentation" style="width:100%; border-collapse:collapse;">
-                    <tr><td style="padding: 6px 0; font-size: 13px; color: #166534; font-weight: 600;">🇳🇬 Ígbò Adult</td><td style="padding: 6px 0; font-size: 12px; color: #15803d; text-align:right;">Saturday 5–6pm GMT+1</td></tr>
-                    <tr><td colspan="2" style="padding-bottom: 8px;"><a href="https://meet.google.com/mij-wnev-btb" style="font-size: 12px; color: #16a34a;">meet.google.com/mij-wnev-btb</a></td></tr>
-                    <tr><td style="padding: 6px 0; font-size: 13px; color: #166534; font-weight: 600;">🇳🇬 Yorùbá Adult</td><td style="padding: 6px 0; font-size: 12px; color: #15803d; text-align:right;">Saturday 6–7pm GMT+1</td></tr>
-                    <tr><td colspan="2"><a href="https://meet.google.com/wqh-mgfn-wgk" style="font-size: 12px; color: #16a34a;">meet.google.com/wqh-mgfn-wgk</a></td></tr>
-                </table>`;
-        }
-
-        // Generate Calendar Links
-        const startDateTime = event.start_date && event.start_time 
-            ? `${event.start_date}T${event.start_time}:00` 
-            : event.start_date;
-        
-        const googleCalendarLink = startDateTime ? generateGoogleCalendarLink({
-            title: event.event_title,
-            location: eventLocation,
-            startDate: startDateTime,
-            description: `Order Ref: ${orderRef}`
-        }) : undefined;
-
-        const outlookCalendarLink = startDateTime ? generateOutlookLink({
-            title: event.event_title,
-            location: eventLocation,
-            startDate: startDateTime,
-            description: `Order Ref: ${orderRef}`
-        }) : undefined;
-
-        // Who the email comes from: the event's own email identity if it has one,
-        // otherwise the owner's verified sender (e.g. Kini AI's kini-ai.com
-        // identity), otherwise the platform default. See src/lib/eventEmail.ts.
-        const { resolveEventSender } = await import("@/lib/eventEmail");
-        const sender = await resolveEventSender(event);
-
-        const templateParams = {
-            eventTitle: event.event_title,
-            eventDate: eventDateStr,
-            eventLocation,
-            orderRef,
-            receiptLink,
-            watchLink,
-            attendeeName: attendee.first_name,
-            classNotesHtml,
-            googleCalendarLink,
-            outlookCalendarLink,
-            eventImage: event.image,
-            brandName: sender?.brandName,
-            // Every attendee's OWN check-in code (not the order ref, which a whole group shares).
-            checkInRef: attendee.ref || undefined,
-            qrCodeUrl: attendee.ref ? buildQrCodeUrl(attendee.ref) : undefined,
-        };
-
-        const result = await sendConfirmationEmail({
-            from: sender?.from,
-            replyTo: sender?.replyTo,
-            resendApiKey: sender?.resendApiKey,
-            templateKey: event.confirmation_template,
-            to: attendee.email,
-            ...templateParams
-        });
-
-        if (delivery) {
-            await adminSupabase
-                .from("email_deliveries")
-                .update({
-                    status: result.success ? "sent" : "failed",
-                    resend_id: result.success && result.data ? result.data.id : null,
-                    template_type: "confirmation",
-                    template_params: templateParams,
-                    updated_at: new Date().toISOString()
-                })
-                .eq("id", delivery.id);
-        }
-
-        return result;
-    } catch (error) {
-        console.error("sendWelcomeEmail error:", error);
-        return { success: false, error };
-    }
-}
 
 // NOTE: there is intentionally no exported initializeTransaction() here any more.
 // Exported functions in this file are callable from the browser, and this one let
@@ -253,8 +93,11 @@ export async function broadcastUpdate({
     actionLink,
     actionText,
     segmentId,
-    senderIdentityId
+    senderIdentityId,
+    accessToken
 }: {
+    /** The organiser's login token. Only the event's owner may send (checked here, on the server). */
+    accessToken: string;
     eventId: string;
     messageTitle: string;
     messageBody: string;
@@ -265,6 +108,8 @@ export async function broadcastUpdate({
     /** A verified sender_identities id to send From; falls back to the platform default if missing/unverified */
     senderIdentityId?: string;
 }) {
+    const auth = await authorizeEventOwner(accessToken, eventId);
+    if (!auth.ok) return { success: false, error: auth.error };
     try {
         // 1. Fetch Event Details
         const { data: event, error: eventErr } = await adminSupabase
@@ -370,22 +215,29 @@ export async function sendCampaignToAttendees({
     campaignId,
     eventId,
     segmentId,
-    senderIdentityId
+    senderIdentityId,
+    accessToken
 }: {
+    /** The organiser's login token. Only the event's owner may send (checked here, on the server). */
+    accessToken: string;
     campaignId: string;
     eventId: string;
     segmentId?: string;
     /** A verified sender_identities id to send From; falls back to the platform default if missing/unverified */
     senderIdentityId?: string;
 }) {
+    const auth = await authorizeEventOwner(accessToken, eventId);
+    if (!auth.ok) return { success: false, error: auth.error };
     try {
         const { data: campaign, error: campaignErr } = await adminSupabase
             .from("campaigns")
-            .select("name, status, type")
+            .select("name, status, type, event_id")
             .eq("id", campaignId)
             .single();
 
         if (campaignErr || !campaign) throw new Error("Campaign not found");
+        // The campaign must belong to the event the caller owns (otherwise: someone else's campaign, our audience).
+        if (campaign.event_id !== eventId) throw new Error("Campaign not found");
         if (campaign.type !== "event") throw new Error("Only Event Campaigns can be sent to attendees.");
         if (campaign.status !== "active") throw new Error("Publish the campaign before sending it.");
 
@@ -489,12 +341,16 @@ export async function sendCampaignToAttendees({
 }
 
 export async function addStaffMember(params: {
+    /** The organiser's login token. Only the event's owner may add staff (checked here, on the server). */
+    accessToken: string;
     eventId: string;
     firstName: string;
     lastName: string;
     role: string;
     accessCode: string;
 }) {
+    const auth = await authorizeEventOwner(params?.accessToken, params?.eventId);
+    if (!auth.ok) return { success: false, error: auth.error };
     try {
         const { data, error } = await adminSupabase.from("staff").insert({
             event_id: params.eventId,
@@ -529,7 +385,14 @@ export async function addStaffMember(params: {
     }
 }
 
-export async function deleteStaffMember(staffId: string) {
+export async function deleteStaffMember(staffId: string, accessToken: string) {
+    // The staff row tells us which event it belongs to; the caller must own THAT event.
+    const userId = await verifiedUserId(accessToken);
+    if (!userId) return { success: false, error: "Please log in again." };
+    const { data: member } = await adminSupabase.from("staff").select("event_id").eq("id", staffId).maybeSingle();
+    if (!member) return { success: false, error: "Staff member not found." };
+    const auth = await checkEventOwner(adminSupabase, member.event_id, userId);
+    if (!auth.ok) return { success: false, error: auth.error };
     try {
         const { error } = await adminSupabase.from("staff").delete().eq("id", staffId);
         if (error) throw error;

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2, UserPlus, Shield, RefreshCw, Check, Copy, MessageSquareShare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { addStaffMember } from "@/app/actions";
+import { getAccessToken } from "@/lib/accessToken";
 
 interface AddStaffModalProps {
     isOpen: boolean;
@@ -53,6 +54,7 @@ export function AddStaffModal({ isOpen, onClose, currentEventId, onSuccess }: Ad
         setLoading(true);
 
         const res = await addStaffMember({
+            accessToken: await getAccessToken(),
             eventId: currentEventId,
             firstName,
             lastName,

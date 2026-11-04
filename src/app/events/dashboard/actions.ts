@@ -1,7 +1,7 @@
 "use server";
 
-import { createClient } from "@supabase/supabase-js";
 import { adminClient } from "@/lib/apiV1";
+import { verifiedUserId } from "@/lib/authz";
 import { rateLimit } from "@/lib/rateLimit";
 import { deleteEvent, previewEventDelete, type EventDeletePreview } from "@/lib/eventDelete";
 
@@ -13,13 +13,6 @@ import { deleteEvent, previewEventDelete, type EventDeletePreview } from "@/lib/
  * src/lib/eventDelete.ts. The privileged database client is used because the delete has to
  * clear rows that the owner's own browser session isn't allowed to touch.
  */
-
-async function verifiedUserId(accessToken: unknown): Promise<string | null> {
-    if (typeof accessToken !== "string" || accessToken.length < 10 || accessToken.length > 4000) return null;
-    const anon = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-    const { data, error } = await anon.auth.getUser(accessToken);
-    return error || !data?.user ? null : data.user.id;
-}
 
 export type PreviewDeleteResponse = { ok: true; preview: EventDeletePreview } | { ok: false; error: string };
 export type DeleteResponse = { ok: true } | { ok: false; error: string };

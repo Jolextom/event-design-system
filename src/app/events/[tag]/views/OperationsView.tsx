@@ -9,6 +9,7 @@ import { Staff, EventCollaborator } from "../types"; // Adjust path if needed
 import { AddStaffModal } from "./registry/AddStaffModal";
 import { AddCollaboratorModal } from "./registry/AddCollaboratorModal";
 import { deleteStaffMember } from "@/app/actions";
+import { getAccessToken } from "@/lib/accessToken";
 import Link from "next/link";
 
 export function OperationsView() {
@@ -159,7 +160,7 @@ export function OperationsView() {
 
     const handleDeleteStaff = async (staffId: string, name: string) => {
         if (!confirm(`Are you sure you want to remove ${name} from the staff list?`)) return;
-        const res = await deleteStaffMember(staffId);
+        const res = await deleteStaffMember(staffId, await getAccessToken());
         if (!res.success) {
             alert(res.error || "Failed to remove staff member.");
         } else {
