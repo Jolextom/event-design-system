@@ -2,6 +2,6 @@
   "registration_closes_at": "2026-12-10T23:59:00+01:00",
   "passes": [
     { "title": "Single", "description": "One person", "price": 15000, "type": "individual", "quantity_available": null },
-    { "title": "Group of 3", "description": "Come as a squad. ₦7,500 each, 50% off until 30 November.", "price": 22500, "type": "group", "group_size": 3, "quantity_available": null, "sales_end_at": "2026-11-30T23:55:00+01:00" }
+    { "title": "Group of 3", "description": "Come as a squad. ₦7,500 each, 50% off while stock lasts.", "price": 22500, "type": "group", "group_size": 3, "quantity_available": null }
   ]
 }

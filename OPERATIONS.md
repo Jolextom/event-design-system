@@ -179,3 +179,17 @@ show it, so test registrations don't land in the real group.
   replace `url` in the theme, and deploy. Use the clean link without `?s=cl&p=a&iam=2`.
 - Anyone who has the link can join, even if they didn't register. In WhatsApp, turn on **Group settings > Approve new
   participants** if you want to check people before they come in.
+
+## Client feedback round (registration questions, promo, dress code)
+
+- **Questions** (Templates > Main Character Fest): "Which character", "Which movie or franchise" and "Squad or group name" are optional;
+  the squad question was removed; **Region** and **Gender** (Male/Female) come right after "School or organisation name" and are
+  required. These apply to events created from the template from now on. An event that already exists keeps its own questions: change
+  them in the event's dashboard (Registration > open a question > Required toggle > Save, or add/delete questions there).
+- **Promo is "while stock lasts"**: the Group of 3 has no end date; the "Group-of-3 tickets available" number you type when creating
+  the event IS the promo stock. When it runs out the ticket shows greyed out as "Sold out" and the server refuses it too.
+  To restock, raise that ticket's quantity in Ticketing. Registration still closes on its own date.
+- **Dress code** wording (form and code-of-conduct doc): "Come dressed as your favourite movie character: costumes are encouraged,
+  not compulsory. Modest dress is still required for everyone."
+- Known limit: stock is checked when someone starts paying and counted when the payment completes, so with the last few promo
+  tickets, two people paying at the same moment can both succeed and slightly oversell.

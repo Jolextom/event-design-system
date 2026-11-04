@@ -33,8 +33,11 @@ test("template prices and promo match what the organisers announced", () => {
     assert.equal(group.groupSize, 3);
     assert.equal(group.price / 3, 7500);
     assert.equal(group.price, (single.price * 3) / 2); // 50% off
-    assert.equal(group.salesEndInput, "promoEnds");
-    assert.equal(real.inputs.find((i) => i.key === "promoEnds")!.defaultValue, "2026-11-30T23:55");
+    // The promo runs while stock lasts (client feedback): no promo end date, the quantity is the limit.
+    assert.equal(group.salesEndInput, undefined);
+    assert.equal(real.inputs.find((i) => i.key === "promoEnds"), undefined);
+    assert.match(group.description ?? "", /while stock lasts/);
+    assert.doesNotMatch(group.description ?? "", /30 November/);
     assert.equal(real.inputs.find((i) => i.key === "registrationCloses")!.defaultValue, "2026-12-10T23:59");
 });
 
@@ -79,7 +82,7 @@ test("real event: service fee is ON by default; test event: OFF by default; each
 
 test("payout (subaccount) code: optional, must look like ACCT_xxx, fee switch parsed", () => {
     const real = variant("real");
-    const ok = { endTime: "18:00", singleQty: "120", groupQty: "40", promoEnds: "2026-11-30T23:55", registrationCloses: "2026-12-10T23:59" };
+    const ok = { endTime: "18:00", singleQty: "120", groupQty: "40", registrationCloses: "2026-12-10T23:59" };
     const good = parseInputs(t, real, { ...ok, addFee: "true", subaccount: "ACCT_abc123XYZ" });
     assert.equal(good.ok, true);
     if (good.ok) { assert.equal(good.parsed.addFee, "true"); assert.equal(good.parsed.subaccount, "ACCT_abc123XYZ"); }
@@ -101,7 +104,7 @@ test("fee/payout columns are only demanded when those options are used", () => {
 
 test("input checking: required, numbers, times, dates", () => {
     const real = variant("real");
-    const ok = { endTime: "18:00", singleQty: "120", groupQty: "40", promoEnds: "2026-11-30T23:55", registrationCloses: "2026-12-10T23:59" };
+    const ok = { endTime: "18:00", singleQty: "120", groupQty: "40", registrationCloses: "2026-12-10T23:59" };
     const good = parseInputs(t, real, ok);
     assert.equal(good.ok, true);
     if (good.ok) { assert.equal(good.parsed.singleQty, 120); assert.equal(good.parsed.endTime, "18:00"); }
@@ -113,7 +116,6 @@ test("input checking: required, numbers, times, dates", () => {
     assert.equal(bad({ singleQty: "0" }).ok, false);
     assert.equal(bad({ singleQty: "12.5" }).ok, false);
     assert.equal(bad({ groupQty: "" }).ok, false);
-    assert.equal(bad({ promoEnds: "30/11/2026" }).ok, false);
     assert.equal(bad({ registrationCloses: "2026-13-45T99:99" }).ok, false);
     // the test variant needs only an end time
     assert.equal(parseInputs(t, variant("test"), { endTime: "18:00" }).ok, true);
@@ -126,11 +128,12 @@ test("Lagos times become the right instants (WAT = UTC+1)", () => {
     assert.equal(localToIso("2026-12-10T23:59", "+01:00"), "2026-12-10T22:59:00.000Z");
 });
 
-test("columns checked before creating: group tickets need group_size, deadlines need their columns", () => {
+test("columns checked before creating: group tickets need group_size, the registration deadline needs its column", () => {
     const real = requiredColumns(variant("real"));
-    for (const c of ["passes.type", "passes.display_order", "passes.group_size", "passes.max_per_person", "passes.sales_end_at", "events.registration_closes_at"]) {
+    for (const c of ["passes.type", "passes.display_order", "passes.group_size", "passes.max_per_person", "events.registration_closes_at"]) {
         assert.ok(real.includes(c), `real variant should check ${c}`);
     }
+    assert.ok(!real.includes("passes.sales_end_at"), "no promo end date any more (the promo runs while stock lasts)");
     const test = requiredColumns(variant("test"));
     assert.ok(test.includes("passes.group_size"), "the test variant has a group ticket too");
     assert.ok(!test.includes("passes.sales_end_at") && !test.includes("events.registration_closes_at"));
@@ -149,4 +152,19 @@ test("the shipped migration (schema.sql) adds every column the template writes",
         const [table, column] = c.split(".");
         assert.match(schema, new RegExp(`public\\.${table}\\s+ADD COLUMN IF NOT EXISTS ${column}\\b`), `schema.sql lacks ${c}`);
     }
+});
+
+test("registration questions: costume ones optional, squad question gone, region and gender after school", () => {
+    const titles = t.questions.map((q) => q.title);
+    const q = (start: string) => t.questions.find((x) => x.title.startsWith(start))!;
+    assert.equal(q("Which character").required, false);
+    assert.equal(q("Which movie or franchise").required, false);
+    assert.equal(q("Squad or group name").required, false);
+    assert.ok(!titles.some((x) => /Are you coming with a squad/.test(x)), "squad question removed");
+    const school = titles.findIndex((x) => x.startsWith("School or organisation"));
+    assert.ok(titles[school + 1].startsWith("Region"), "region right after school/organisation");
+    assert.equal(titles[school + 2], "Gender");
+    assert.deepEqual(q("Gender").options, ["Male", "Female"]);
+    // things that must stay required
+    for (const must of ["Phone number", "Are you attending as a", "School or organisation", "Consent for photographs"]) assert.equal(q(must).required, true, must);
 });
