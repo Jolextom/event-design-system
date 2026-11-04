@@ -167,3 +167,15 @@ Set in `src/app/[tag]/theme.ts` for this event only (other events are unchanged)
 - `conduct`: a short code of conduct (Expected behaviour + Dress code) at the end of the registration form. The Register / Pay
   button stays off until the "I have read and agree" box is ticked. To edit the wording, change the text in that entry.
 - The agreement is a tick on the form; it is not stored per guest in the database.
+
+## WhatsApp group for registered guests
+
+An app can't add someone to a WhatsApp group; people must tap the invite link themselves. So the link (`community` in
+`src/app/[tag]/theme.ts`) is shown to registered guests in two places: a green "Join the … WhatsApp group" button on the receipt
+page (only once the order is complete) and in the confirmation email. Test copies of the event (tag contains `-test`) never
+show it, so test registrations don't land in the real group.
+
+- To change the link (for example if it leaks): make a new invite link in WhatsApp (Group info > Invite via link > Reset link),
+  replace `url` in the theme, and deploy. Use the clean link without `?s=cl&p=a&iam=2`.
+- Anyone who has the link can join, even if they didn't register. In WhatsApp, turn on **Group settings > Approve new
+  participants** if you want to check people before they come in.

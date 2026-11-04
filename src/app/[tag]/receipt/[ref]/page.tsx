@@ -27,7 +27,7 @@ import { verifyAndFulfillPayment } from "@/app/actions";
 import type { Question } from "@/app/events/[tag]/types";
 import { addGroupMemberAction, getReceiptAction, resendInviteAction } from "../../actions";
 import { QuestionField, type AnswerValue } from "../../QuestionField";
-import { DEFAULT_THEME, brandNameForTag, themeStyle } from "../../theme";
+import { DEFAULT_THEME, brandNameForTag, communityForTag, themeStyle } from "../../theme";
 import { isQuestionRelevant, missingRequiredQuestion, type RuleQuestion } from "@/lib/answers";
 
 interface Order {
@@ -379,6 +379,22 @@ export default function ReceiptPage() {
                             <span className="text-sm opacity-60">(Check your spam folder if you don't see it)</span>
                         </p>
                     </div>
+
+                    {/* Group chat for registered guests (only once the order is complete) */}
+                    {order.status === "completed" && communityForTag(tag) && (
+                        <div data-testid="community" className="max-w-2xl mx-auto rounded-[32px] border border-green-200 bg-green-50 p-6 md:p-8 text-center space-y-3">
+                            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-green-700">Stay in the loop</div>
+                            <a
+                                href={communityForTag(tag)!.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-block rounded-2xl bg-green-600 px-7 py-4 text-sm md:text-base font-black text-white shadow-lg shadow-green-200 transition hover:bg-green-700"
+                            >
+                                {communityForTag(tag)!.label} →
+                            </a>
+                            {communityForTag(tag)!.note && <p className="text-xs md:text-sm font-bold text-gray-500">{communityForTag(tag)!.note}</p>}
+                        </div>
+                    )}
 
                     {/* The Receipt Card */}
                     <div className="relative max-w-2xl mx-auto">
