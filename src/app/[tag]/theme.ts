@@ -13,6 +13,13 @@ import type { CSSProperties } from "react";
  * "main-character-fest-2026-ab3d" matches the "main-character-fest" key.
  */
 
+export interface ConductText {
+    title: string;
+    sections: { heading: string; intro?: string; items: string[] }[];
+    /** Label of the required tick box. */
+    agreeLabel: string;
+}
+
 export interface PageTheme {
     /** Shown under the cover as "Hosted By". Omit to hide the block (events have no host field yet). */
     hostName?: string;
@@ -31,6 +38,17 @@ export interface PageTheme {
     brandName?: string;
     /** The browser tab title and the text shown when the event link is shared or searched. Omit to keep the platform's generic ones. */
     meta?: { title: string; description: string; siteName?: string };
+    /**
+     * Whether a buyer of a group ticket may "Invite" the other people to fill in their own details later.
+     * Set to false to make the buyer fill in every guest's details at checkout (and have the server
+     * refuse invited guests and half-filled groups). Defaults to true.
+     */
+    allowInvites?: boolean;
+    /**
+     * A short code of conduct shown at the bottom of the registration form; the buyer must tick
+     * "agree" before they can register or pay. Omit for none.
+     */
+    conduct?: ConductText;
     /** Label on the main registration button. */
     ctaLabel: string;
     /** Line shown at the top of the registration card. */
@@ -94,6 +112,34 @@ const MAIN_CHARACTER_FEST: PageTheme = {
             "Dress as your favourite movie character. Live DJ, costume party, games, booths and food. For campus students and young professionals. Sat 19 Dec 2026, Surulere.",
         siteName: "Campus Yo-Pro Ministry",
     },
+    allowInvites: false,
+    conduct: {
+        title: "Code of Conduct",
+        sections: [
+            {
+                heading: "Expected behaviour",
+                intro: "Participants are expected to:",
+                items: [
+                    "Treat everyone with courtesy, dignity, and respect.",
+                    "Communicate honestly and professionally.",
+                    "Respect personal boundaries, privacy, and consent.",
+                    "Follow event rules, venue requirements, and reasonable instructions from event organisers and staff.",
+                    "Help maintain a welcoming environment for people of all backgrounds, identities, abilities, and levels of experience.",
+                    "Take responsibility for their words and actions.",
+                ],
+            },
+            {
+                heading: "Dress code",
+                intro: "Main Character Fest is a costume party: come dressed as your favourite movie character. Please keep your outfit modest.",
+                items: [
+                    "Dress decently and appropriately for a mixed gathering of campus students and young professionals. Outfits should not be revealing or sexually suggestive.",
+                    "Costumes must not carry offensive, hateful, or inappropriate symbols, slogans, or imagery.",
+                    "Organisers may ask a guest to adjust or cover up an outfit that does not meet this guideline, and may decline entry or ask someone to leave if the request is not followed.",
+                ],
+            },
+        ],
+        agreeLabel: "I have read and agree to the Code of Conduct.",
+    },
     ctaLabel: "Claim your role",
     welcomeText: "Everybody has a role. Pull up as your favourite character and register below.",
     ambientOpacity: 0.5,
@@ -124,6 +170,11 @@ export function resolveTheme(tag?: string | null): PageTheme {
     if (!tag) return DEFAULT_THEME;
     const key = Object.keys(THEMES).find((prefix) => tag.startsWith(prefix));
     return key ? THEMES[key] : DEFAULT_THEME;
+}
+
+/** Can the buyer of a group ticket invite the others to fill in their own details? (False for events that want everyone filled in at checkout.) */
+export function invitesAllowedForTag(tag?: string | null): boolean {
+    return resolveTheme(tag).allowInvites !== false;
 }
 
 /** The name to show instead of the platform's own for this event's public pages. */

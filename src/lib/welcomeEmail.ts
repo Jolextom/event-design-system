@@ -1,4 +1,5 @@
 import { adminClient } from "@/lib/apiV1";
+import { invitesAllowedForTag } from "@/app/[tag]/theme";
 import { sendConfirmationEmail, buildQrCodeUrl } from "@/lib/email";
 import { generateGoogleCalendarLink, generateOutlookLink } from "@/lib/calendar";
 
@@ -55,7 +56,7 @@ export async function sendWelcomeEmail(attendeeId: string, eventId: string) {
                 : { data: null };
             const buyerEmail = String(orderRow?.email ?? "").trim().toLowerCase();
             const isBuyer = !!buyerEmail && String(attendee.email ?? "").trim().toLowerCase() === buyerEmail;
-            if (isBuyer && passData?.type === "group" && Number(passData.group_size) > 1 && attendee.order_id) {
+            if (isBuyer && invitesAllowedForTag(event.tag) && passData?.type === "group" && Number(passData.group_size) > 1 && attendee.order_id) {
                 const { count } = await adminSupabase
                     .from("attendees")
                     .select("id", { count: "exact", head: true })

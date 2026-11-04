@@ -157,3 +157,13 @@ Supabase settings that go with it (Dashboard → Authentication):
 - **Password security**: raise the minimum length to 10 and turn on leaked-password protection if your plan offers it.
 - There is no "Forgot password" link on the sign-in page yet. If you lock yourself out, use Authentication → Users → your user →
   "Send password recovery", or set a new password there.
+
+## Main Character Fest: no invites, and a code of conduct on the form
+
+Set in `src/app/[tag]/theme.ts` for this event only (other events are unchanged):
+- `allowInvites: false`: group buyers can't "Invite" the others. The form shows every guest's own fields, and the server
+  (`src/lib/checkout.ts`) refuses invited guests and half-filled groups, so nothing can bypass the form. The "manage your group"
+  box in the confirmation email is not sent for this event.
+- `conduct`: a short code of conduct (Expected behaviour + Dress code) at the end of the registration form. The Register / Pay
+  button stays off until the "I have read and agree" box is ticked. To edit the wording, change the text in that entry.
+- The agreement is a tick on the form; it is not stored per guest in the database.
