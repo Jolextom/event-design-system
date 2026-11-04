@@ -25,6 +25,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { verifyAndFulfillPayment } from "@/app/actions";
+import type { Question } from "@/app/events/[tag]/types";
+import { addGroupMemberAction, resendInviteAction } from "../../actions";
+import { QuestionField, type AnswerValue } from "../../QuestionField";
+import { DEFAULT_THEME, themeStyle } from "../../theme";
+import { isQuestionRelevant, missingRequiredQuestion, type RuleQuestion } from "@/lib/answers";
 
 interface Order {
     id: string;
@@ -69,22 +74,6 @@ interface Event {
 
 // ... existing interfaces ...
 
-interface QuestionOption {
-    id: string;
-    question_id: string;
-    option_text: string;
-    display_order: number;
-}
-
-interface Question {
-    id: string;
-    title: string;
-    question_type: "text" | "select";
-    is_required: boolean;
-    question_order: number;
-    options?: QuestionOption[];
-}
-
 export default function ReceiptPage() {
     const params = useParams();
     const tag = typeof params === "object" && params?.tag ? String(params.tag) : null;
@@ -106,7 +95,8 @@ export default function ReceiptPage() {
     const [newMemberEmail, setNewMemberEmail] = useState("");
     const [newMemberFirstName, setNewMemberFirstName] = useState("");
     const [newMemberLastName, setNewMemberLastName] = useState("");
-    const [newMemberAnswers, setNewMemberAnswers] = useState<Record<string, string>>({});
+    const [newMemberAnswers, setNewMemberAnswers] = useState<Record<string, AnswerValue>>({});
+    const [notice, setNotice] = useState<string | null>(null);
     const [newMemberMode, setNewMemberMode] = useState<"fill" | "invite">("invite");
     const [addError, setAddError] = useState<string | null>(null);
     const [hasFatalError, setHasFatalError] = useState<boolean>(false);
@@ -257,138 +247,70 @@ export default function ReceiptPage() {
     };
 
     const handleResendInvite = async (attendeeId: string) => {
-        if (!event?.tag) return;
+        if (!order) return;
         setResending(attendeeId);
+        setNotice(null);
         try {
-            const res = await fetch('/api/send-invite', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ attendeeId, eventTag: event.tag })
-            });
-            if (!res.ok) throw new Error('Failed to send');
+            const res = await resendInviteAction({ attendeeId, orderRef: order.order_ref });
+            if (!res.ok) throw new Error(res.error);
             // Show success briefly
             setTimeout(() => setResending(null), 1500);
         } catch (err) {
             console.error('Failed to resend invite:', err);
+            setNotice(err instanceof Error ? err.message : "Couldn't send the email.");
             setResending(null);
         }
     };
 
+    // Questions this new member should answer (same rule as the registration form: no
+    // ticket-selection questions, and track-gated ones only when they apply).
+    const memberQuestions = questions.filter(
+        (q) => !q.is_selection_logic && isQuestionRelevant(questions as unknown as RuleQuestion[], q as unknown as RuleQuestion, newMemberAnswers)
+    );
+
     const handleAddMember = async () => {
         if (!order || !event || !pass) return;
         setAddError(null);
+        setNotice(null);
 
-        // Validate email
-        if (!newMemberEmail.trim()) {
-            setAddError("Email is required");
-            return;
-        }
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(newMemberEmail)) {
-            setAddError("Please enter a valid email address");
-            return;
-        }
+        const email = newMemberEmail.trim();
+        if (!email) return setAddError("Email is required");
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setAddError("Please enter a valid email address");
 
-        // Validate fill mode fields
         if (newMemberMode === "fill") {
-            if (!newMemberFirstName.trim()) {
-                setAddError("First name is required");
-                return;
-            }
-            if (!newMemberLastName.trim()) {
-                setAddError("Last name is required");
-                return;
-            }
-
-            // Check required questions
-            for (const q of questions) {
-                if (q.is_required) {
-                    const ans = newMemberAnswers[q.id];
-                    if (!ans || !ans.trim()) {
-                        setAddError(`Please answer: ${q.title}`);
-                        return;
-                    }
-                }
-            }
+            if (!newMemberFirstName.trim()) return setAddError("First name is required");
+            const missing = missingRequiredQuestion(questions as unknown as RuleQuestion[], newMemberAnswers);
+            if (missing) return setAddError(`Please answer: ${missing.title}`);
         }
-
-        // Check for duplicate email
-        if (attendees.some(a => a.email.toLowerCase() === newMemberEmail.toLowerCase())) {
-            setAddError("This email is already in the group");
-            return;
+        if (attendees.some((a) => a.email.toLowerCase() === email.toLowerCase())) {
+            return setAddError("This email is already in the group");
         }
 
         setAddingMember(true);
-
         try {
-            const supabase = createClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-            );
+            // The server enforces the group size, creates the member and emails them
+            // (an invite link, or their own ticket + check-in pass if you filled them in).
+            const res = await addGroupMemberAction({
+                orderRef: order.order_ref,
+                mode: newMemberMode,
+                email,
+                firstName: newMemberFirstName,
+                lastName: newMemberLastName,
+                answers: newMemberAnswers,
+            });
+            if (!res.ok) throw new Error(res.error);
 
-            // Create attendee
-            const attendeeRef = `EF-${event.tag?.toUpperCase() || 'EV'}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+            setAttendees([...attendees, { ...res.attendee, created_at: new Date().toISOString(), event_id: event.id } as Attendee]);
+            if (!res.emailSent) setNotice("Added, but we couldn't send the email just now. Use Resend in a minute.");
 
-            const { data: newAttendee, error: insertErr } = await supabase
-                .from("attendees")
-                .insert({
-                    event_id: event.id,
-                    order_id: order.id,
-                    pass_id: pass.id,
-                    first_name: newMemberMode === "fill" ? newMemberFirstName.trim() : "Guest",
-                    last_name: newMemberMode === "fill" ? newMemberLastName.trim() : "",
-                    email: newMemberEmail.trim().toLowerCase(),
-                    ref: attendeeRef,
-                    email_status: newMemberMode === "invite" ? "invited" : "registered",
-                    check_in: false
-                })
-                .select()
-                .single();
-
-            if (insertErr) {
-                if (insertErr.code === "23505") {
-                    throw new Error("This email is already registered for this event");
-                }
-                throw insertErr;
-            }
-
-            // Save answers if in fill mode
-            if (newMemberMode === "fill" && newAttendee && Object.keys(newMemberAnswers).length > 0) {
-                const answerInserts = Object.entries(newMemberAnswers).map(([qId, answer]) => ({
-                    attendee_id: newAttendee.id,
-                    question_id: qId,
-                    answer_text: String(answer)
-                }));
-
-                const { error: answerErr } = await supabase.from("answers").insert(answerInserts);
-                if (answerErr) {
-                    console.error("Failed to save answers:", answerErr);
-                    // Non-blocking error, but good to note
-                }
-            }
-
-            // Add to local state (with empty responses for now, or update if needed)
-            setAttendees([...attendees, newAttendee]);
-
-            // Reset form
             setNewMemberEmail("");
             setNewMemberFirstName("");
             setNewMemberLastName("");
             setNewMemberAnswers({});
             setShowAddForm(false);
-
-            // Send invite if in invite mode
-            if (newMemberMode === "invite" && newAttendee) {
-                fetch('/api/send-invite', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ attendeeId: newAttendee.id, eventTag: event.tag })
-                }).catch(err => console.error('Failed to send invite:', err));
-            }
-
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Failed to add member:", err);
-            setAddError(err.message || "Failed to add member");
+            setAddError(err instanceof Error ? err.message : "Failed to add member");
         } finally {
             setAddingMember(false);
         }
@@ -645,6 +567,8 @@ export default function ReceiptPage() {
                                                 ))}
                                         </div>
 
+                                        {notice && <p className="mt-3 text-xs font-bold text-red-500">{notice}</p>}
+
                                         {/* Add Member Button/Form */}
                                         {pass?.type === "group" && pass?.group_size && attendees.length < pass.group_size && (
                                             <div className="mt-4">
@@ -719,7 +643,7 @@ export default function ReceiptPage() {
                                                                     />
                                                                 </div>
                                                                 <div className="space-y-2">
-                                                                    <label className="text-[9px] font-black uppercase tracking-widest text-gray-400">Last Name *</label>
+                                                                    <label className="text-[9px] font-black uppercase tracking-widest text-gray-400">Last Name</label>
                                                                     <input
                                                                         value={newMemberLastName}
                                                                         onChange={(e) => setNewMemberLastName(e.target.value)}
@@ -730,38 +654,19 @@ export default function ReceiptPage() {
                                                             </div>
                                                         )}
 
-                                                        {/* Custom Questions (only for fill mode) */}
-                                                        {newMemberMode === "fill" && questions.map((q) => (
-                                                            <div key={q.id} className="space-y-2">
-                                                                <label className="text-[9px] font-black uppercase tracking-widest text-gray-400">
-                                                                    {q.title} {q.is_required && <span className="text-red-500">*</span>}
-                                                                </label>
-                                                                {q.question_type === 'select' ? (
-                                                                    <div className="relative">
-                                                                        <select
-                                                                            value={newMemberAnswers[q.id] || ""}
-                                                                            onChange={(e) => setNewMemberAnswers({ ...newMemberAnswers, [q.id]: e.target.value })}
-                                                                            className="w-full bg-white border border-blue-100 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 rounded-xl p-3 text-sm font-bold outline-none transition-all appearance-none cursor-pointer"
-                                                                        >
-                                                                            <option value="" disabled>Select an option</option>
-                                                                            {q.options?.map(opt => (
-                                                                                <option key={opt.id} value={opt.option_text}>{opt.option_text}</option>
-                                                                            ))}
-                                                                        </select>
-                                                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                                                                            <Plus className="w-4 h-4 rotate-45" />
-                                                                        </div>
-                                                                    </div>
-                                                                ) : (
-                                                                    <input
-                                                                        value={newMemberAnswers[q.id] || ""}
-                                                                        onChange={(e) => setNewMemberAnswers({ ...newMemberAnswers, [q.id]: e.target.value })}
-                                                                        placeholder="Your answer"
-                                                                        className="w-full bg-white border border-blue-100 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 rounded-xl p-3 text-sm font-bold outline-none transition-all"
+                                                        {/* Same fields as the registration form (light colours on this page) */}
+                                                        {newMemberMode === "fill" && memberQuestions.length > 0 && (
+                                                            <div style={themeStyle(DEFAULT_THEME)} className="space-y-4 text-[color:var(--pg-text)]">
+                                                                {memberQuestions.map((q) => (
+                                                                    <QuestionField
+                                                                        key={q.id}
+                                                                        question={q}
+                                                                        value={newMemberAnswers[q.id]}
+                                                                        onChange={(value) => setNewMemberAnswers((prev) => ({ ...prev, [q.id]: value }))}
                                                                     />
-                                                                )}
+                                                                ))}
                                                             </div>
-                                                        ))}
+                                                        )}
 
                                                         {/* Error */}
                                                         {addError && (

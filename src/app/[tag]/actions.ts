@@ -2,6 +2,9 @@
 
 import { headers } from "next/headers";
 import { createCheckout, type CheckoutGuestInput } from "@/lib/checkout";
+import { addGroupMember, completeInvite, resendGuestEmail } from "@/lib/guests";
+import { rateLimit } from "@/lib/rateLimit";
+import type { AnswerValue } from "@/lib/answers";
 
 export type RegistrationResult =
     | { ok: true; status: "registered"; orderRef: string }
@@ -65,4 +68,62 @@ export async function submitRegistration(input: {
                 : message || "Failed to complete registration",
         };
     }
+}
+
+
+// ---------------------------------------------------------------------------
+// Guest actions (invites, group members). Each one is rate-limited per caller
+// IP (best effort) on top of the database-backed per-person email budget in
+// src/lib/guests.ts.
+// ---------------------------------------------------------------------------
+async function callerKey(scope: string) {
+    const h = await headers();
+    const ip = (h.get("x-forwarded-for") || "").split(",")[0].trim() || h.get("x-real-ip") || "unknown";
+    return `${scope}:${ip}`;
+}
+const tooMany = (retryAfterSec: number) => ({ ok: false as const, error: `Too many requests. Please try again in ${retryAfterSec} seconds.` });
+
+export async function completeInviteAction(input: {
+    ref: string;
+    firstName: string;
+    lastName?: string;
+    answers?: Record<string, AnswerValue>;
+}): Promise<{ ok: true; alreadyDone?: boolean; emailSent?: boolean; email?: string } | { ok: false; error: string }> {
+    const rl = rateLimit(await callerKey("complete-invite"), 10, 10 * 60 * 1000);
+    if (!rl.ok) return tooMany(rl.retryAfterSec);
+    const res = await completeInvite({
+        ref: String(input?.ref ?? ""),
+        firstName: String(input?.firstName ?? ""),
+        lastName: input?.lastName ? String(input.lastName) : "",
+        answers: input?.answers ?? {},
+    });
+    return res.ok ? { ok: true, alreadyDone: res.alreadyDone, emailSent: res.emailSent, email: res.email } : { ok: false, error: res.error };
+}
+
+export async function addGroupMemberAction(input: {
+    orderRef: string;
+    mode: "fill" | "invite";
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    answers?: Record<string, AnswerValue>;
+}) {
+    const rl = rateLimit(await callerKey("add-member"), 15, 10 * 60 * 1000);
+    if (!rl.ok) return tooMany(rl.retryAfterSec);
+    const res = await addGroupMember({
+        orderRef: String(input?.orderRef ?? ""),
+        mode: input?.mode === "fill" ? "fill" : "invite",
+        email: String(input?.email ?? ""),
+        firstName: input?.firstName ? String(input.firstName) : "",
+        lastName: input?.lastName ? String(input.lastName) : "",
+        answers: input?.answers ?? {},
+    });
+    return res.ok ? { ok: true as const, attendee: res.attendee, emailSent: res.emailSent } : { ok: false as const, error: res.error };
+}
+
+export async function resendInviteAction(input: { attendeeId: string; orderRef: string }) {
+    const rl = rateLimit(await callerKey("resend"), 6, 10 * 60 * 1000);
+    if (!rl.ok) return tooMany(rl.retryAfterSec);
+    const res = await resendGuestEmail({ attendeeId: String(input?.attendeeId ?? ""), orderRef: String(input?.orderRef ?? "") });
+    return res.ok ? { ok: true as const } : { ok: false as const, error: res.error };
 }

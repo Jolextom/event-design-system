@@ -72,14 +72,16 @@ export function EditEmailModal({
                 const { data: ev } = await supabase.from('events').select('tag').eq('id', attendee.event_id).single();
                 if (!ev?.tag) throw new Error("Could not find event tag");
 
+                const { data: sess } = await supabase.auth.getSession();
                 const res = await fetch('/api/send-invite', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sess.session?.access_token ?? ""}` },
                     body: JSON.stringify({ attendeeId: attendee.id, eventTag: ev.tag })
                 });
 
                 if (!res.ok) {
-                    throw new Error("Email updated but failed to resend invite");
+                    const j = await res.json().catch(() => ({}));
+                    throw new Error(j.error ? `Email updated, but: ${j.error}` : "Email updated but failed to resend invite");
                 }
             }
 

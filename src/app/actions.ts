@@ -6,7 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 function brandNameFromSender(fromLine: string): string {
     return fromLine.replace(/\s*<.*>\s*$/, '').trim() || 'EventFlow';
 }
-import { sendConfirmationEmail, sendBroadcastEmail } from "@/lib/email";
+import { sendConfirmationEmail, sendBroadcastEmail, buildQrCodeUrl } from "@/lib/email";
 import * as PaystackLib from "@/lib/paystack";
 import { fulfillOrder } from "@/lib/registrations";
 import { generateGoogleCalendarLink, generateOutlookLink } from "@/lib/calendar";
@@ -128,11 +128,11 @@ export async function sendWelcomeEmail(attendeeId: string, eventId: string) {
             description: `Order Ref: ${orderRef}`
         }) : undefined;
 
-        // Auto-resolve the event owner's verified sender (e.g. Kini AI's
-        // kini-ai.com identity) so their attendees don't see the platform
-        // default. Falls back silently to the platform default otherwise.
-        const { resolveSenderForUser } = await import("@/lib/senderDomains");
-        const sender = await resolveSenderForUser(event.created_by);
+        // Who the email comes from: the event's own email identity if it has one,
+        // otherwise the owner's verified sender (e.g. Kini AI's kini-ai.com
+        // identity), otherwise the platform default. See src/lib/eventEmail.ts.
+        const { resolveEventSender } = await import("@/lib/eventEmail");
+        const sender = await resolveEventSender(event);
 
         const templateParams = {
             eventTitle: event.event_title,
@@ -147,6 +147,9 @@ export async function sendWelcomeEmail(attendeeId: string, eventId: string) {
             outlookCalendarLink,
             eventImage: event.image,
             brandName: sender?.brandName,
+            // Every attendee's OWN check-in code (not the order ref, which a whole group shares).
+            checkInRef: attendee.ref || undefined,
+            qrCodeUrl: attendee.ref ? buildQrCodeUrl(attendee.ref) : undefined,
         };
 
         const result = await sendConfirmationEmail({

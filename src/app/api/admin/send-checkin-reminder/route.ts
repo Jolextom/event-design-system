@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminClient } from "@/lib/apiV1";
 import { sendReminderEmail, buildQrCodeUrl } from "@/lib/email";
-import { resolveSenderForUser } from "@/lib/senderDomains";
+import { resolveEventSender } from "@/lib/eventEmail";
 import { generateGoogleCalendarLink, generateOutlookLink } from "@/lib/calendar";
 
 /**
@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
 
     const { data: event, error: eventErr } = await supabase
         .from("events")
-        .select("id, tag, event_title, start_date, start_time, location, created_by")
+        .select("id, tag, event_title, start_date, start_time, location, created_by, confirmation_template")
         .eq("tag", tag)
         .single();
     if (eventErr || !event) {
@@ -191,13 +191,13 @@ export async function GET(req: NextRequest) {
         ? `${event.start_date}T${event.start_time}:00`
         : event.start_date;
     const googleCalendarLink = startDateTime ? generateGoogleCalendarLink({
-        title: event.event_title, location: eventLocation, startDate: startDateTime, description: "AAES check-in reminder",
+        title: event.event_title, location: eventLocation, startDate: startDateTime, description: `${event.event_title} check-in`,
     }) : undefined;
     const outlookCalendarLink = startDateTime ? generateOutlookLink({
-        title: event.event_title, location: eventLocation, startDate: startDateTime, description: "AAES check-in reminder",
+        title: event.event_title, location: eventLocation, startDate: startDateTime, description: `${event.event_title} check-in`,
     }) : undefined;
 
-    const sender = await resolveSenderForUser(event.created_by);
+    const sender = await resolveEventSender(event);
 
     let sent = 0;
     const failures: { email: string; error: string }[] = [];
@@ -216,6 +216,8 @@ export async function GET(req: NextRequest) {
             qrCodeUrl: buildQrCodeUrl(att.ref as string),
             googleCalendarLink,
             outlookCalendarLink,
+            brandName: sender?.brandName,
+            templateKey: event.confirmation_template,
         });
 
         if (result.success) {
