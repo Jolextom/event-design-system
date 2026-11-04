@@ -16,11 +16,16 @@ export interface TemplateQuestion {
     property_key?: string;
 }
 
+import type { FeeConfig } from "../fees";
+
 /** A value the organiser fills in when creating from the template. */
 export interface TemplateInput {
     key: string;
     label: string;
-    type: "number" | "time" | "datetime";
+    type: "number" | "time" | "datetime" | "text" | "checkbox";
+    /** text inputs only: the value must match this (optional field: empty is allowed). */
+    pattern?: string;
+    patternMessage?: string;
     /** Pre-filled value (datetime: "YYYY-MM-DDTHH:mm", Lagos time). */
     defaultValue?: string | number;
     required?: boolean;
@@ -50,6 +55,10 @@ export interface TemplateVariant {
     passes: TemplatePass[];
     /** Key of a datetime input: when registration for the whole event closes. */
     registrationClosesInput?: string;
+    /** Key of a checkbox input: when ticked, the template's feeConfig is switched on for this event. */
+    feeInput?: string;
+    /** Key of an (optional) text input holding the organiser's Paystack subaccount code (ACCT_...). */
+    subaccountInput?: string;
 }
 
 export interface EventTemplate {
@@ -69,5 +78,7 @@ export interface EventTemplate {
     /** Inputs every variant needs (e.g. the event's end time). */
     inputs: TemplateInput[];
     questions: TemplateQuestion[];
+    /** Service fee applied when a variant's fee checkbox is ticked (see src/lib/fees.ts). */
+    feeConfig?: FeeConfig;
     variants: TemplateVariant[];
 }

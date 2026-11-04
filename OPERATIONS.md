@@ -11,8 +11,8 @@ Vercel (Project → Settings → Environment Variables); a new value only takes 
 | `PAYSTACK_SECRET_KEY` | payments (`sk_test_…` while testing, `sk_live_…` for real money). The public key isn't used. |
 | `RESEND_API_KEY` | all email |
 | `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_APP_URL` | links inside emails (set both to your site, e.g. `https://maincharacterfest.vercel.app`) |
-| `CHECKIN_REMINDER_SECRET` | the check-in reminder email route (any long random string) |
-| `RECONCILE_SECRET` | the pending-payment reconcile route (any long random string) |
+| `CHECKIN_REMINDER_SECRET` | OPTIONAL. Only for the pre-event "send everyone their QR again" page. Not needed: every ticket email already carries the QR. |
+| `RECONCILE_SECRET` | OPTIONAL. Only for the backup page that completes orders paid at Paystack but never finished (needed only if the webhook ever misses one). |
 
 ## Paystack webhook (do this before taking real payments)
 
@@ -56,3 +56,18 @@ It skips anyone already sent one and sends at most 50 per run (add `&limit=` to 
 Invite and ticket emails to one person: at most one every 2 minutes and 4 per 24 hours
 (`src/lib/guests.ts`). The "resend" endpoint only accepts the event's organiser (logged in)
 or someone holding the order reference.
+
+## Service fee and paying the organiser directly
+
+Dashboard → **Templates** → Main Character Fest → *Real event*:
+- **Add the ₦500 service fee** (on by default). Customers pay the ticket price + Paystack's own fee + ₦500, shown as ONE
+  "Service fee" line at checkout (₦15,000 → ₦15,850; ₦22,500 group → ₦23,500). The modal previews these numbers and what you keep.
+- **Organiser's Paystack subaccount code** (optional, looks like `ACCT_xxxxxxxxxx`). With it, Paystack pays the organiser
+  the exact ticket price straight to their bank and you keep the fee. Without it, everything lands in your own Paystack account.
+
+To get a code: Paystack dashboard → Subaccounts → create one with the organiser's bank details (if it asks for a percentage
+charge, enter 0; the exact split is set per payment by our code). **Test mode and live mode have separate subaccounts**:
+use a TEST code with the test key and a LIVE code with the live key.
+
+After a test payment, open the transaction in Paystack's dashboard and check the split shows the organiser receiving the
+ticket price and your account receiving the fee.
