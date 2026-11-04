@@ -331,3 +331,13 @@ ALTER TABLE public.events       ADD COLUMN IF NOT EXISTS registration_closes_at 
 ALTER TABLE public.events       ADD COLUMN IF NOT EXISTS paystack_subaccount_code TEXT;
 ALTER TABLE public.events       ADD COLUMN IF NOT EXISTS fee_config               JSONB;
 ALTER TABLE public.orders_table ADD COLUMN IF NOT EXISTS fee_amount               NUMERIC;
+
+-- Older databases may predate group tickets: make sure the ticket columns the
+-- checkout and the dashboard templates rely on exist (no-ops if they already do).
+ALTER TABLE public.passes ADD COLUMN IF NOT EXISTS type           TEXT NOT NULL DEFAULT 'individual';
+ALTER TABLE public.passes ADD COLUMN IF NOT EXISTS group_size     INTEGER;
+ALTER TABLE public.passes ADD COLUMN IF NOT EXISTS max_per_person INTEGER;
+ALTER TABLE public.passes ADD COLUMN IF NOT EXISTS display_order  INTEGER;
+
+-- Make the API see the new columns immediately.
+NOTIFY pgrst, 'reload schema';

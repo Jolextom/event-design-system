@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Check, Copy } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { Modal, ModalButton } from "@/app/components/ui/Modal";
 import { Input } from "@/app/components/ui/Input";
@@ -25,6 +25,8 @@ export function TemplateModal({ isOpen, onClose, userId, onCreated }: TemplateMo
     const [variantId, setVariantId] = useState<string>("test"); // the harmless option is the default
     const [values, setValues] = useState<Record<string, string>>({});
     const [error, setError] = useState<string | null>(null);
+    const [sql, setSql] = useState<string | null>(null);
+    const [copied, setCopied] = useState(false);
     const [busy, setBusy] = useState(false);
 
     const variant: TemplateVariant = useMemo(
@@ -41,10 +43,23 @@ export function TemplateModal({ isOpen, onClose, userId, onCreated }: TemplateMo
             return next;
         });
         setError(null);
+        setSql(null);
     }, [inputs]);
+
+    const copySql = async () => {
+        if (!sql) return;
+        try {
+            await navigator.clipboard.writeText(sql);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch {
+            /* clipboard blocked: the SQL is still selectable on screen */
+        }
+    };
 
     const create = async () => {
         setError(null);
+        setSql(null);
         setBusy(true);
         const result = await createEventFromTemplate({
             supabase,
@@ -57,6 +72,7 @@ export function TemplateModal({ isOpen, onClose, userId, onCreated }: TemplateMo
         setBusy(false);
         if (!result.ok) {
             setError(result.error);
+            setSql(result.sql ?? null);
             return;
         }
         onCreated(result.tag);
@@ -141,6 +157,18 @@ export function TemplateModal({ isOpen, onClose, userId, onCreated }: TemplateMo
                     <div role="alert" className="flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 p-4">
                         <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
                         <p className="text-sm font-bold text-red-600">{error}</p>
+                    </div>
+                )}
+
+                {sql && (
+                    <div className="rounded-2xl border border-gray-200 bg-gray-50">
+                        <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Run in Supabase → SQL Editor</span>
+                            <button type="button" onClick={copySql} className="flex items-center gap-1.5 text-xs font-black text-gray-600 hover:text-gray-900">
+                                {copied ? <><Check className="h-3.5 w-3.5" /> Copied</> : <><Copy className="h-3.5 w-3.5" /> Copy</>}
+                            </button>
+                        </div>
+                        <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words p-4 text-xs font-medium leading-relaxed text-gray-700">{sql}</pre>
                     </div>
                 )}
             </div>

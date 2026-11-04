@@ -3,7 +3,12 @@ import type { EventTemplate, TemplateInput, TemplateVariant } from "./types";
 
 export type CreateFromTemplateResult =
     | { ok: true; tag: string; eventId: string }
-    | { ok: false; error: string };
+    | {
+          ok: false;
+          error: string;
+          /** When the database is missing columns: the SQL to run once in the Supabase SQL editor. */
+          sql?: string;
+      };
 
 type Values = Record<string, string>;
 
@@ -15,9 +20,36 @@ export function localToIso(local: string, tzOffset: string): string {
     return new Date(`${local}:00${tzOffset}`).toISOString();
 }
 
-const MIGRATION_HINT =
-    "Your database needs a one-time update before this can be created. " +
-    "Run the last block of supabase/schema.sql (headed \"Checkout: sale windows, registration deadline, fees…\") in the Supabase SQL editor, then try again.";
+/**
+ * Every database column creating from a template writes, and the SQL that adds it
+ * if it's missing. Older databases may not have some of these (for example
+ * passes.group_size is only ever written when someone makes a group ticket), so
+ * we check before creating anything instead of failing half-way.
+ */
+export const COLUMN_SQL: Record<string, string> = {
+    "passes.type": "ALTER TABLE public.passes ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'individual';",
+    "passes.group_size": "ALTER TABLE public.passes ADD COLUMN IF NOT EXISTS group_size INTEGER;",
+    "passes.max_per_person": "ALTER TABLE public.passes ADD COLUMN IF NOT EXISTS max_per_person INTEGER;",
+    "passes.display_order": "ALTER TABLE public.passes ADD COLUMN IF NOT EXISTS display_order INTEGER;",
+    "passes.sales_end_at": "ALTER TABLE public.passes ADD COLUMN IF NOT EXISTS sales_end_at TIMESTAMP WITH TIME ZONE;",
+    "events.registration_closes_at": "ALTER TABLE public.events ADD COLUMN IF NOT EXISTS registration_closes_at TIMESTAMP WITH TIME ZONE;",
+};
+
+/** The columns this variant will write, as "table.column". */
+export function requiredColumns(variant: TemplateVariant): string[] {
+    const cols = new Set<string>(["passes.type", "passes.display_order"]);
+    for (const p of variant.passes) {
+        cols.add(p.type === "group" ? "passes.group_size" : "passes.max_per_person");
+        if (p.salesEndInput) cols.add("passes.sales_end_at");
+    }
+    if (variant.registrationClosesInput) cols.add("events.registration_closes_at");
+    return [...cols];
+}
+
+/** SQL for the given missing columns, plus a schema-cache reload so the API sees them straight away. */
+export function sqlForMissing(missing: string[]): string {
+    return [...missing.map((m) => COLUMN_SQL[m]).filter(Boolean), "NOTIFY pgrst, 'reload schema';"].join("\n");
+}
 
 /**
  * Checks what the organiser typed. Returns an error message, or the parsed values.
@@ -86,38 +118,55 @@ export async function createEventFromTemplate(args: {
     const p = checked.parsed;
 
     const title = template.title + (variant.titleSuffix ?? "");
-    const usesNewColumns = !!variant.registrationClosesInput || variant.passes.some((x) => x.salesEndInput);
 
-    // 1. Make sure the database has the columns we're about to write, BEFORE creating anything.
-    if (usesNewColumns) {
-        const [ev, ps] = await Promise.all([
-            supabase.from("events").select("registration_closes_at").limit(1),
-            supabase.from("passes").select("sales_end_at").limit(1),
-        ]);
-        if (ev.error || ps.error) return { ok: false, error: MIGRATION_HINT };
+    // 1. Make sure the database has every column we're about to write, BEFORE creating anything.
+    const needed = requiredColumns(variant);
+    const probes = await Promise.all(
+        needed.map(async (full) => {
+            const [table, column] = full.split(".");
+            const { error } = await supabase.from(table).select(column).limit(1);
+            return error ? full : null;
+        })
+    );
+    const missing = probes.filter((x): x is string => !!x);
+    if (missing.length) {
+        return {
+            ok: false,
+            error:
+                `Your database is missing ${missing.length === 1 ? "a column" : `${missing.length} columns`} this needs (${missing.join(", ")}). ` +
+                "Run the SQL below once in the Supabase SQL editor, then press Create again. Nothing was created.",
+            sql: sqlForMissing(missing),
+        };
     }
 
-    // 2. No duplicates.
+    // 2. Duplicates. A finished event with this title blocks us; an UNFINISHED draft (no tickets:
+    //    left behind by an earlier failed attempt) is picked up and completed instead.
     const { data: existing, error: dupErr } = await supabase
         .from("events")
-        .select("id, tag")
+        .select("id, tag, is_published")
         .eq("created_by", userId)
         .eq("event_title", title)
         .limit(1);
     if (dupErr) return { ok: false, error: `Couldn't check your existing events: ${dupErr.message}` };
+
+    let resuming: { id: string; tag: string } | null = null;
     if (existing && existing.length > 0) {
-        return { ok: false, error: `You already have "${title}". Open it from your events list instead.` };
+        const ex = existing[0];
+        const { data: exPasses, error: exErr } = await supabase.from("passes").select("id").eq("event_id", ex.id).limit(1);
+        if (exErr) return { ok: false, error: `Couldn't check your existing event: ${exErr.message}` };
+        if (ex.is_published || (exPasses && exPasses.length > 0)) {
+            return { ok: false, error: `You already have "${title}". Open it from your events list instead.` };
+        }
+        resuming = { id: ex.id, tag: ex.tag };
     }
 
     // 3. The event.
     const startIso = localToIso(`${template.date}T${template.startTime}`, template.tzOffset);
     const endIso = localToIso(`${template.date}T${p.endTime as string}`, template.tzOffset);
-    const tag = `${slugify(title)}-${Math.random().toString(36).substring(2, 6)}`;
+    const tag = resuming?.tag ?? `${slugify(title)}-${Math.random().toString(36).substring(2, 6)}`;
 
     const eventRow: Record<string, unknown> = {
-        created_by: userId,
         event_title: title,
-        tag,
         event_format: "physical",
         start_date: startIso,
         end_date: endIso,
@@ -135,24 +184,52 @@ export async function createEventFromTemplate(args: {
         eventRow.registration_closes_at = localToIso(p[variant.registrationClosesInput] as string, template.tzOffset);
     }
 
-    const { data: event, error: eventErr } = await supabase.from("events").insert(eventRow).select().single();
-    if (eventErr || !event) return { ok: false, error: `Couldn't create the event: ${eventErr?.message ?? "unknown error"}` };
+    const clearChildren = async (eventId: string) => {
+        const { data: qs } = await supabase.from("questions").select("id").eq("event_id", eventId);
+        const qIds = (qs ?? []).map((q: { id: string }) => q.id);
+        if (qIds.length) await supabase.from("question_options").delete().in("question_id", qIds);
+        await supabase.from("questions").delete().eq("event_id", eventId);
+        await supabase.from("passes").delete().eq("event_id", eventId);
+    };
 
-    const rollback = async () => {
+    let event: { id: string };
+    if (resuming) {
+        // Start the unfinished draft from a clean slate, then refresh its details.
+        try { await clearChildren(resuming.id); } catch { /* best effort */ }
+        const { error: upErr } = await supabase.from("events").update(eventRow).eq("id", resuming.id);
+        if (upErr) return { ok: false, error: `Couldn't update your unfinished draft: ${upErr.message}` };
+        event = { id: resuming.id };
+    } else {
+        const { data: created, error: eventErr } = await supabase
+            .from("events")
+            .insert({ ...eventRow, created_by: userId, tag })
+            .select()
+            .single();
+        if (eventErr || !created) return { ok: false, error: `Couldn't create the event: ${eventErr?.message ?? "unknown error"}` };
+        event = created;
+    }
+
+    // If a later step fails, undo what we made. Deleting the EVENT row can be blocked by your
+    // database's access rules (the dashboard has no delete-event button), so we check, and say
+    // so honestly: a leftover draft is harmless and Create will finish it next time.
+    const failWith = async (what: string, message: string): Promise<CreateFromTemplateResult> => {
+        let removed = false;
         try {
-            const { data: qs } = await supabase.from("questions").select("id").eq("event_id", event.id);
-            const qIds = (qs ?? []).map((q: { id: string }) => q.id);
-            if (qIds.length) await supabase.from("question_options").delete().in("question_id", qIds);
-            await supabase.from("questions").delete().eq("event_id", event.id);
-            await supabase.from("passes").delete().eq("event_id", event.id);
+            await clearChildren(event.id);
             await supabase.from("events").delete().eq("id", event.id);
+            const { data: still } = await supabase.from("events").select("id").eq("id", event.id).limit(1);
+            removed = !still || still.length === 0;
         } catch {
             /* best effort */
         }
-    };
-    const failWith = async (what: string, message: string): Promise<CreateFromTemplateResult> => {
-        await rollback();
-        return { ok: false, error: `Couldn't create the ${what}: ${message}. Nothing was left half-made.` };
+        return {
+            ok: false,
+            error:
+                `Couldn't create the ${what}: ${message}. ` +
+                (removed
+                    ? "Nothing was left behind."
+                    : `An unfinished draft of "${title}" is in your events list. That's harmless: press Create again and it will be completed.`),
+        };
     };
 
     // 4. Registration questions (+ their options).

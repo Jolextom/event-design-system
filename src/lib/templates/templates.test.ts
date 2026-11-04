@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { mainCharacterFest as t } from "./main-character-fest.ts";
-import { parseInputs, localToIso } from "./createFromTemplate.ts";
+import { parseInputs, localToIso, requiredColumns, sqlForMissing, COLUMN_SQL } from "./createFromTemplate.ts";
 
 const read = (f: string) => fs.readFileSync(new URL(`../../../events/main-character-fest-2026/${f}`, import.meta.url), "utf8");
 const variant = (id: string) => t.variants.find((v) => v.id === id)!;
@@ -81,4 +81,29 @@ test("Lagos times become the right instants (WAT = UTC+1)", () => {
     assert.equal(localToIso("2026-12-19T10:00", "+01:00"), "2026-12-19T09:00:00.000Z");
     assert.equal(localToIso("2026-11-30T23:55", "+01:00"), "2026-11-30T22:55:00.000Z");
     assert.equal(localToIso("2026-12-10T23:59", "+01:00"), "2026-12-10T22:59:00.000Z");
+});
+
+test("columns checked before creating: group tickets need group_size, deadlines need their columns", () => {
+    const real = requiredColumns(variant("real"));
+    for (const c of ["passes.type", "passes.display_order", "passes.group_size", "passes.max_per_person", "passes.sales_end_at", "events.registration_closes_at"]) {
+        assert.ok(real.includes(c), `real variant should check ${c}`);
+    }
+    const test = requiredColumns(variant("test"));
+    assert.ok(test.includes("passes.group_size"), "the test variant has a group ticket too");
+    assert.ok(!test.includes("passes.sales_end_at") && !test.includes("events.registration_closes_at"));
+});
+
+test("every column we check has SQL to add it, and the fix SQL reloads the API's schema cache", () => {
+    for (const v of t.variants) for (const c of requiredColumns(v)) assert.ok(COLUMN_SQL[c], `no SQL for ${c}`);
+    const sql = sqlForMissing(["passes.group_size"]);
+    assert.match(sql, /ALTER TABLE public\.passes ADD COLUMN IF NOT EXISTS group_size INTEGER;/);
+    assert.match(sql, /NOTIFY pgrst, 'reload schema';/);
+});
+
+test("the shipped migration (schema.sql) adds every column the template writes", () => {
+    const schema = fs.readFileSync(new URL("../../../supabase/schema.sql", import.meta.url), "utf8");
+    for (const c of Object.keys(COLUMN_SQL)) {
+        const [table, column] = c.split(".");
+        assert.match(schema, new RegExp(`public\\.${table}\\s+ADD COLUMN IF NOT EXISTS ${column}\\b`), `schema.sql lacks ${c}`);
+    }
 });
