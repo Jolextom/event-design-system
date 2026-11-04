@@ -828,6 +828,9 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                                                     onPassUpdated={refetchPasses}
                                                     onQuestionCreated={refetchQuestions}
                                                     attendees={attendees}
+                                                    feeConfig={event?.fee_config}
+                                                    payoutCode={event?.paystack_subaccount_code ?? null}
+                                                    onPaymentsSaved={handleEventUpdate}
                                                 />
                                             )}
                                             {activeBuilderCategory === "variables" && (
