@@ -10,7 +10,7 @@ import type { AnswerValue } from "@/lib/answers";
 
 export type RegistrationResult =
     | { ok: true; status: "registered"; orderRef: string }
-    | { ok: true; status: "payment_required"; orderRef: string; authorizationUrl: string }
+    | { ok: true; status: "payment_required"; orderRef: string; authorizationUrl: string; accessCode?: string }
     | { ok: false; error: string };
 
 /**
@@ -57,7 +57,7 @@ export async function submitRegistration(input: {
 
         if (!result.ok) return { ok: false, error: result.error };
         if (result.status === "payment_required") {
-            return { ok: true, status: "payment_required", orderRef: result.orderRef, authorizationUrl: result.authorizationUrl };
+            return { ok: true, status: "payment_required", orderRef: result.orderRef, authorizationUrl: result.authorizationUrl, accessCode: result.accessCode };
         }
         return { ok: true, status: "registered", orderRef: result.orderRef };
     } catch (err: unknown) {

@@ -122,3 +122,14 @@ order by 1, 2;
 Any row with `roles` containing `anon` (or `public`) and `cmd` of `SELECT` or `ALL` means anyone holding the public key can list
 that table. Send that output to be tightened (organiser dashboards, staff check-in and the watch/join pages still read these
 tables with a login, so the policies need rewriting rather than just removing).
+
+## Paying in a popup
+
+"Pay" now opens Paystack's checkout in a popup on the event page instead of leaving the site. The server still creates
+the transaction (price, service fee, organiser split); the page only receives its `access_code` and shows Paystack's checkout
+for it (`@paystack/inline-js` `resumeTransaction`, wrapper in `src/lib/paystackPopup.ts`). When the payment succeeds the customer
+goes to the receipt page, which verifies it with Paystack exactly as before (the webhook is still the safety net).
+
+- Closing the popup shows "Payment wasn't completed" with **Resume payment**, which reopens the same payment (no duplicate order).
+- If the popup can't open (blocked, offline, no response within 10 seconds) the page falls back to the old full-page Paystack redirect.
+- Test it with a Paystack TEST card in test mode before going live; popups cannot be exercised without reaching Paystack.

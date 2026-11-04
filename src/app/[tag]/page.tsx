@@ -22,6 +22,7 @@ import { Event, Pass, Question } from "../events/[tag]/types";
 import { computeCharge } from "@/lib/fees";
 import { passSaleState, registrationClosed } from "@/lib/sales";
 import { submitRegistration } from "./actions";
+import { openPaystackPopup } from "@/lib/paystackPopup";
 import { resolveTheme, themeStyle } from "./theme";
 import { QuestionField } from "./QuestionField";
 import { inter, sora, display } from "./fonts";
@@ -47,6 +48,8 @@ export default function RegistrationPage() {
     const [quantity, setQuantity] = useState(1);
     const [guests, setGuests] = useState([{ firstName: "", lastName: "", email: "", isInvite: false, answers: {} as Record<string, string | string[] | number> }]);
     const [submitting, setSubmitting] = useState(false);
+    // A paid order that was created but not paid yet (popup closed): lets "Resume payment" reopen the SAME payment.
+    const [pendingPay, setPendingPay] = useState<{ orderRef: string; accessCode?: string; authorizationUrl: string } | null>(null);
     const [linkCopied, setLinkCopied] = useState(false);
 
     // --- Trigger Question Logic (Dynamic Track Selection) ---
@@ -230,10 +233,36 @@ export default function RegistrationPage() {
         }
     };
 
+    // Pay in a popup (server-created transaction); if the popup can't open, go to Paystack's page as before.
+    const payNow = async (p: { orderRef: string; accessCode?: string; authorizationUrl: string }) => {
+        const receiptUrl = `/${event?.tag || tag}/receipt/${p.orderRef}`;
+        setPendingPay(p);
+        setFormError(null);
+        setSubmitting(true);
+        try {
+            await openPaystackPopup(p.accessCode, {
+                onSuccess: () => {
+                    setSubmitting(true); // keep the "processing" screen up while the receipt page loads
+                    window.location.href = receiptUrl;
+                },
+                onCancel: () => {
+                    setSubmitting(false);
+                    setFormError("Payment wasn't completed. Your place is only confirmed once you've paid.");
+                },
+                onFallback: () => {
+                    window.location.href = p.authorizationUrl;
+                },
+            });
+        } finally {
+            setSubmitting(false); // the popup is up (or we're redirecting): don't cover it
+        }
+    };
+
     const handleRegister = async () => {
         if (!event || !selectedTicket) return;
         setSubmitting(true);
         setFormError(null);
+        setPendingPay(null);
 
         try {
             // Get the selected pass
@@ -307,9 +336,11 @@ export default function RegistrationPage() {
 
             if (!result.ok) throw new Error(result.error);
 
-            window.location.href = result.status === "payment_required"
-                ? result.authorizationUrl
-                : `/${event.tag}/receipt/${result.orderRef}`;
+            if (result.status === "payment_required") {
+                await payNow({ orderRef: result.orderRef, accessCode: result.accessCode, authorizationUrl: result.authorizationUrl });
+            } else {
+                window.location.href = `/${event.tag}/receipt/${result.orderRef}`;
+            }
             return;
 
         } catch (err: any) {
@@ -882,6 +913,11 @@ export default function RegistrationPage() {
                                         <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
                                         <div className="text-sm">
                                             <p className="font-medium text-red-500">{formError}</p>
+                                            {pendingPay && (
+                                                <button type="button" onClick={() => payNow(pendingPay)} className="mt-1 mr-3 font-semibold underline">
+                                                    Resume payment
+                                                </button>
+                                            )}
                                             <button type="button" onClick={() => setFormError(null)} className={cn("mt-0.5 underline", muted)}>
                                                 Dismiss
                                             </button>
