@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { CreateEventModal } from "./CreateEventModal";
 import { TemplateModal } from "./TemplateModal";
+import { DeleteEventModal } from "./DeleteEventModal";
 
 
 export default function DemoDashboard() {
@@ -18,6 +19,7 @@ export default function DemoDashboard() {
     const [loading, setLoading] = useState(true);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+    const [toDelete, setToDelete] = useState<{ id: string; event_title: string } | null>(null);
 
     useEffect(() => {
         const fetchEvents = async () => {
@@ -118,6 +120,14 @@ export default function DemoDashboard() {
                                             <a href={`/${event.tag}`} target="_blank" className="bg-[var(--color-primary-100)] text-[var(--color-primary-700)] px-6 py-2 rounded-xl font-black text-xs shadow hover:bg-[var(--color-primary-200)] transition-all uppercase tracking-widest">
                                                 View
                                             </a>
+                                            <button
+                                                type="button"
+                                                onClick={() => setToDelete({ id: event.id, event_title: event.event_title })}
+                                                aria-label={`Delete ${event.event_title}`}
+                                                className="bg-white border border-red-200 text-red-600 px-4 py-2 rounded-xl font-black text-xs hover:bg-red-50 transition-all uppercase tracking-widest"
+                                            >
+                                                Delete
+                                            </button>
                                         </div>
                                     </div>
                                 ))}
@@ -125,6 +135,15 @@ export default function DemoDashboard() {
                         )}
                     </div>
                 </div>
+
+                <DeleteEventModal
+                    event={toDelete}
+                    onClose={() => setToDelete(null)}
+                    onDeleted={(id) => {
+                        setEvents((prev) => prev.filter((e) => e.id !== id));
+                        setToDelete(null);
+                    }}
+                />
 
                 {user && (
                     <TemplateModal
