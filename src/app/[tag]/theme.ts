@@ -62,6 +62,12 @@ export interface PageTheme {
      * the invite link once the order is complete: on the receipt page and in the confirmation email.
      */
     community?: CommunityLink;
+    /**
+     * Tells the browser how this page's native controls (dropdown lists, date pickers, scrollbars) should be drawn.
+     * A dark page must say "dark": otherwise an open dropdown is a white box and light text on it is invisible.
+     * Defaults to "light".
+     */
+    colorScheme?: "light" | "dark";
     /** Label on the main registration button. */
     ctaLabel: string;
     /** Line shown at the top of the registration card. */
@@ -125,6 +131,7 @@ const MAIN_CHARACTER_FEST: PageTheme = {
             "Dress as your favourite movie character. Live DJ, costume party, games, booths and food. For campus students and young professionals. Sat 19 Dec 2026, Surulere.",
         siteName: "Campus Yo-Pro Ministry",
     },
+    colorScheme: "dark",
     allowInvites: false,
     community: {
         label: "Join the Main Character Fest WhatsApp group",
@@ -230,6 +237,7 @@ export function emailConfigForTag(tag?: string | null): PageTheme["email"] | und
 export function themeStyle(theme: PageTheme): CSSProperties {
     const c = theme.colors;
     return {
+        colorScheme: theme.colorScheme ?? "light",
         "--pg-bg": c.bg,
         "--pg-surface": c.surface,
         "--pg-modal": c.modal,

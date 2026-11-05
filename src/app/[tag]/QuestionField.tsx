@@ -7,6 +7,9 @@ import { choiceCls, hairline, inputCls, muted, Radio } from "./ui";
 
 export type AnswerValue = string | string[] | number;
 
+/** Dropdown entries use the page's own colours (the modal background and text), so they read on light and dark themes alike. */
+const optionCls = "bg-[color:var(--pg-modal)] text-[color:var(--pg-text)]";
+
 /**
  * One registration question, whatever its type (text, long text, single choice,
  * dropdown, checkboxes, scale, stars). Used by the event page, the invite page
@@ -58,11 +61,12 @@ export function QuestionField({
                         onChange={(e) => onChange(e.target.value)}
                         className={cn(inputCls, "h-11 cursor-pointer appearance-none pr-10")}
                     >
-                        <option value="" disabled>
+                        {/* Explicit colours: the open list is drawn by the browser, and on a dark theme light text on its default white background is invisible. */}
+                        <option value="" disabled className={optionCls}>
                             Select an option
                         </option>
                         {q.options?.map((opt) => (
-                            <option key={opt.id} value={opt.option_text}>
+                            <option key={opt.id} value={opt.option_text} className={optionCls}>
                                 {opt.option_text}
                             </option>
                         ))}
