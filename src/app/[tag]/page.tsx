@@ -23,6 +23,8 @@ import { computeCharge } from "@/lib/fees";
 import { passSaleState, registrationClosed } from "@/lib/sales";
 import { submitRegistration } from "./actions";
 import { openPaystackPopup } from "@/lib/paystackPopup";
+import { stockMeter } from "@/lib/stockMeter";
+import { StockMeter } from "./StockMeter";
 import { invitesAllowedForTag, resolveTheme, themeStyle } from "./theme";
 import { QuestionField } from "./QuestionField";
 import { inter, sora, display } from "./fonts";
@@ -35,6 +37,7 @@ export default function RegistrationPage() {
     // Per-event rules from the theme registry: may buyers invite the other guests, and is there a code of conduct to accept?
     const invitesOn = invitesAllowedForTag(tag);
     const conduct = resolveTheme(tag).conduct;
+    const meterCfg = resolveTheme(tag).stockMeter;
     const [conductAccepted, setConductAccepted] = useState(false);
     const searchParams = useSearchParams();
     const referralCode = searchParams.get("ref");
@@ -189,6 +192,39 @@ export default function RegistrationPage() {
 
         fetchData();
     }, [tag]);
+
+    // Keep the "only N left" numbers live while the page is open (and when the tab comes back into view),
+    // so a buyer sees the count drop instead of a stale number. Only for events that show the meter.
+    const eventId = event?.id;
+    useEffect(() => {
+        if (!eventId || !meterCfg) return;
+        let stopped = false;
+        const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+        const refresh = async () => {
+            if (document.visibilityState !== "visible") return;
+            const { data } = await supabase.from("passes").select("id, quantity_sold, quantity_available").eq("event_id", eventId);
+            if (stopped || !data) return;
+            setPasses((prev) => {
+                let changed = false;
+                const next = prev.map((p) => {
+                    const f = data.find((d: any) => d.id === p.id);
+                    if (f && (f.quantity_sold !== p.quantity_sold || f.quantity_available !== p.quantity_available)) {
+                        changed = true;
+                        return { ...p, quantity_sold: f.quantity_sold, quantity_available: f.quantity_available };
+                    }
+                    return p;
+                });
+                return changed ? next : prev; // nothing moved: no re-render
+            });
+        };
+        const timer = setInterval(refresh, 20000);
+        document.addEventListener("visibilitychange", refresh);
+        return () => {
+            stopped = true;
+            clearInterval(timer);
+            document.removeEventListener("visibilitychange", refresh);
+        };
+    }, [eventId, meterCfg]);
 
     // --- Helpers ---
     const currentTicket = passes.find(t => t.id === selectedTicket);
@@ -532,6 +568,10 @@ export default function RegistrationPage() {
                                     {!unavailable && ticket.sales_end_at && (
                                         <div className="text-sm font-medium text-[color:var(--pg-accent)]">Ends {whenLabel(ticket.sales_end_at)}</div>
                                     )}
+                                    {!unavailable && meterCfg && (meterCfg.passType === "all" || meterCfg.passType === ticket.type) && (() => {
+                                        const meter = stockMeter(ticket, meterCfg);
+                                        return meter ? <StockMeter meter={meter} /> : null;
+                                    })()}
                                 </div>
                                 <div className="font-medium">{unavailable ?? priceLabel(ticket)}</div>
                             </button>

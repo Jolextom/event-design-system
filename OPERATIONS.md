@@ -200,3 +200,16 @@ The end time is no longer required: not in Templates (the box says "optional"), 
 later in Studio > Basic Info > Date & Time > **Remove end time** > Save. With no end time the event page shows only the start time
 ("10:00 AM", not "10:00 AM – 6:00 PM"). Internally the end time is stored empty and `end_date` equals the start, so nothing that reads
 it has to cope with a missing value. Calendar links in emails only use the start time (they assume a default length).
+
+## "How many are left" meter and the link preview
+
+- **On the event page** the Group of 3 shows a live meter (`stockMeter` in `src/app/[tag]/theme.ts`, rules in `src/lib/stockMeter.ts`):
+  a bar for how much is gone plus a line that gets louder as stock runs down: "N of M groups left" -> "Going fast: only N groups left"
+  (half gone) -> "Almost gone: only N groups left" (fewer than 10, or under 15%) -> "Last one". "N groups already claimed" appears from 5.
+  The numbers are real (capacity minus completed purchases) and refresh every 20 seconds while the page is open. No capacity set, or sold
+  out: no meter (a sold-out ticket is greyed out). The capacity you set on the ticket is the number it counts down from.
+- **Link previews (WhatsApp, Facebook, X) are cached by those apps**, for hours to days, and none publishes an exact time. So the preview
+  never shows a live number. It says "Group of 3 is 50% off while stock lasts." while a group ticket still has stock, and leaves that
+  line out once they are sold out; our server works this out on every request, but an app only picks it up when it next re-reads the link.
+  To force a fresh preview: Facebook's Sharing Debugger re-scrapes a link; for WhatsApp share the link with `?v=2` on the end (a new
+  address gets a fresh preview).

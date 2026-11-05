@@ -8,6 +8,9 @@ test("Main Character Fest has its own tab title and a search/share description o
     assert.equal(m.title, "Main Character Fest 2026");
     assert.equal(m.noindex, false);
     assert.ok(m.description.length <= 160, `description is ${m.description.length} chars`);
+    assert.ok(m.promoLine && `${m.description} ${m.promoLine}`.length <= 165, `with the promo line: ${m.description.length + 1 + (m.promoLine?.length ?? 0)} chars`);
+    assert.match(m.promoLine ?? "", /50% off while stock lasts/);
+    assert.ok(!/\d+ (left|groups)/.test(`${m.description} ${m.promoLine}`), "never a live number in a preview that chat apps cache");
     for (const must of ["19 Dec 2026", "Surulere", "costume"]) assert.ok(m.description.includes(must), must);
     assert.ok(!/eventflow|premium/i.test(`${m.title} ${m.description} ${m.siteName}`));
 });
@@ -69,4 +72,10 @@ test("the confirmation email carries the group button only when the event has on
     assert.ok(withGroup.includes("Please don&#39;t share") || withGroup.includes("Please don't share"));
     assert.ok(!withGroup.includes("<this>"), "text is escaped");
     assert.ok(!renderConfirmationEmailHtml(base).includes("chat.whatsapp.com"));
+});
+
+test("the stock meter is switched on for Main Character Fest's group ticket only", async () => {
+    const { resolveTheme } = await import("../app/[tag]/theme.ts");
+    assert.deepEqual(resolveTheme("main-character-fest-2026-ab3d").stockMeter, { passType: "group", singular: "group", plural: "groups" });
+    assert.equal(resolveTheme("kini-ai-summit").stockMeter, undefined);
 });
