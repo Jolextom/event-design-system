@@ -251,3 +251,21 @@ Then try the upload again (no redeploy needed). Notes:
   policies above for uploads to be allowed.
 - Images over 10 MB, or files that aren't images, are refused with a plain message before anything is uploaded.
 - Your own change-password screen: dashboard > **Password**, or inside an event: **Settings** > Account security > Change password.
+
+## Sharing the live guest list (so the client doesn't have to ask who has paid)
+
+1. Open the event > **Event Day** (left menu) > **Add Collaborator**. Enter the person's name, leave **Registrant View** on
+   "Full list, their referrals highlighted", and create it. It shows a **login link** (`/events/<event-tag>/collaborate`) and an
+   **8-character access code** (new codes are long and random; send them separately, e.g. the link in one message and the code in another).
+2. They open the link, enter the code, and see the guest list. No account, no password.
+3. What they see (read-only): totals (Registered, Paid, Checked in, **Not paid yet**), the tickets split, every registered guest with their ticket
+   and a Paid / Checked in badge, and a **Not paid yet** tab for people who started registering but whose payment hasn't gone through (a payment that
+   completes moves them to Registered). Search, and **Download CSV**. The page refreshes itself every 30 seconds and shows "Live, updated Ns ago".
+4. They do NOT see money amounts (that stays in Paystack: add them there as a team member for payments), phone numbers or question answers.
+5. To stop sharing: Event Day > the person's row > **Revoke**. An open page notices at its next refresh and logs out.
+
+Notes:
+- "Registered" means a guest record exists, which only happens once a payment completes (or the ticket is free). People who paid but got no email still appear.
+- A collaborator set to "Only their own referrals" gets none of the totals, the Not-paid tab or CSV: only the guests they referred.
+- Wrong codes are limited: 10 misses from one visitor block further tries for 10 minutes (even with the right code). Older 6-digit codes still work; make a new
+  collaborator to get a long code. The limit is per server instance, so treat the code like a password and revoke it if it leaks.

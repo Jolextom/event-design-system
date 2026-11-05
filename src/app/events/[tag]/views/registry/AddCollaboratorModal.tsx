@@ -13,8 +13,15 @@ interface AddCollaboratorModalProps {
     onSuccess: () => void;
 }
 
+/**
+ * 8 characters from an alphabet without look-alikes (no 0/O, 1/I/L), drawn with the browser's secure random
+ * source. (The old 6-digit codes were guessable; they still work, and wrong guesses are now limited.)
+ */
 function generateAccessCode() {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+    const bytes = new Uint8Array(8);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
 }
 
 function slugify(name: string) {
