@@ -35,6 +35,23 @@ export function SettingsView() {
                 </header>
 
                 <div className="grid grid-cols-1 gap-8 relative z-10">
+                    {/* Account security */}
+                    <div className="p-8 border border-gray-100 rounded-[32px] bg-gray-50/30 flex items-center justify-between gap-6">
+                        <div className="flex items-center gap-4">
+                            <Shield className="w-5 h-5 text-[var(--brand-blue)] shrink-0" />
+                            <div>
+                                <h3 className="text-sm font-black text-gray-900 tracking-tight">Account security</h3>
+                                <p className="text-xs font-bold text-gray-400 mt-0.5">Change your password, and sign out of other devices.</p>
+                            </div>
+                        </div>
+                        <a
+                            href="/settings/password"
+                            className="shrink-0 bg-white border border-gray-200 text-gray-700 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 transition-all"
+                        >
+                            Change password
+                        </a>
+                    </div>
+
                     {/* General Settings Section */}
                     <div className="space-y-6">
                         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 border-b border-gray-50 pb-4">General Configuration</h3>

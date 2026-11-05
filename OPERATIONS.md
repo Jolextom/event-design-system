@@ -213,3 +213,40 @@ it has to cope with a missing value. Calendar links in emails only use the start
   line out once they are sold out; our server works this out on every request, but an app only picks it up when it next re-reads the link.
   To force a fresh preview: Facebook's Sharing Debugger re-scrapes a link; for WhatsApp share the link with `?v=2` on the end (a new
   address gets a fresh preview).
+
+## Event images (fixes "Bucket not found")
+
+Cover photos uploaded from an event's **Basic Info** page are saved in a Supabase Storage bucket called `event-images`. If that bucket
+doesn't exist the upload fails with "Bucket not found". Create it once, in the Supabase **SQL editor** (this is the same SQL as the end of
+`supabase/schema.sql`):
+
+```sql
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('event-images', 'event-images', true, 10485760, array['image/jpeg','image/png','image/webp','image/gif'])
+on conflict (id) do update
+  set public = true, file_size_limit = 10485760, allowed_mime_types = array['image/jpeg','image/png','image/webp','image/gif'];
+
+drop policy if exists "event-images: organisers add to their own folder" on storage.objects;
+create policy "event-images: organisers add to their own folder"
+  on storage.objects for insert to authenticated
+  with check (bucket_id = 'event-images' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "event-images: organisers replace in their own folder" on storage.objects;
+create policy "event-images: organisers replace in their own folder"
+  on storage.objects for update to authenticated
+  using (bucket_id = 'event-images' and (storage.foldername(name))[1] = auth.uid()::text)
+  with check (bucket_id = 'event-images' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "event-images: organisers delete from their own folder" on storage.objects;
+create policy "event-images: organisers delete from their own folder"
+  on storage.objects for delete to authenticated
+  using (bucket_id = 'event-images' and (storage.foldername(name))[1] = auth.uid()::text);
+```
+
+Then try the upload again (no redeploy needed). Notes:
+- The bucket is public, so the cover loads on the event page and in link previews; the policies stop anyone else from adding, replacing or
+  deleting files, and there is no policy that lets people list what's in it.
+- Without the SQL: Supabase > Storage > New bucket > name `event-images` > turn **Public bucket** on. You would still need the three
+  policies above for uploads to be allowed.
+- Images over 10 MB, or files that aren't images, are refused with a plain message before anything is uploaded.
+- Your own change-password screen: dashboard > **Password**, or inside an event: **Settings** > Account security > Change password.

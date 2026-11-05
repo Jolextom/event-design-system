@@ -169,6 +169,17 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !event?.id) return;
+        e.target.value = ""; // so choosing the same file again after a failure still fires
+
+        // Checked here so the person gets a plain reason, not a storage error.
+        if (!file.type.startsWith("image/")) {
+            alert("Please choose an image file (JPG, PNG or WebP).");
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            alert(`That image is ${(file.size / 1024 / 1024).toFixed(1)} MB. Please use one under 10 MB.`);
+            return;
+        }
 
         setIsUploading(true);
         try {
@@ -208,7 +219,19 @@ export function BasicInfoView({ event, hasTickets, hasQuestions, onNavigate, onU
             router.refresh();
         } catch (err: any) {
             console.error("Upload failed:", err);
-            alert(err.message || "Failed to upload image. Please check your connection.");
+            const msg = String(err?.message || "");
+            if (/bucket not found/i.test(msg)) {
+                // The database's image storage hasn't been set up yet: nothing the person did wrong.
+                alert("Image storage isn't set up yet. In Supabase, create a public storage bucket called \"event-images\" (the exact steps are in OPERATIONS.md, under \"Event images\"), then try again.");
+            } else if (/row-level security|policy|not authorized|unauthorized/i.test(msg)) {
+                alert("Your account isn't allowed to upload images yet: the event-images bucket needs its upload rules (see OPERATIONS.md, \"Event images\").");
+            } else if (/exceeded the maximum|too large|payload/i.test(msg)) {
+                alert("That image is too large. Please use one under 10 MB.");
+            } else if (/mime type|not supported|invalid.*type/i.test(msg)) {
+                alert("That image type isn't supported. Please use a JPG, PNG, WebP or GIF.");
+            } else {
+                alert(msg || "Failed to upload image. Please check your connection.");
+            }
         } finally {
             setIsUploading(false);
         }
