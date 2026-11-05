@@ -341,3 +341,32 @@ ALTER TABLE public.passes ADD COLUMN IF NOT EXISTS display_order  INTEGER;
 
 -- Make the API see the new columns immediately.
 NOTIFY pgrst, 'reload schema';
+
+-- ---------------------------------------------------------------------------
+-- Event images (cover photos uploaded from an event's Basic Info page)
+-- Run once in the Supabase SQL editor. Without it, uploading fails with "Bucket not found".
+--   * a PUBLIC bucket called event-images (so the cover shows on the event page and in link previews)
+--   * 10 MB limit, image types only
+--   * a logged-in organiser can add / replace / delete files ONLY inside their own folder
+--     (the app saves to  <user id>/<event id>/image_....), and nobody can list the bucket.
+-- ---------------------------------------------------------------------------
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('event-images', 'event-images', true, 10485760, array['image/jpeg','image/png','image/webp','image/gif'])
+on conflict (id) do update
+  set public = true, file_size_limit = 10485760, allowed_mime_types = array['image/jpeg','image/png','image/webp','image/gif'];
+
+drop policy if exists "event-images: organisers add to their own folder" on storage.objects;
+create policy "event-images: organisers add to their own folder"
+  on storage.objects for insert to authenticated
+  with check (bucket_id = 'event-images' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "event-images: organisers replace in their own folder" on storage.objects;
+create policy "event-images: organisers replace in their own folder"
+  on storage.objects for update to authenticated
+  using (bucket_id = 'event-images' and (storage.foldername(name))[1] = auth.uid()::text)
+  with check (bucket_id = 'event-images' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "event-images: organisers delete from their own folder" on storage.objects;
+create policy "event-images: organisers delete from their own folder"
+  on storage.objects for delete to authenticated
+  using (bucket_id = 'event-images' and (storage.foldername(name))[1] = auth.uid()::text);
