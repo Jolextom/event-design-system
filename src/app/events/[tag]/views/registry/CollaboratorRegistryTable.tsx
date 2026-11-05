@@ -4,6 +4,7 @@ import React from "react";
 import { AlertCircle, Check, Loader2, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { ago, isPaid, passTitleOf } from "@/lib/eventReport";
 
 export interface CollaboratorAttendeeRow {
     id: string;
@@ -13,7 +14,10 @@ export interface CollaboratorAttendeeRow {
     ref: string;
     check_in: boolean | null;
     isMine: boolean;
-    pass?: { title: string }[] | null;
+    created_at?: string | null;
+    /** The database sends a to-one embed as an object (older code expected an array): both are read. */
+    pass?: unknown;
+    order?: unknown;
 }
 
 interface CollaboratorRegistryTableProps {
@@ -88,7 +92,8 @@ export function CollaboratorRegistryTable({ attendees, loading, emptyMessage }: 
                                     )}
                                 </div>
                                 <p className="text-[10px] font-bold text-gray-400 mt-0.5">
-                                    {attendee.email} • {attendee.pass?.[0]?.title || "General Admission"}
+                                    {attendee.email} • {passTitleOf(attendee.pass)}
+                                    {attendee.created_at ? ` • ${ago(attendee.created_at)}` : ""}
                                 </p>
                             </div>
                         </div>
@@ -97,6 +102,10 @@ export function CollaboratorRegistryTable({ attendees, loading, emptyMessage }: 
                             {attendee.check_in ? (
                                 <span className="text-[9px] font-black uppercase tracking-widest text-green-600 bg-green-100 px-3 py-1.5 rounded-full">
                                     Checked In
+                                </span>
+                            ) : isPaid(attendee.order) ? (
+                                <span className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full">
+                                    Paid
                                 </span>
                             ) : (
                                 <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 bg-gray-50 px-3 py-1.5 rounded-full">
