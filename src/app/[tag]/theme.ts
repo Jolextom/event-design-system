@@ -28,6 +28,13 @@ export interface CommunityLink {
     note?: string;
 }
 
+/** Which tickets get the "how many are left" meter, and what to call one unit of them. */
+export interface StockMeterConfig {
+    passType: "group" | "individual" | "all";
+    singular: string;
+    plural: string;
+}
+
 export interface PageTheme {
     /** Shown under the cover as "Hosted By". Omit to hide the block (events have no host field yet). */
     hostName?: string;
@@ -45,7 +52,9 @@ export interface PageTheme {
      */
     brandName?: string;
     /** The browser tab title and the text shown when the event link is shared or searched. Omit to keep the platform's generic ones. */
-    meta?: { title: string; description: string; siteName?: string };
+    meta?: { title: string; description: string; siteName?: string; /** Added to the description only while a group ticket still has stock (so the preview never promises a sold-out deal). */ promoLine?: string };
+    /** Show a live "only N left" meter under limited tickets of this kind (real numbers only). Omit for none. */
+    stockMeter?: StockMeterConfig;
     /**
      * Whether a buyer of a group ticket may "Invite" the other people to fill in their own details later.
      * Set to false to make the buyer fill in every guest's details at checkout (and have the server
@@ -128,9 +137,11 @@ const MAIN_CHARACTER_FEST: PageTheme = {
     meta: {
         title: "Main Character Fest 2026",
         description:
-            "Dress as your favourite movie character. Live DJ, costume party, games, booths and food. For campus students and young professionals. Sat 19 Dec 2026, Surulere.",
+            "Dress as your favourite movie character. Live DJ, costume party, games, booths and food. Sat 19 Dec 2026, Surulere.",
+        promoLine: "Group of 3 is 50% off while stock lasts.",
         siteName: "Campus Yo-Pro Ministry",
     },
+    stockMeter: { passType: "group", singular: "group", plural: "groups" },
     colorScheme: "dark",
     allowInvites: false,
     community: {
@@ -221,7 +232,7 @@ export function brandNameForTag(tag?: string | null): string {
 export const isTestTag = (tag?: string | null): boolean => !!tag && /-test(-|$)/.test(tag);
 
 /** Tab title / link-preview text for this event's tag, or null to keep the site-wide defaults. */
-export function metaForTag(tag?: string | null): { title: string; description: string; siteName?: string; noindex: boolean } | null {
+export function metaForTag(tag?: string | null): { title: string; description: string; siteName?: string; promoLine?: string; noindex: boolean } | null {
     const meta = resolveTheme(tag).meta;
     if (!meta) return null;
     const test = isTestTag(tag);
