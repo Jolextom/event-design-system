@@ -203,11 +203,12 @@ it has to cope with a missing value. Calendar links in emails only use the start
 
 ## "How many are left" meter and the link preview
 
-- **On the event page** the Group of 3 shows a live meter (`stockMeter` in `src/app/[tag]/theme.ts`, rules in `src/lib/stockMeter.ts`):
-  a bar for how much is gone plus a line that gets louder as stock runs down: "N of M groups left" -> "Going fast: only N groups left"
-  (half gone) -> "Almost gone: only N groups left" (fewer than 10, or under 15%) -> "Last one". "N groups already claimed" appears from 5.
-  The numbers are real (capacity minus completed purchases) and refresh every 20 seconds while the page is open. No capacity set, or sold
-  out: no meter (a sold-out ticket is greyed out). The capacity you set on the ticket is the number it counts down from.
+- **On the event page** the Group of 3 shows a live "only N left" line (`stockMeter` in `src/app/[tag]/theme.ts`, rules in
+  `src/lib/stockMeter.ts`). It only ever says how many are LEFT: never the total and never how many are gone. It gets hotter as the number
+  drops: "Only 33 groups left" -> "Going fast: only 20 groups left" (half gone) -> "Almost gone: only 9 groups left" (fewer than 10, or
+  under 15%) -> "Last one", with a flame that starts quiet, then pulses, then a glowing pill. The numbers are real (capacity minus completed
+  purchases) and refresh every 20 seconds while the page is open. No capacity set, or sold out: no line (a sold-out ticket is greyed out).
+  The capacity you set on the ticket is the number it counts down from.
 - **Link previews (WhatsApp, Facebook, X) are cached by those apps**, for hours to days, and none publishes an exact time. So the preview
   never shows a live number. It says "Group of 3 is 50% off while stock lasts." while a group ticket still has stock, and leaves that
   line out once they are sold out; our server works this out on every request, but an app only picks it up when it next re-reads the link.
