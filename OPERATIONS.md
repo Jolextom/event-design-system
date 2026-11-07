@@ -269,3 +269,15 @@ Notes:
 - A collaborator set to "Only their own referrals" gets none of the totals, the Not-paid tab or CSV: only the guests they referred.
 - Wrong codes are limited: 10 misses from one visitor block further tries for 10 minutes (even with the right code). Older 6-digit codes still work; make a new
   collaborator to get a long code. The limit is per server instance, so treat the code like a password and revoke it if it leaks.
+
+## Security rule: "use server" files are public
+
+Any function exported from a file that starts with `"use server"` can be called by anyone on the internet with any arguments. So:
+- Such a function must work out who is calling from their **login token** (`src/lib/authz.ts`), never from a `userId` / `identityId` the page sends,
+  and must only touch that person's own rows. (`src/lib/senderDomains.ts` once trusted a `userId`: fixed, see below.)
+- Functions that return secrets (e.g. a Resend API key) live in a normal module, not a `"use server"` file (`src/lib/senderResolve.ts`).
+- `src/lib/useServerAudit.test.ts` fails if a new `"use server"` file appears or those rules are broken. Add the checks and a test first.
+
+Fixed 7 Nov 2026 after a private report: the sender-domain functions (list, add, verify, delete, change Reply-To) had no login check, and the two
+lookups that return a tenant's Resend API key were public. If you ever saved your own Resend API key in Settings > Senders, rotate it in Resend.
+Check for tampering: Resend > Domains (anything missing or unknown?) and `select domain, from_email, reply_to, created_at from sender_identities;`.

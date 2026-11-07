@@ -10,6 +10,7 @@ import {
     listSenderIdentities, addSenderDomain, addVerifiedSender, checkSenderDomain, deleteSenderIdentity, updateSenderReplyTo,
     type SenderIdentity,
 } from "@/lib/senderDomains";
+import { getAccessToken } from "@/lib/accessToken";
 
 const STATUS_META: Record<string, { label: string; cls: string; icon: React.ComponentType<{ className?: string }> }> = {
     verified: { label: "Verified", cls: "bg-green-50 text-green-700", icon: CheckCircle2 },
@@ -44,7 +45,7 @@ export default function SenderSettingsPage() {
     const refresh = useCallback(async () => {
         if (!user) return;
         setLoading(true);
-        const result = await listSenderIdentities(user.id);
+        const result = await listSenderIdentities(await getAccessToken());
         if ("identities" in result) setIdentities(result.identities);
         setLoading(false);
     }, [user]);
@@ -57,7 +58,7 @@ export default function SenderSettingsPage() {
         setAddError(null);
         const result = alreadyVerified
             ? await addVerifiedSender({
-                userId: user.id,
+                accessToken: await getAccessToken(),
                 domain,
                 fromName: fromName || "EventFlow",
                 fromLocalPart: localPart,
@@ -65,7 +66,7 @@ export default function SenderSettingsPage() {
                 resendApiKey,
             })
             : await addSenderDomain({
-                userId: user.id,
+                accessToken: await getAccessToken(),
                 domain,
                 fromName: fromName || "EventFlow",
                 fromLocalPart: localPart,
@@ -90,7 +91,7 @@ export default function SenderSettingsPage() {
 
     const saveReplyTo = async (id: string) => {
         setSavingReplyTo(true);
-        await updateSenderReplyTo({ identityId: id, replyTo: replyToDraft });
+        await updateSenderReplyTo({ accessToken: await getAccessToken(), identityId: id, replyTo: replyToDraft });
         setSavingReplyTo(false);
         setEditingReplyToId(null);
         refresh();
@@ -98,14 +99,14 @@ export default function SenderSettingsPage() {
 
     const handleCheck = async (id: string) => {
         setCheckingId(id);
-        await checkSenderDomain({ identityId: id });
+        await checkSenderDomain({ accessToken: await getAccessToken(), identityId: id });
         setCheckingId(null);
         refresh();
     };
 
     const handleDelete = async (id: string) => {
         if (!confirm("Remove this sender domain? Emails will fall back to the platform default.")) return;
-        await deleteSenderIdentity({ identityId: id });
+        await deleteSenderIdentity({ accessToken: await getAccessToken(), identityId: id });
         refresh();
     };
 

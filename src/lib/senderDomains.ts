@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
+import { verifiedUserId } from "@/lib/authz";
 
 /**
  * Custom sender domains via the Resend Domains API.
@@ -36,6 +37,14 @@ function admin() {
     );
 }
 
+/**
+ * SECURITY: every function exported from this file is a public web endpoint (that is what "use server" means),
+ * and `admin()` bypasses the database's access rules. So each one below works out WHO is calling from their
+ * login token (never from a user id the page sends) and only touches that person's own sender identities.
+ * Functions that return secrets (the Resend API key) live in senderResolve.ts, which is NOT public.
+ */
+const LOG_IN_AGAIN = { error: "Please log in again." } as const;
+
 export interface SenderIdentity {
     id: string;
     user_id: string;
@@ -55,7 +64,9 @@ export interface SenderIdentity {
 /** Fields safe to show in the UI — deliberately excludes resend_api_key. */
 const PUBLIC_FIELDS = "id, user_id, domain, from_name, from_email, reply_to, resend_domain_id, status, dns_records, created_at";
 
-export async function listSenderIdentities(userId: string): Promise<{ identities: SenderIdentity[] } | { error: string }> {
+export async function listSenderIdentities(accessToken: string): Promise<{ identities: SenderIdentity[] } | { error: string }> {
+    const userId = await verifiedUserId(accessToken);
+    if (!userId) return LOG_IN_AGAIN;
     try {
         const { data, error } = await admin()
             .from("sender_identities")
@@ -70,14 +81,15 @@ export async function listSenderIdentities(userId: string): Promise<{ identities
 }
 
 export async function addSenderDomain({
-    userId,
+    accessToken,
     domain,
     fromName,
     fromLocalPart,
     replyTo,
     resendApiKey,
 }: {
-    userId: string;
+    /** The caller's login token: who is adding the domain is decided from this, on the server. */
+    accessToken: string;
     domain: string;
     fromName: string;
     /** the part before the @, e.g. "surveys" for surveys@theirbrand.com */
@@ -87,6 +99,8 @@ export async function addSenderDomain({
     /** Optional: only needed if this domain is verified under a DIFFERENT Resend account than the platform default (e.g. plan limits forced a separate account). */
     resendApiKey?: string;
 }): Promise<{ identity: SenderIdentity } | { error: string }> {
+    const userId = await verifiedUserId(accessToken);
+    if (!userId) return LOG_IN_AGAIN;
     try {
         const cleanApiKey = resendApiKey?.trim() || null;
         if (!cleanApiKey && !process.env.RESEND_API_KEY) throw new Error("RESEND_API_KEY is not configured");
@@ -172,14 +186,15 @@ export async function addSenderDomain({
  * to verify; addSenderDomain is for domains that still need DNS records set up.
  */
 export async function addVerifiedSender({
-    userId,
+    accessToken,
     domain,
     fromName,
     fromLocalPart,
     replyTo,
     resendApiKey,
 }: {
-    userId: string;
+    /** The caller's login token: who is adding the sender is decided from this, on the server. */
+    accessToken: string;
     domain: string;
     fromName: string;
     /** the part before the @, e.g. "surveys" for surveys@theirbrand.com */
@@ -188,6 +203,8 @@ export async function addVerifiedSender({
     /** Required — this is the only proof we have that the domain is actually usable. */
     resendApiKey: string;
 }): Promise<{ identity: SenderIdentity } | { error: string }> {
+    const userId = await verifiedUserId(accessToken);
+    if (!userId) return LOG_IN_AGAIN;
     try {
         const cleanApiKey = resendApiKey.trim();
         if (!cleanApiKey) throw new Error("A Resend API key is required for an already-verified domain");
@@ -228,16 +245,21 @@ export async function addVerifiedSender({
 }
 
 export async function checkSenderDomain({
+    accessToken,
     identityId,
 }: {
+    accessToken: string;
     identityId: string;
 }): Promise<{ status: string; identity?: SenderIdentity } | { error: string }> {
+    const userId = await verifiedUserId(accessToken);
+    if (!userId) return LOG_IN_AGAIN;
     try {
         const supabase = admin();
         const { data: identity, error: idErr } = await supabase
             .from("sender_identities")
             .select("*")
             .eq("id", identityId)
+            .eq("user_id", userId) // only YOUR identities
             .single();
         if (idErr || !identity) throw new Error("Sender identity not found");
         if (!identity.resend_domain_id) throw new Error("Domain was never registered with Resend");
@@ -263,6 +285,7 @@ export async function checkSenderDomain({
             .from("sender_identities")
             .update({ status: newStatus, dns_records: data.records || identity.dns_records })
             .eq("id", identityId)
+            .eq("user_id", userId)
             .select(PUBLIC_FIELDS)
             .single();
 
@@ -275,14 +298,19 @@ export async function checkSenderDomain({
     }
 }
 
-export async function deleteSenderIdentity({ identityId }: { identityId: string }): Promise<{ success: boolean } | { error: string }> {
+export async function deleteSenderIdentity({ accessToken, identityId }: { accessToken: string; identityId: string }): Promise<{ success: boolean } | { error: string }> {
+    const userId = await verifiedUserId(accessToken);
+    if (!userId) return LOG_IN_AGAIN;
     try {
         const supabase = admin();
+        // Only YOUR identity: otherwise nothing is deleted here and nothing is asked of Resend.
         const { data: identity } = await supabase
             .from("sender_identities")
             .select("resend_domain_id, resend_api_key")
             .eq("id", identityId)
-            .single();
+            .eq("user_id", userId)
+            .maybeSingle();
+        if (!identity) return { error: "Sender identity not found" };
 
         if (identity?.resend_domain_id) {
             await fetch(`${RESEND_API}/domains/${identity.resend_domain_id}`, {
@@ -291,7 +319,7 @@ export async function deleteSenderIdentity({ identityId }: { identityId: string 
             }).catch(() => { /* best-effort; still remove our record */ });
         }
 
-        const { error } = await supabase.from("sender_identities").delete().eq("id", identityId);
+        const { error } = await supabase.from("sender_identities").delete().eq("id", identityId).eq("user_id", userId);
         if (error) throw error;
         return { success: true };
     } catch (err: any) {
@@ -299,72 +327,18 @@ export async function deleteSenderIdentity({ identityId }: { identityId: string 
     }
 }
 
-/**
- * Resolves the From line (+ optional Reply-To) for an outgoing email. Only
- * verified identities are honored; anything else falls back to the platform
- * default so mail never goes out through an unverified domain.
- */
-export async function resolveSender(identityId?: string | null): Promise<{ from: string; replyTo?: string; resendApiKey?: string }> {
-    const fallback = { from: "EventFlow <noreply@partiesandeventz.com>" };
-    if (!identityId) return fallback;
-    try {
-        const { data } = await admin()
-            .from("sender_identities")
-            .select("from_name, from_email, reply_to, resend_api_key, status")
-            .eq("id", identityId)
-            .single();
-        if (data && data.status === "verified") {
-            return {
-                from: `${data.from_name} <${data.from_email}>`,
-                replyTo: data.reply_to || undefined,
-                resendApiKey: data.resend_api_key || undefined,
-            };
-        }
-    } catch { /* fall through */ }
-    return fallback;
-}
-
-/**
- * Auto-resolves the sender + brand for transactional emails (invite,
- * confirmation) that fire without a UI step to pick a sender — e.g. right
- * after registration. Picks the event owner's most recently verified
- * identity. Returns null (caller falls back to the platform default) when
- * the owner has no verified domain, so unrelated tenants are unaffected.
- */
-export async function resolveSenderForUser(
-    userId?: string | null
-): Promise<{ from: string; brandName: string; replyTo?: string; resendApiKey?: string } | null> {
-    if (!userId) return null;
-    try {
-        const { data } = await admin()
-            .from("sender_identities")
-            .select("from_name, from_email, reply_to, resend_api_key")
-            .eq("user_id", userId)
-            .eq("status", "verified")
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-        if (!data) return null;
-        return {
-            from: `${data.from_name} <${data.from_email}>`,
-            brandName: data.from_name,
-            replyTo: data.reply_to || undefined,
-            resendApiKey: data.resend_api_key || undefined,
-        };
-    } catch (err) {
-        console.error("resolveSenderForUser error:", err);
-        return null;
-    }
-}
-
 /** Updates the Reply-To address on an existing sender identity. */
 export async function updateSenderReplyTo({
+    accessToken,
     identityId,
     replyTo,
 }: {
+    accessToken: string;
     identityId: string;
     replyTo: string;
 }): Promise<{ identity: SenderIdentity } | { error: string }> {
+    const userId = await verifiedUserId(accessToken);
+    if (!userId) return LOG_IN_AGAIN;
     try {
         const cleanReplyTo = replyTo.trim();
         if (cleanReplyTo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanReplyTo)) {
@@ -374,6 +348,7 @@ export async function updateSenderReplyTo({
             .from("sender_identities")
             .update({ reply_to: cleanReplyTo || null })
             .eq("id", identityId)
+            .eq("user_id", userId) // only YOUR identity: a stranger must not be able to redirect your replies
             .select(PUBLIC_FIELDS)
             .single();
         if (error) throw error;
