@@ -162,7 +162,7 @@ export async function broadcastUpdate({
         }
 
         // Resolve the From line (only verified identities are honored)
-        const { resolveSender } = await import("@/lib/senderDomains");
+        const { resolveSender } = await import("@/lib/senderResolve");
         const sender = await resolveSender(senderIdentityId);
 
         // 3. Send Emails in Batches (Resend to field is an array)
@@ -292,7 +292,7 @@ export async function sendCampaignToAttendees({
         }
 
         const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        const { resolveSender } = await import("@/lib/senderDomains");
+        const { resolveSender } = await import("@/lib/senderResolve");
         const sender = await resolveSender(senderIdentityId);
         let sentCount = 0;
 
