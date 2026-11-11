@@ -1,7 +1,7 @@
 import { emailConfigForTag } from "@/app/[tag]/theme";
 import { resolveSenderForUser } from "./senderResolve";
 
-import { PLATFORM_FROM_ADDRESS } from "./platformEmail";
+import { PLATFORM_FROM_ADDRESS, SUPPORT_EMAIL } from "./platformEmail";
 export { PLATFORM_FROM_ADDRESS };
 
 export interface EventSender {
@@ -25,7 +25,7 @@ export async function resolveEventSender(event: { tag?: string | null; created_b
     if (cfg) {
         return {
             from: `${cfg.fromName ?? cfg.brandName} <${PLATFORM_FROM_ADDRESS}>`,
-            replyTo: cfg.replyTo,
+            replyTo: cfg.replyTo ?? SUPPORT_EMAIL ?? undefined,
             brandName: cfg.brandName,
         };
     }

@@ -27,7 +27,8 @@ import { verifyAndFulfillPayment } from "@/app/actions";
 import type { Question } from "@/app/events/[tag]/types";
 import { addGroupMemberAction, getReceiptAction, resendInviteAction } from "../../actions";
 import { QuestionField, type AnswerValue } from "../../QuestionField";
-import { DEFAULT_THEME, brandNameForTag, communityForTag, themeStyle } from "../../theme";
+import { DEFAULT_THEME, brandNameForTag, communityForTag, emailConfigForTag, themeStyle } from "../../theme";
+import { SUPPORT_EMAIL } from "@/lib/platformEmail";
 import { isQuestionRelevant, missingRequiredQuestion, type RuleQuestion } from "@/lib/answers";
 
 interface Order {
@@ -698,6 +699,11 @@ export default function ReceiptPage() {
                     <p className="text-xs text-gray-300 font-bold pt-8">
                         Confirmation sent to {order.email} • Check your spam folder • Powered by {brandNameForTag(tag)}
                     </p>
+                    {SUPPORT_EMAIL && emailConfigForTag(tag) && (
+                        <p className="text-sm text-gray-400 font-bold pt-2" data-testid="support-line">
+                            Questions or a problem? Email <a href={`mailto:${SUPPORT_EMAIL}`} className="text-gray-600 underline">{SUPPORT_EMAIL}</a>
+                        </p>
+                    )}
                 </div>
             </div>
         </div>

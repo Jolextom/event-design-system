@@ -1,4 +1,4 @@
-import { platformFrom } from "./platformEmail";
+import { defaultReplyTo, platformFrom } from "./platformEmail";
 import { Resend } from 'resend';
 import {
     renderInviteEmailHtml,
@@ -74,13 +74,14 @@ export async function sendInviteEmail({
             passType,
             inviteLink,
             eventImage,
-            brandName
+            brandName,
+            supportEmail: replyTo || defaultReplyTo(from)
         });
 
         const { data, error } = await getResend(resendApiKey).emails.send({
             from: from || platformFrom(),
             to: [to],
-            replyTo: replyTo || undefined,
+            replyTo: (replyTo || defaultReplyTo(from)) || undefined,
             // In dev mode, we can only send to verified email.
             // If to is not verified, it might fail depending on Resend plan.
             subject: `You're invited to ${eventTitle}!`,
@@ -149,13 +150,14 @@ export async function sendConfirmationEmail({
             checkInRef,
             qrCodeUrl,
             group,
-            community
+            community,
+            supportEmail: replyTo || defaultReplyTo(from)
         });
 
         const { data, error } = await getResend(resendApiKey).emails.send({
             from: from || platformFrom(),
             to: [to],
-            replyTo: replyTo || undefined,
+            replyTo: (replyTo || defaultReplyTo(from)) || undefined,
             subject: `Registration Confirmed - ${eventTitle}`,
             html,
         });
@@ -217,12 +219,13 @@ export async function sendReminderEmail({
             googleCalendarLink,
             outlookCalendarLink,
             brandName,
+            supportEmail: replyTo || defaultReplyTo(from),
         });
 
         const { data, error } = await getResend(resendApiKey).emails.send({
             from: from || platformFrom(),
             to: [to],
-            replyTo: replyTo || undefined,
+            replyTo: (replyTo || defaultReplyTo(from)) || undefined,
             subject: `Your check-in code for ${eventTitle}`,
             html,
         });
@@ -281,7 +284,7 @@ export async function sendBroadcastEmail({
         const { data, error } = await getResend(resendApiKey).emails.send({
             from: from || platformFrom(),
             to: to,
-            replyTo: replyTo || undefined,
+            replyTo: (replyTo || defaultReplyTo(from)) || undefined,
             subject: `${messageTitle} - ${eventTitle}`,
             html,
         });

@@ -10,6 +10,7 @@ Vercel (Project → Settings → Environment Variables); a new value only takes 
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | everything |
 | `PAYSTACK_SECRET_KEY` | payments (`sk_test_…` while testing, `sk_live_…` for real money). The public key isn't used. |
 | `RESEND_API_KEY` | all email |
+| `NEXT_PUBLIC_SUPPORT_EMAIL` | OPTIONAL but recommended. The address guests write to with a complaint or question. It becomes the Reply-To of platform emails and appears as "Questions or a problem? Reply to this email or write to …" in the email footers and on the receipt page. Emails go out from `noreply@…`, so without this, replies go nowhere. Anyone can see it: use an inbox you are happy to publish. Set in Vercel and redeploy. |
 | `PLATFORM_FROM_ADDRESS` | OPTIONAL. The address the platform sends from when an event has no domain of its own. Defaults to `noreply@jolextom.com`. The domain must be verified in Resend. Change it here (Vercel > Settings > Environment Variables, then redeploy), no code change. |
 | `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_APP_URL` | links inside emails (set both to your site, e.g. `https://maincharacterfest.vercel.app`) |
 | `CHECKIN_REMINDER_SECRET` | OPTIONAL. Only for the pre-event "send everyone their QR again" page. Not needed: every ticket email already carries the QR. |
@@ -293,3 +294,16 @@ with, through the same sender setup real registrations use (for Main Character F
 It writes nothing: no order, guest, payment or delivery record. It can only ever email your own login address, and is limited to 5 per 10 minutes.
 If Resend refuses, the page says why in plain words (domain not verified, key missing or restricted, ...). Use it after changing the sending
 domain, the Resend key, or the `PLATFORM_FROM_ADDRESS` setting.
+
+
+## Where guests send complaints
+
+Emails are sent from `noreply@…` (nobody reads that). Set `NEXT_PUBLIC_SUPPORT_EMAIL` in Vercel (Settings > Environment Variables) to a real inbox and redeploy:
+- it becomes the **Reply-To**, so pressing Reply in the guest's mail app reaches you;
+- it is shown in the footer of confirmation, invite and reminder emails ("Questions or a problem? Reply to this email or write to …") and on the receipt page of Main Character Fest;
+- it is NOT added to an organiser's own branded emails (an event using its own verified domain keeps its own Reply-To), so replies for other brands don't land here.
+It is kept out of the code on purpose: the repository is public.
+
+Which address? Any inbox works as a Reply-To, a Gmail address included. For a branded address like `support@jolextom.com` you need a mailbox that can RECEIVE mail
+(Resend only sends): free options are Cloudflare Email Routing (forwards `support@` to your Gmail, if the domain's DNS is on Cloudflare) or Google Workspace / Zoho.
+Replies from a forwarded address still arrive in your normal inbox. The code of conduct's "report a concern" contact should be someone who watches this inbox or a phone number.
