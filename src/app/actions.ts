@@ -5,6 +5,7 @@ import { sendBroadcastEmail } from "@/lib/email";
 import * as PaystackLib from "@/lib/paystack";
 import { fulfillOrder } from "@/lib/registrations";
 import { authorizeEventOwner, verifiedUserId, checkEventOwner } from "@/lib/authz";
+import { eventSupportEmail } from "@/lib/supportEmail";
 
 /** Pulls the display name out of a resolved "Name <email>" From line. */
 function brandNameFromSender(fromLine: string): string {
@@ -164,6 +165,7 @@ export async function broadcastUpdate({
         // Resolve the From line (only verified identities are honored)
         const { resolveSender } = await import("@/lib/senderResolve");
         const sender = await resolveSender(senderIdentityId);
+        const eventReplyTo = await eventSupportEmail(adminSupabase, eventId);
 
         // 3. Send Emails in Batches (Resend to field is an array)
         // Note: Resend recommended batch size is ~50-100 per request
@@ -176,7 +178,7 @@ export async function broadcastUpdate({
             const result = await sendBroadcastEmail({
                 to: batch,
                 from: sender.from,
-                replyTo: sender.replyTo,
+                replyTo: eventReplyTo || sender.replyTo || undefined,
                 resendApiKey: sender.resendApiKey,
                 brandName: brandNameFromSender(sender.from),
                 eventTitle: event.event_title,
@@ -294,6 +296,7 @@ export async function sendCampaignToAttendees({
         const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
         const { resolveSender } = await import("@/lib/senderResolve");
         const sender = await resolveSender(senderIdentityId);
+        const eventReplyTo = await eventSupportEmail(adminSupabase, eventId);
         let sentCount = 0;
 
         const results = await Promise.allSettled(targets.map(async (attendee: any) => {
@@ -302,7 +305,7 @@ export async function sendCampaignToAttendees({
             const result = await sendBroadcastEmail({
                 to: [attendee.email],
                 from: sender.from,
-                replyTo: sender.replyTo,
+                replyTo: eventReplyTo || sender.replyTo || undefined,
                 resendApiKey: sender.resendApiKey,
                 brandName: brandNameFromSender(sender.from),
                 eventTitle: event.event_title,

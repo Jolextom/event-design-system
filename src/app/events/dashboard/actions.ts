@@ -1,11 +1,12 @@
 "use server";
 
 import { adminClient } from "@/lib/apiV1";
-import { checkEventOwner, verifiedUser, verifiedUserId } from "@/lib/authz";
+import { authorizeEventOwner, checkEventOwner, verifiedUser, verifiedUserId } from "@/lib/authz";
 import { rateLimit } from "@/lib/rateLimit";
 import { sendConfirmationEmail } from "@/lib/email";
 import { resolveEventSender } from "@/lib/eventEmail";
-import { platformFrom } from "@/lib/platformEmail";
+import { parseOptionalEmail, platformFrom } from "@/lib/platformEmail";
+import { SUPPORT_EMAIL_COLUMN_SQL } from "@/lib/supportEmail";
 import { explainEmailError } from "@/lib/emailTestHelp";
 import { deleteEvent, previewEventDelete, type EventDeletePreview } from "@/lib/eventDelete";
 
@@ -89,4 +90,30 @@ export async function sendTestEmailAction(input: { accessToken: string; eventId?
     });
     if (!result.success) return { ok: false, error: explainEmailError((result as { error?: unknown }).error) };
     return { ok: true, to: user.email, from };
+}
+
+export type SaveSupportEmailResponse = { ok: true; email: string | null } | { ok: false; error: string; sql?: string };
+
+/**
+ * Saves (or clears) the address guests write to with a problem, for ONE event. It is read live when an email is sent or a
+ * receipt is shown, so it takes effect immediately: no redeploy. Owner only.
+ */
+export async function saveSupportEmailAction(input: { accessToken: string; eventId: string; email: string }): Promise<SaveSupportEmailResponse> {
+    const auth = await authorizeEventOwner(input?.accessToken, input?.eventId);
+    if (!auth.ok) return { ok: false, error: auth.error };
+    const raw = typeof input.email === "string" ? input.email.trim() : "";
+    const email = raw === "" ? null : parseOptionalEmail(raw);
+    if (raw !== "" && !email) return { ok: false, error: "That doesn't look like an email address." };
+    const rl = rateLimit(`support-email:${auth.userId}`, 20, 10 * 60 * 1000);
+    if (!rl.ok) return { ok: false, error: `Too many changes. Try again in ${rl.retryAfterSec}s.` };
+
+    const { data, error } = await adminClient().from("events").update({ support_email: email }).eq("id", input.eventId).select("id");
+    if (error) {
+        if (error.code === "42703" || error.code === "PGRST204" || /support_email/i.test(error.message)) {
+            return { ok: false, error: "The database doesn't have the support-email column yet. Run this once in the Supabase SQL editor, then press Save again:", sql: SUPPORT_EMAIL_COLUMN_SQL };
+        }
+        return { ok: false, error: `Couldn't save: ${error.message}` };
+    }
+    if (!data || data.length === 0) return { ok: false, error: "The event wasn't updated. Please try again." };
+    return { ok: true, email };
 }

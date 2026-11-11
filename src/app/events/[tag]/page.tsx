@@ -862,7 +862,7 @@ function AppContainer({ initialEvent }: { initialEvent: Event | null }) {
                                     <CampaignsView eventId={event?.id ?? null} createdBy={event?.created_by ?? null} />
                                 )}
                                 {activeGlobal === "broadcast" && <BroadcastView event={event} />}
-                                {activeGlobal === "settings" && <SettingsView eventId={event?.id ?? null} />}
+                                {activeGlobal === "settings" && <SettingsView key={event?.id} eventId={event?.id ?? null} supportEmail={event?.support_email ?? ""} />}
                         </div>
                     )}
                 </main>

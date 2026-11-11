@@ -14,12 +14,31 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
 import { getAccessToken } from "@/lib/accessToken";
-import { sendTestEmailAction } from "@/app/events/dashboard/actions";
+import { saveSupportEmailAction, sendTestEmailAction } from "@/app/events/dashboard/actions";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
-export function SettingsView({ eventId = null }: { eventId?: string | null }) {
+export function SettingsView({ eventId = null, supportEmail = "" }: { eventId?: string | null; supportEmail?: string | null }) {
     const { user } = useAuth();
+    const [supportDraft, setSupportDraft] = useState(supportEmail ?? "");
+    const [supportSaved, setSupportSaved] = useState(supportEmail ?? "");
+    const [supportState, setSupportState] = useState<{ kind: "idle" } | { kind: "saving" } | { kind: "ok" } | { kind: "error"; message: string; sql?: string }>({ kind: "idle" });
+    const saveSupport = async () => {
+        if (!eventId) return;
+        setSupportState({ kind: "saving" });
+        try {
+            const r = await saveSupportEmailAction({ accessToken: await getAccessToken(), eventId, email: supportDraft });
+            if (r.ok) {
+                setSupportSaved(r.email ?? "");
+                setSupportDraft(r.email ?? "");
+                setSupportState({ kind: "ok" });
+            } else {
+                setSupportState({ kind: "error", message: r.error, sql: r.sql });
+            }
+        } catch {
+            setSupportState({ kind: "error", message: "Couldn't reach the server. Check your connection and try again." });
+        }
+    };
     const [testState, setTestState] = useState<{ kind: "idle" } | { kind: "sending" } | { kind: "ok"; to: string; from: string } | { kind: "error"; message: string }>({ kind: "idle" });
     const sendTest = async () => {
         setTestState({ kind: "sending" });
@@ -66,6 +85,49 @@ export function SettingsView({ eventId = null }: { eventId?: string | null }) {
                         >
                             Change password
                         </a>
+                    </div>
+
+                    {/* Support email */}
+                    <div className="p-8 border border-gray-100 rounded-[32px] bg-gray-50/30 space-y-4">
+                        <div className="flex items-center gap-4">
+                            <UserCircle className="w-5 h-5 text-[var(--brand-blue)] shrink-0" />
+                            <div>
+                                <h3 className="text-sm font-black text-gray-900 tracking-tight">Support email</h3>
+                                <p className="text-xs font-bold text-gray-400 mt-0.5">
+                                    Where guests can write with a complaint or question. It is the Reply-To of this event&apos;s emails and shows in their footer and on the receipt page. Changes apply immediately.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <input
+                                id="support-email"
+                                type="email"
+                                inputMode="email"
+                                autoComplete="off"
+                                placeholder="support@yourdomain.com"
+                                value={supportDraft}
+                                onChange={(e) => { setSupportDraft(e.target.value); if (supportState.kind !== "idle") setSupportState({ kind: "idle" }); }}
+                                className="flex-1 px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[var(--brand-blue)]/20"
+                            />
+                            <button
+                                onClick={saveSupport}
+                                disabled={!eventId || supportState.kind === "saving" || supportDraft.trim() === supportSaved}
+                                className="shrink-0 bg-gray-900 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all disabled:opacity-40"
+                            >
+                                {supportState.kind === "saving" ? "Saving…" : "Save"}
+                            </button>
+                        </div>
+                        {supportState.kind === "ok" && (
+                            <p role="status" className="text-sm font-bold text-green-700 bg-green-50 border border-green-200 rounded-2xl p-4">
+                                {supportSaved ? `Saved. Guests will now be told to write to ${supportSaved}.` : "Cleared. Emails go back to the default support address (if one is set)."}
+                            </p>
+                        )}
+                        {supportState.kind === "error" && (
+                            <div role="alert" className="text-sm font-bold text-red-600 bg-red-50 border border-red-100 rounded-2xl p-4 space-y-2">
+                                <p>{supportState.message}</p>
+                                {supportState.sql && <pre className="whitespace-pre-wrap break-words rounded-xl bg-white p-3 text-xs font-medium text-gray-700 border border-red-100">{supportState.sql}</pre>}
+                            </div>
+                        )}
                     </div>
 
                     {/* Email check */}
