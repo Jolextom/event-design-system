@@ -10,6 +10,7 @@ Vercel (Project → Settings → Environment Variables); a new value only takes 
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | everything |
 | `PAYSTACK_SECRET_KEY` | payments (`sk_test_…` while testing, `sk_live_…` for real money). The public key isn't used. |
 | `RESEND_API_KEY` | all email |
+| `PLATFORM_FROM_ADDRESS` | OPTIONAL. The address the platform sends from when an event has no domain of its own. Defaults to `noreply@jolextom.com`. The domain must be verified in Resend. Change it here (Vercel > Settings > Environment Variables, then redeploy), no code change. |
 | `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_APP_URL` | links inside emails (set both to your site, e.g. `https://maincharacterfest.vercel.app`) |
 | `CHECKIN_REMINDER_SECRET` | OPTIONAL. Only for the pre-event "send everyone their QR again" page. Not needed: every ticket email already carries the QR. |
 | `RECONCILE_SECRET` | OPTIONAL. Only for the backup page that completes orders paid at Paystack but never finished (needed only if the webhook ever misses one). |
@@ -50,6 +51,9 @@ It skips anyone already sent one and sends at most 50 per run (add `&limit=` to 
 - An event with its own email identity (see `email` in `src/app/[tag]/theme.ts`, e.g. Main Character Fest)
   sends as that brand through the platform's sending domain.
 - Any other event uses the owner's verified sender (Dashboard → Senders) if there is one, else the platform default.
+- "The platform's sending domain" is `PLATFORM_FROM_ADDRESS` (default `noreply@jolextom.com`; it was `partiesandeventz.com` until that
+  domain expired in Nov 2026). Before using a domain: Resend > Domains > Add Domain, add the SPF + DKIM DNS records it shows at your
+  DNS host, wait for "Verified". Until it is verified Resend refuses every email sent from it.
 
 ## Email limits
 

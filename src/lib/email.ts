@@ -1,3 +1,4 @@
+import { platformFrom } from "./platformEmail";
 import { Resend } from 'resend';
 import {
     renderInviteEmailHtml,
@@ -77,7 +78,7 @@ export async function sendInviteEmail({
         });
 
         const { data, error } = await getResend(resendApiKey).emails.send({
-            from: from || 'EventFlow <noreply@partiesandeventz.com>',
+            from: from || platformFrom(),
             to: [to],
             replyTo: replyTo || undefined,
             // In dev mode, we can only send to verified email.
@@ -152,7 +153,7 @@ export async function sendConfirmationEmail({
         });
 
         const { data, error } = await getResend(resendApiKey).emails.send({
-            from: from || 'EventFlow <noreply@partiesandeventz.com>',
+            from: from || platformFrom(),
             to: [to],
             replyTo: replyTo || undefined,
             subject: `Registration Confirmed - ${eventTitle}`,
@@ -219,7 +220,7 @@ export async function sendReminderEmail({
         });
 
         const { data, error } = await getResend(resendApiKey).emails.send({
-            from: from || 'EventFlow <noreply@partiesandeventz.com>',
+            from: from || platformFrom(),
             to: [to],
             replyTo: replyTo || undefined,
             subject: `Your check-in code for ${eventTitle}`,
@@ -278,7 +279,7 @@ export async function sendBroadcastEmail({
 
         // Resend allows sending to multiple recipients (up to 50 per request usually)
         const { data, error } = await getResend(resendApiKey).emails.send({
-            from: from || 'EventFlow <noreply@partiesandeventz.com>',
+            from: from || platformFrom(),
             to: to,
             replyTo: replyTo || undefined,
             subject: `${messageTitle} - ${eventTitle}`,
