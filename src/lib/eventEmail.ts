@@ -1,8 +1,8 @@
 import { emailConfigForTag } from "@/app/[tag]/theme";
 import { resolveSenderForUser } from "./senderResolve";
 
-/** The platform's own verified sending address (the same default email.ts falls back to). */
-export const PLATFORM_FROM_ADDRESS = "noreply@partiesandeventz.com";
+import { PLATFORM_FROM_ADDRESS } from "./platformEmail";
+export { PLATFORM_FROM_ADDRESS };
 
 export interface EventSender {
     from?: string;

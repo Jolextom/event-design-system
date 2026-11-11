@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { platformFrom } from "./platformEmail";
 
 /**
  * Looks up which From address (and, for a few tenants, which Resend API key) an outgoing email should use.
@@ -20,7 +21,7 @@ function admin() {
  * default so mail never goes out through an unverified domain.
  */
 export async function resolveSender(identityId?: string | null): Promise<{ from: string; replyTo?: string; resendApiKey?: string }> {
-    const fallback = { from: "EventFlow <noreply@partiesandeventz.com>" };
+    const fallback = { from: platformFrom() };
     if (!identityId) return fallback;
     try {
         const { data } = await admin()

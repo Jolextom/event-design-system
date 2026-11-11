@@ -230,7 +230,7 @@ async function main() {
 
         const result = await sendEmail({
             to: att.email,
-            from: senderFrom || "EventFlow <noreply@partiesandeventz.com>",
+            from: senderFrom || `EventFlow <${process.env.PLATFORM_FROM_ADDRESS || "noreply@jolextom.com"}>`,
             subject: `Your check-in code for ${event.event_title}`,
             html,
         });
