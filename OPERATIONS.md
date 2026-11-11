@@ -296,14 +296,25 @@ If Resend refuses, the page says why in plain words (domain not verified, key mi
 domain, the Resend key, or the `PLATFORM_FROM_ADDRESS` setting.
 
 
-## Where guests send complaints
+## Where guests send complaints (set in the dashboard, no redeploy)
 
-Emails are sent from `noreply@…` (nobody reads that). Set `NEXT_PUBLIC_SUPPORT_EMAIL` in Vercel (Settings > Environment Variables) to a real inbox and redeploy:
-- it becomes the **Reply-To**, so pressing Reply in the guest's mail app reaches you;
-- it is shown in the footer of confirmation, invite and reminder emails ("Questions or a problem? Reply to this email or write to …") and on the receipt page of Main Character Fest;
-- it is NOT added to an organiser's own branded emails (an event using its own verified domain keeps its own Reply-To), so replies for other brands don't land here.
-It is kept out of the code on purpose: the repository is public.
+Emails are sent from `noreply@…` (nobody reads that), so each event has a **support email**: event > **Settings** > **Support email** > type the address > **Save**.
+It applies immediately (it is read from the database when an email is sent or a receipt is shown), so there is **no Vercel redeploy**:
+- it becomes the **Reply-To**, so pressing Reply in the guest's mail app reaches that inbox;
+- it is shown in the footer of confirmation, invite and reminder emails ("Questions or a problem? Reply to this email or write to …") and on the receipt page;
+- it is per event, and wins over a sender's default Reply-To. Leave it empty to use the default below.
+
+**One-time setup:** the database needs one column. Run this once in the Supabase SQL editor (the Save button also shows it if it is missing):
+
+```sql
+ALTER TABLE public.events ADD COLUMN IF NOT EXISTS support_email TEXT;
+NOTIFY pgrst, 'reload schema';
+```
+
+Optional global default: `NEXT_PUBLIC_SUPPORT_EMAIL` in Vercel is used only for Main Character Fest and for platform emails when an event has no support email of its own.
+Changing a Vercel setting needs a redeploy; the dashboard setting does not, so prefer the dashboard.
+The address is visible to every guest: use an inbox you are happy to publish. It is not written in the code (the repository is public).
 
 Which address? Any inbox works as a Reply-To, a Gmail address included. For a branded address like `support@jolextom.com` you need a mailbox that can RECEIVE mail
 (Resend only sends): free options are Cloudflare Email Routing (forwards `support@` to your Gmail, if the domain's DNS is on Cloudflare) or Google Workspace / Zoho.
-Replies from a forwarded address still arrive in your normal inbox. The code of conduct's "report a concern" contact should be someone who watches this inbox or a phone number.
+The code of conduct's "report a concern" contact should be someone who watches this inbox or a phone number.

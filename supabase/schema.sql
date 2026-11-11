@@ -370,3 +370,8 @@ drop policy if exists "event-images: organisers delete from their own folder" on
 create policy "event-images: organisers delete from their own folder"
   on storage.objects for delete to authenticated
   using (bucket_id = 'event-images' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Support email per event (Settings > Support email): where guests write with a complaint or question.
+-- Read live when an email is sent or a receipt is shown, so changing it needs no redeploy.
+ALTER TABLE public.events ADD COLUMN IF NOT EXISTS support_email TEXT;
+NOTIFY pgrst, 'reload schema';

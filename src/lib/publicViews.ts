@@ -1,4 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { eventSupportEmail } from "./supportEmail.ts";
+import { SUPPORT_EMAIL } from "./platformEmail.ts";
+import { emailConfigForTag } from "../app/[tag]/theme.ts";
 
 /**
  * What the two "link" pages (the receipt after paying, and the invite link in an email) are
@@ -38,6 +41,8 @@ export type ReceiptView = {
     pass: Record<string, unknown> | null;
     event: Record<string, unknown> | null;
     questions: any[];
+    /** Where this guest can write with a problem: the organiser's own address for the event, else the platform default (platform-branded events only). */
+    supportEmail: string | null;
 };
 
 /** Everything the receipt page draws for ONE order reference; null if there is no such order. */
@@ -50,12 +55,15 @@ export async function receiptView(db: SupabaseClient, ref: unknown): Promise<Rec
         order.pass_id ? db.from("passes").select("*").eq("id", order.pass_id).maybeSingle() : Promise.resolve({ data: null }),
         order.event_id ? db.from("events").select(EVENT_SELECT).eq("id", order.event_id).maybeSingle() : Promise.resolve({ data: null }),
     ]);
+    const own = await eventSupportEmail(db, order.event_id);
+    const tag = (event.data as { tag?: string | null } | null)?.tag;
     return {
         order: pick(order, ORDER_KEYS)!,
         attendees: (attendees ?? []).map((a: any) => pick(a, ATTENDEE_KEYS)!),
         pass: pick(pass.data as any, PASS_KEYS),
         event: pick(event.data as any, EVENT_KEYS),
         questions: order.event_id ? await loadQuestions(db, order.event_id) : [],
+        supportEmail: own ?? (emailConfigForTag(tag) ? SUPPORT_EMAIL : null),
     };
 }
 

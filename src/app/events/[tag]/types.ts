@@ -7,6 +7,8 @@ export interface Event {
   is_published: boolean;
   start_date: string | null;
   end_date?: string | null;
+  /** Where guests write with a problem (Settings > Support email). */
+  support_email?: string | null;
   start_time: string | null;
   end_time: string | null;
   location: string;
