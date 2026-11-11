@@ -285,3 +285,11 @@ Any function exported from a file that starts with `"use server"` can be called 
 Fixed 7 Nov 2026 after a private report: the sender-domain functions (list, add, verify, delete, change Reply-To) had no login check, and the two
 lookups that return a tenant's Resend API key were public. If you ever saved your own Resend API key in Settings > Senders, rotate it in Resend.
 Check for tampering: Resend > Domains (anything missing or unknown?) and `select domain, from_email, reply_to, created_at from sender_identities;`.
+
+## Testing that email works (without touching the live database)
+
+Event > **Settings** > **Email check** > **Send test email**. It sends a sample confirmation email ("[TEST] …") to the address you are logged in
+with, through the same sender setup real registrations use (for Main Character Fest: `Main Character Fest <noreply@…>` on `PLATFORM_FROM_ADDRESS`).
+It writes nothing: no order, guest, payment or delivery record. It can only ever email your own login address, and is limited to 5 per 10 minutes.
+If Resend refuses, the page says why in plain words (domain not verified, key missing or restricted, ...). Use it after changing the sending
+domain, the Resend key, or the `PLATFORM_FROM_ADDRESS` setting.

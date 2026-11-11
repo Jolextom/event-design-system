@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
     Settings as SettingsIcon,
     Globe,
@@ -9,12 +9,28 @@ import {
     Palette,
     FileText,
     UserCircle,
-    Save
+    Save,
+    Mail
 } from "lucide-react";
+import { useAuth } from "@/app/context/AuthContext";
+import { getAccessToken } from "@/lib/accessToken";
+import { sendTestEmailAction } from "@/app/events/dashboard/actions";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
-export function SettingsView() {
+export function SettingsView({ eventId = null }: { eventId?: string | null }) {
+    const { user } = useAuth();
+    const [testState, setTestState] = useState<{ kind: "idle" } | { kind: "sending" } | { kind: "ok"; to: string; from: string } | { kind: "error"; message: string }>({ kind: "idle" });
+    const sendTest = async () => {
+        setTestState({ kind: "sending" });
+        try {
+            const r = await sendTestEmailAction({ accessToken: await getAccessToken(), eventId });
+            setTestState(r.ok ? { kind: "ok", to: r.to, from: r.from } : { kind: "error", message: r.error });
+        } catch {
+            setTestState({ kind: "error", message: "Couldn't reach the server. Check your connection and try again." });
+        }
+    };
+
     return (
         <div className="h-full overflow-y-auto bg-white custom-scrollbar">
             <div className="p-8 md:p-10 space-y-10 max-w-4xl mx-auto relative pb-24">
@@ -50,6 +66,36 @@ export function SettingsView() {
                         >
                             Change password
                         </a>
+                    </div>
+
+                    {/* Email check */}
+                    <div className="p-8 border border-gray-100 rounded-[32px] bg-gray-50/30 space-y-4">
+                        <div className="flex items-center justify-between gap-6">
+                            <div className="flex items-center gap-4">
+                                <Mail className="w-5 h-5 text-[var(--brand-blue)] shrink-0" />
+                                <div>
+                                    <h3 className="text-sm font-black text-gray-900 tracking-tight">Email check</h3>
+                                    <p className="text-xs font-bold text-gray-400 mt-0.5">
+                                        Sends a sample confirmation email to {user?.email || "your email"} from this event&apos;s real email setup. Nothing is saved: no guest, order or payment is created.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={sendTest}
+                                disabled={testState.kind === "sending"}
+                                className="shrink-0 bg-white border border-gray-200 text-gray-700 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 transition-all disabled:opacity-50"
+                            >
+                                {testState.kind === "sending" ? "Sending…" : "Send test email"}
+                            </button>
+                        </div>
+                        {testState.kind === "ok" && (
+                            <p role="status" className="text-sm font-bold text-green-700 bg-green-50 border border-green-200 rounded-2xl p-4">
+                                Sent to {testState.to} from {testState.from}. Check your inbox (and spam). If it arrives, emails are working.
+                            </p>
+                        )}
+                        {testState.kind === "error" && (
+                            <p role="alert" className="text-sm font-bold text-red-600 bg-red-50 border border-red-100 rounded-2xl p-4">{testState.message}</p>
+                        )}
                     </div>
 
                     {/* General Settings Section */}

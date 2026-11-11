@@ -1,8 +1,12 @@
 "use server";
 
 import { adminClient } from "@/lib/apiV1";
-import { verifiedUserId } from "@/lib/authz";
+import { checkEventOwner, verifiedUser, verifiedUserId } from "@/lib/authz";
 import { rateLimit } from "@/lib/rateLimit";
+import { sendConfirmationEmail } from "@/lib/email";
+import { resolveEventSender } from "@/lib/eventEmail";
+import { platformFrom } from "@/lib/platformEmail";
+import { explainEmailError } from "@/lib/emailTestHelp";
 import { deleteEvent, previewEventDelete, type EventDeletePreview } from "@/lib/eventDelete";
 
 /**
@@ -39,4 +43,50 @@ export async function deleteEventAction(input: { eventId: string; accessToken: s
         confirmTitle: typeof input.confirmTitle === "string" ? input.confirmTitle : undefined,
     });
     return r.ok ? { ok: true } : { ok: false, error: r.error };
+}
+
+export type TestEmailResponse = { ok: true; to: string; from: string } | { ok: false; error: string };
+
+/**
+ * "Send test email": a sample confirmation email, sent through the same sender setup real registrations use, to the
+ * LOGGED-IN organiser's own address only (never an address the page supplies, so it can't be used to email strangers).
+ * It reads the event but writes nothing: no order, guest or delivery record. Safe to use on a live event.
+ */
+export async function sendTestEmailAction(input: { accessToken: string; eventId?: string | null }): Promise<TestEmailResponse> {
+    const user = await verifiedUser(input?.accessToken);
+    if (!user) return { ok: false, error: "Please log in again." };
+    if (!user.email) return { ok: false, error: "Your account has no email address to send the test to." };
+    const rl = rateLimit(`test-email:${user.id}`, 5, 10 * 60 * 1000);
+    if (!rl.ok) return { ok: false, error: `Too many test emails. Try again in ${rl.retryAfterSec}s.` };
+
+    let event: { tag?: string | null; created_by?: string | null; event_title?: string | null; start_date?: string | null; location?: string | null; image?: string | null; confirmation_template?: string | null } | null = null;
+    if (input?.eventId) {
+        const db = adminClient();
+        const owner = await checkEventOwner(db, input.eventId, user.id);
+        if (!owner.ok) return { ok: false, error: owner.error };
+        const { data } = await db.from("events").select("*").eq("id", input.eventId).maybeSingle();
+        event = data;
+    }
+
+    const sender = event ? await resolveEventSender(event) : null;
+    const from = sender?.from || platformFrom();
+    const site = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+    const date = event?.start_date ? new Date(event.start_date) : null;
+    const result = await sendConfirmationEmail({
+        to: user.email,
+        eventTitle: `[TEST] ${event?.event_title || "Email check"}`,
+        eventDate: date && !isNaN(date.getTime()) ? date.toDateString() : "Date to be announced",
+        eventLocation: event?.location || "Venue",
+        orderRef: "TEST-0000",
+        receiptLink: site ? `${site}/${event?.tag ?? ""}` : "#",
+        attendeeName: user.email.split("@")[0],
+        eventImage: event?.image ?? undefined,
+        brandName: sender?.brandName,
+        from: sender?.from,
+        replyTo: sender?.replyTo,
+        resendApiKey: sender?.resendApiKey,
+        templateKey: event?.confirmation_template ?? null,
+    });
+    if (!result.success) return { ok: false, error: explainEmailError((result as { error?: unknown }).error) };
+    return { ok: true, to: user.email, from };
 }
