@@ -16,6 +16,8 @@ export interface InviteEmailParams {
     eventImage?: string;
     /** Sender brand shown in the header badge and footer. Defaults to the platform brand. */
     brandName?: string;
+    /** Where guests can send a complaint or question (the Reply-To in use). Shown in the footer when given. */
+    supportEmail?: string | null;
 }
 
 export function renderInviteEmailHtml({
@@ -28,7 +30,8 @@ export function renderInviteEmailHtml({
     googleCalendarLink,
     outlookCalendarLink,
     eventImage,
-    brandName = 'EventFlow'
+    brandName = 'EventFlow',
+    supportEmail
 }: InviteEmailParams): string {
     return `
 <!DOCTYPE html>
@@ -111,6 +114,7 @@ export function renderInviteEmailHtml({
                     </tr>
                     <tr>
                         <td style="padding-top: 32px; text-align: center;">
+                            ${supportLine(supportEmail)}
                             <p style="margin: 0; font-size: 12px; color: #94a3b8; font-weight: 500;">
                                 Sent via <strong style="color: #64748b;">${brandName}</strong>
                             </p>
@@ -151,11 +155,21 @@ export interface ConfirmationEmailParams {
     group?: { filled: number; total: number };
     /** A group chat for registered guests (see theme.ts `community`). */
     community?: { label: string; url: string; note?: string };
+    /** Where guests can send a complaint or question (the Reply-To in use). Shown in the footer when given. */
+    supportEmail?: string | null;
 }
 
 /** Escapes text before it goes into HTML. Used by the templates added for check-in passes. */
 const esc = (v: string) =>
     String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+/** "Questions or a problem? Reply to this email" footer line, only when a support address is known. */
+function supportLine(supportEmail?: string | null): string {
+    if (!supportEmail) return "";
+    const e = esc(supportEmail);
+    return `<p style="margin: 0 0 10px; font-size: 12px; color: #64748b; font-weight: 600;">Questions or a problem? Reply to this email or write to <a href="mailto:${e}" style="color: #4f46e5; text-decoration: none;">${e}</a></p>`;
+}
+
 
 /** "Join the group chat" button for events that have one. */
 function communityBlock(community: { label: string; url: string; note?: string } | undefined): string {
@@ -215,7 +229,8 @@ export function renderConfirmationEmailHtml({
     checkInRef,
     qrCodeUrl,
     group,
-    community
+    community,
+    supportEmail
 }: ConfirmationEmailParams): string {
     return `
 <!DOCTYPE html>
@@ -321,6 +336,7 @@ export function renderConfirmationEmailHtml({
                     </tr>
                     <tr>
                         <td style="padding-top: 32px; text-align: center;">
+                            ${supportLine(supportEmail)}
                             <p style="margin: 0; font-size: 12px; color: #94a3b8; font-weight: 500;">
                                 Powered by <strong style="color: #64748b;">${brandName}</strong>
                             </p>
@@ -492,6 +508,8 @@ export interface ReminderEmailParams {
     outlookCalendarLink?: string;
     /** Sender brand for the generic template (the Kini template ignores it). Defaults to the platform brand. */
     brandName?: string;
+    /** Where guests can send a complaint or question (the Reply-To in use). Shown in the footer when given. */
+    supportEmail?: string | null;
 }
 
 /**
@@ -674,6 +692,7 @@ export function renderReminderEmailHtml({
     googleCalendarLink,
     outlookCalendarLink,
     brandName = 'EventFlow',
+    supportEmail,
 }: ReminderEmailParams): string {
     const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(eventLocation)}`;
     return `
@@ -721,6 +740,7 @@ export function renderReminderEmailHtml({
         </tr>
         <tr>
           <td style="padding-top:28px; text-align:center;">
+            ${supportLine(supportEmail)}
             <p style="margin:0; font-size:12px; color:#94a3b8;">Sent via <strong style="color:#64748b;">${esc(brandName)}</strong></p>
           </td>
         </tr>
