@@ -4,6 +4,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { sendInviteEmail } from "./email";
 import { generateGoogleCalendarLink, generateOutlookLink } from "./calendar";
 import { syncRegistrationsToSheet } from "./sheetsSync";
+import { syncPassSold } from "./stock";
 
 export interface FulfillOrderParams {
     orderId: string;
@@ -160,12 +161,9 @@ export async function fulfillOrder({
         }
     }
 
-    // 3. Update ticket quantity sold (rpc)
-    const ticketQuantity = validGuests.length;
-    await supabase.rpc('increment_quantity_sold', {
-        pass_id_param: passId,
-        amount: ticketQuantity
-    });
+    // 3. Keep the ticket's sold number right. It is counted from the records (see stock.ts), not incremented by a database
+    //    function: that function was missing in the live database, so the old rpc call failed silently and nothing ever moved.
+    await syncPassSold(supabase, passId);
 
     // 4. Send Emails (Directly and Parallelized)
     const { data: attendeesWithStatus, error: attFetchErr } = await supabase
