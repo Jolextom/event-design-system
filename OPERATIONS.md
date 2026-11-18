@@ -318,3 +318,13 @@ The address is visible to every guest: use an inbox you are happy to publish. It
 Which address? Any inbox works as a Reply-To, a Gmail address included. For a branded address like `support@jolextom.com` you need a mailbox that can RECEIVE mail
 (Resend only sends): free options are Cloudflare Email Routing (forwards `support@` to your Gmail, if the domain's DNS is on Cloudflare) or Google Workspace / Zoho.
 The code of conduct's "report a concern" contact should be someone who watches this inbox or a phone number.
+
+## "N left" never went down (fixed)
+The sold number used to be raised by a database function (`increment_quantity_sold`) that was never created in the live database, and the error was ignored, so sales went through while the counter stayed at 0. The app now **recounts from the records** after every paid order (`src/lib/stock.ts`): a group ticket counts completed orders (one group = 1), any other ticket counts registered guests (invited-only people don't count). It corrects itself on the next sale. To fix the number for sales made before this fix, run once in the Supabase SQL editor:
+
+```sql
+update passes p set quantity_sold = case
+  when p.type = 'group' then (select count(*) from orders_table o where o.pass_id = p.id and o.status = 'completed')
+  else (select count(*) from attendees a where a.pass_id = p.id and a.email_status is distinct from 'invited')
+end;
+```
