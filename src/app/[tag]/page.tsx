@@ -823,7 +823,7 @@ export default function RegistrationPage() {
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.12 }}
                             onClick={(e) => e.stopPropagation()}
-                            className={cn("flex max-h-[92vh] w-full max-w-[480px] flex-col overflow-hidden rounded-t-3xl border bg-[color:var(--pg-modal)] shadow-2xl sm:rounded-2xl", hairline)}
+                            className={cn("flex max-h-[92vh] max-h-[92dvh] w-full max-w-[480px] flex-col overflow-hidden rounded-t-3xl border bg-[color:var(--pg-modal)] shadow-2xl sm:rounded-2xl", hairline)}
                         >
                             <div className={cn("flex items-start justify-between gap-4 border-b px-5 py-4", hairline)}>
                                 <div className="min-w-0">
@@ -842,7 +842,7 @@ export default function RegistrationPage() {
                                 </button>
                             </div>
 
-                            <div className="space-y-8 overflow-y-auto px-5 py-5">
+                            <div className="min-h-0 flex-1 space-y-8 overflow-y-auto overscroll-contain px-5 py-5">
                                 {guests.map((guest, index) => {
                                     const isPrimary = index === 0;
 
@@ -981,7 +981,7 @@ export default function RegistrationPage() {
                                 )}
                             </div>
 
-                            <div className={cn("space-y-3 border-t px-5 py-4", hairline)}>
+                            <div className={cn("space-y-3 border-t px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]", hairline)}>
                                 {formError && (
                                     <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
                                         <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
